@@ -51,7 +51,7 @@ name: "Pipeline Repo Assist"
     - created
     - edited
   schedule:
-  - cron: "36 16 * * *"
+  - cron: "30 21 * * *"
   workflow_dispatch:
     inputs:
       issue_number:
