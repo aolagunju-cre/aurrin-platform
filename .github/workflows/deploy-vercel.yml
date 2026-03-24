@@ -66,20 +66,28 @@ jobs:
 
       - name: Pull Vercel config
         if: steps.creds.outputs.configured == 'true'
+        working-directory: ${{ steps.app-root.outputs.path }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+        run: |
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          # Vercel project has rootDirectory=studio, but we're already in studio/.
+          # Clear rootDirectory so vercel build doesn't double the path.
+          jq '.projectSettings.rootDirectory = null' .vercel/project.json > .vercel/project.json.tmp \
+            && mv .vercel/project.json.tmp .vercel/project.json
 
       - name: Build
         if: steps.creds.outputs.configured == 'true'
+        working-directory: ${{ steps.app-root.outputs.path }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel build --prod --token=$VERCEL_TOKEN
 
       - name: Deploy
         if: steps.creds.outputs.configured == 'true'
+        working-directory: ${{ steps.app-root.outputs.path }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
