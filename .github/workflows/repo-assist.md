@@ -73,10 +73,6 @@ safe-outputs:
     title-prefix: "[Pipeline] "
     labels: [automation, pipeline]
     max: 2
-  create-project-status-update:
-    project: "https://github.com/users/samuelkahessay/projects/2"
-    max: 1
-    github-token: ${{ secrets.GH_AW_PROJECT_GITHUB_TOKEN }}
   add-labels:
     allowed: [feature, test, infra, docs, bug, pipeline, blocked, ready, in-progress, completed, agentic-workflows]
     max: 20
@@ -306,41 +302,7 @@ If Targeted Issue Dispatch Mode is active, Task 1 must operate only on issue `#$
    - Comment summarizing what was changed
 3. Update memory.
 
-### Task 5: Update Pipeline Status (ALWAYS DO THIS)
-
-Post a project status update to `https://github.com/users/samuelkahessay/projects/2` as a rolling summary.
-
-```
-## Pipeline Status — Updated YYYY-MM-DD
-
-| Stage | Count |
-|-------|-------|
-| Open Issues | X |
-| In Progress | Y |
-| PRs In Review | Z |
-| Completed | W |
-
-### Recent Activity
-- Implemented #N: <title> → PR #M
-- ...
-
-### Blocked
-- #N: Waiting on #M (dependency)
-- ...
-
-### Next Up
-- #N: <title> (ready to implement)
-```
-
-Use status:
-- `ON_TRACK` when progressing normally
-- `AT_RISK` when blocked or repeatedly failing CI/review
-- `OFF_TRACK` when the pipeline is stalled
-- `COMPLETE` when no open pipeline issues/PRs remain
-
-Do NOT create or update a `[Pipeline] Status` issue for this task. Create exactly one project status update every run.
-
-### Task 6: Triage Agentic Workflow Failures (ALWAYS DO THIS)
+### Task 5: Triage Agentic Workflow Failures (ALWAYS DO THIS)
 
 1. List open issues labeled `agentic-workflows` (titles start with `[aw]`).
 2. For each `[aw]` issue, read the issue body and extract:
