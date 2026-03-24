@@ -56,6 +56,9 @@ permissions:
 # ---------------------------------------------------------------------------
 # Job 1: issue_comment trigger — automated path
 # ---------------------------------------------------------------------------
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   submit-review-comment:
     runs-on: ubuntu-latest
@@ -65,7 +68,7 @@ jobs:
       github.event.issue.pull_request != null &&
       startsWith(github.event.comment.body, '[PIPELINE-VERDICT]') &&
       contains(github.event.comment.body, 'gh-aw-agentic-workflow: Pipeline Review Agent') &&
-      github.event.comment.user.login == github.repository_owner
+      (github.event.comment.user.login == github.repository_owner || endsWith(github.event.comment.user.login, '[bot]'))
 
     concurrency:
       group: "pr-review-submit-${{ github.event.issue.number }}"

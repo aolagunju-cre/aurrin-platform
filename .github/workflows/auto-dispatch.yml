@@ -14,6 +14,9 @@ concurrency:
   group: auto-dispatch-pipeline-${{ github.event.issue.number }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   dispatch:
     # Security model: external reporters cannot self-assign labels on free-form
@@ -21,6 +24,7 @@ jobs:
     # label is therefore the trusted ingress gate. Actionability is decided
     # inside the workflow via classify-pipeline-issue.sh.
     if: |
+      vars.PIPELINE_ACTIVE != 'false' &&
       !startsWith(github.event.issue.title, '[CI Incident]') &&
       github.event.issue.title != '[Pipeline] Status' &&
       !contains(github.event.issue.labels.*.name, 'report') &&
@@ -114,8 +118,8 @@ jobs:
           ACTIVE_RUNS=$(gh run list --repo "$REPO" \
             --workflow "$WORKFLOW_FILE" \
             --limit 20 \
-            --json databaseId,status,url,createdAt \
-            | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | sort_by(.createdAt)')
+            --json databaseId,status,event,url,createdAt \
+            | jq '[.[] | select((.status == "in_progress" or .status == "queued") and .event == "workflow_dispatch")] | sort_by(.createdAt)')
           ACTIVE_COUNT=$(printf '%s' "$ACTIVE_RUNS" | jq 'length')
           BLOCKING_RUN_ID=$(printf '%s' "$ACTIVE_RUNS" | jq -r '.[0].databaseId // ""')
           BLOCKING_RUN_URL=$(printf '%s' "$ACTIVE_RUNS" | jq -r '.[0].url // ""')
