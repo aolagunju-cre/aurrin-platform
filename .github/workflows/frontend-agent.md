@@ -42,10 +42,12 @@ safe-outputs:
     title-prefix: "[Pipeline] "
     labels: [automation, pipeline, frontend]
     max: 2
+    protected-files: allowed
   push-to-pull-request-branch:
     target: "*"
     title-prefix: "[Pipeline] "
     max: 2
+    protected-files: allowed
   add-comment:
     max: 5
     target: "*"
@@ -57,6 +59,9 @@ safe-outputs:
     allowed: [ready, in-progress, blocked]
     max: 5
     target: "*"
+  dispatch-workflow:
+    workflows: [pr-review-agent]
+    max: 2
 ---
 
 # Frontend Agent
@@ -253,7 +258,7 @@ Artifact: visual-verification-issue-<N>
 | Desktop (1440px) | desktop-1440.png | 0px |
 ```
 
-After creating the PR, run `gh workflow run pr-review-agent.lock.yml` to dispatch the review agent.
+After each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do not run `gh workflow run`.
 
 ## Memory / Checkpoint Protocol
 
