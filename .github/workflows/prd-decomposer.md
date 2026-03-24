@@ -107,7 +107,7 @@ If the instructions above contain a URL or file path, fetch/read that content as
 
 8. **Create issues in dependency order:** infrastructure first, then core features, then dependent features, then tests/docs last.
 
-9. **Use valid `temporary_id` values** (a reference ID for linking issues before they get real GitHub numbers) for cross-referencing issues. Format: `aw_` + 3-8 alphanumeric chars (A-Za-z0-9 only). Use short codes like `aw_task1`, `aw_task2`, `aw_feat01`. Do NOT use `aw_create_task` or `aw_scaffold_project`. Reference dependencies with `#aw_task1` syntax.
+9. **Use valid `temporary_id` values** (a reference ID for linking issues before they get real GitHub numbers) for cross-referencing issues. Format: `aw_` + 3-8 alphanumeric chars (A-Za-z0-9 only). The part after `aw_` MUST be at least 3 characters. Use short codes like `aw_task1`, `aw_task2`, `aw_feat01`, `aw_db01`, `aw_auth1`. Do NOT use IDs shorter than 3 chars after `aw_` (e.g., `aw_db` and `aw_og` will FAIL validation). Do NOT use `aw_create_task` or `aw_scaffold_project`. Reference dependencies with `#aw_task1` syntax.
 
 10. **Self-contained acceptance criteria.** Each issue's acceptance criteria must ONLY reference files, functions, and artifacts that will be created or modified IN THAT ISSUE. Do not include criteria that depend on artifacts from other issues — those belong on the issue that creates the artifact. If a feature spans multiple issues, each issue's criteria cover only its portion.
 
