@@ -47,7 +47,7 @@ tools:
   bash: true
   github:
     toolsets: [issues, labels]
-    repos: all
+    allowed-repos: all
     min-integrity: none
   repo-memory:
     max-file-size: 524288   # 512KB — architecture artifacts can exceed 10KB default

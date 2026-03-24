@@ -90,7 +90,7 @@ tools:
   web-fetch:
   github:
     toolsets: [all]
-    repos: all
+    allowed-repos: all
     min-integrity: none
   bash: true
   repo-memory:
