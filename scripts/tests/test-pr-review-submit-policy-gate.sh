@@ -53,8 +53,14 @@ fi
 
 ruby -e '
   text = File.read(ARGV[0])
-  count = text.scan(/- name: Set review status check\n(?:.*\n){0,8}?\s+GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/).length
-  abort("FAIL: expected both review status check steps to use GH_AW_GITHUB_TOKEN with GITHUB_TOKEN fallback") unless count >= 2
+  count = text.scan(/- name: Set review status check\n(?:.*\n){0,8}?\s+GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \|\| secrets\.GH_AW_GITHUB_TOKEN \}\}/).length
+  abort("FAIL: expected both review status check steps to prefer GITHUB_TOKEN before GH_AW_GITHUB_TOKEN") unless count >= 2
+' "$WORKFLOW"
+
+ruby -e '
+  text = File.read(ARGV[0])
+  count = text.scan(/- name: Check idempotency \(skip if same verdict already reviewed at current HEAD\)\n(?:.*\n){0,8}?\s+GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \|\| secrets\.GH_AW_GITHUB_TOKEN \}\}/).length
+  abort("FAIL: expected both idempotency steps to prefer GITHUB_TOKEN before GH_AW_GITHUB_TOKEN") unless count >= 2
 ' "$WORKFLOW"
 
 ruby -e '

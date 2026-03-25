@@ -32,6 +32,34 @@ old_activated_output = "      activated: ${{ steps.check_membership.outputs.is_t
 new_activated_output = "      activated: ${{ steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true' }}"
 old_github_token_expr = "github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}"
 new_github_token_expr = "github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}"
+dispatch_step = <<'STEP'.chomp
+      - name: Dispatch pr-review-submit for posted verdict
+        if: steps.process_safe_outputs.outputs.comment_id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ steps.process_safe_outputs.outputs.comment_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.issue_url | capture("/issues/(?<n>[0-9]+)$").n' 2>/dev/null || true)
+          fi
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::Unable to resolve PR number for pr-review-submit dispatch."
+            exit 0
+          fi
+
+          COMMENT_BODY=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.body')
+          VERDICT=$(printf '%s\n' "$COMMENT_BODY" | grep -oE '\*\*VERDICT:\s*(APPROVE|REQUEST_CHANGES)' | sed -E 's/.*(APPROVE|REQUEST_CHANGES)/\1/' | head -1 || true)
+          if [ -z "$VERDICT" ]; then
+            echo "::warning::Unable to extract verdict from review comment ${COMMENT_ID}."
+            exit 0
+          fi
+
+          SUMMARY="Submitted automatically from pr-review-agent run ${{ github.run_id }} after posting verdict comment ${COMMENT_ID}."
+          gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"
+STEP
+dispatch_step_name = "      - name: Dispatch pr-review-submit for posted verdict\n"
 
 unless content.include?(new_activated_output)
   raise "Could not find pre_activation activated output in #{path}" unless content.sub!(old_activated_output, new_activated_output)
@@ -61,6 +89,21 @@ content.gsub!(old_github_token_expr, new_github_token_expr)
 
 raise "Patched github-token precedence missing in #{path}" unless content.include?(new_github_token_expr)
 raise "Unpatched github-token precedence remains in #{path}" if content.include?(old_github_token_expr)
+
+unless content.include?(dispatch_step_name)
+  upload_step = "      - name: Upload safe output items\n"
+  if content.include?(upload_step)
+    content.sub!(upload_step) { "#{dispatch_step}\n#{upload_step}" }
+  else
+    process_safe_outputs_step = "      - name: Process Safe Outputs\n"
+    raise "Could not find safe output processing step in #{path}" unless content.include?(process_safe_outputs_step)
+    content << "\n#{dispatch_step}\n"
+  end
+end
+
+raise "Patched pr-review-submit dispatch step missing in #{path}" unless content.include?(dispatch_step_name)
+raise "Patched pr-review-submit dispatch command missing in #{path}" unless content.include?('gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"')
+raise "Duplicate pr-review-submit dispatch step detected in #{path}" unless content.scan(dispatch_step_name).length == 1
 
 File.write(path, content) if content != original
 RUBY

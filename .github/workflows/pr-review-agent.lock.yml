@@ -1091,6 +1091,31 @@ jobs:
             setupGlobals(core, github, context, exec, io);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/safe_output_handler_manager.cjs');
             await main();
+      - name: Dispatch pr-review-submit for posted verdict
+        if: steps.process_safe_outputs.outputs.comment_id != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          COMMENT_ID: ${{ steps.process_safe_outputs.outputs.comment_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+        run: |
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.issue_url | capture("/issues/(?<n>[0-9]+)$").n' 2>/dev/null || true)
+          fi
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::Unable to resolve PR number for pr-review-submit dispatch."
+            exit 0
+          fi
+
+          COMMENT_BODY=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.body')
+          VERDICT=$(printf '%s\n' "$COMMENT_BODY" | grep -oE '\*\*VERDICT:\s*(APPROVE|REQUEST_CHANGES)' | sed -E 's/.*(APPROVE|REQUEST_CHANGES)/\1/' | head -1 || true)
+          if [ -z "$VERDICT" ]; then
+            echo "::warning::Unable to extract verdict from review comment ${COMMENT_ID}."
+            exit 0
+          fi
+
+          SUMMARY="Submitted automatically from pr-review-agent run ${{ github.run_id }} after posting verdict comment ${COMMENT_ID}."
+          gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"
       - name: Upload safe output items
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7

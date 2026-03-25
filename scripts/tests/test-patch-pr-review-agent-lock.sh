@@ -37,6 +37,7 @@ jobs:
             await main();
       - name: Process Safe Outputs
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        id: process_safe_outputs
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -62,9 +63,13 @@ grep -F "      - name: Activate same-repo pull request without membership gate" 
 grep -F "steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true'" "$WORKFLOW" >/dev/null
 grep -F "if: steps.activate_pull_request.outputs.activated != 'true'" "$WORKFLOW" >/dev/null
 grep -F 'github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
+grep -F "      - name: Dispatch pr-review-submit for posted verdict" "$WORKFLOW" >/dev/null
+grep -F "if: steps.process_safe_outputs.outputs.comment_id != ''" "$WORKFLOW" >/dev/null
+grep -F 'gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"' "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Activate same-repo pull request without membership gate$" "$WORKFLOW")" -eq 1 ]
 [ "$(grep -c "^        if: steps.activate_pull_request.outputs.activated != 'true'$" "$WORKFLOW")" -eq 1 ]
+[ "$(grep -c "^      - name: Dispatch pr-review-submit for posted verdict$" "$WORKFLOW")" -eq 1 ]
 
 if grep -q "^- name: Activate same-repo pull request without membership gate$" "$WORKFLOW"; then
   echo "FAIL: bypass step was inserted without workflow indentation" >&2
