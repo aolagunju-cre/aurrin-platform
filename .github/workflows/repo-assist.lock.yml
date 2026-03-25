@@ -25,7 +25,7 @@
 # Also maintains its own PRs by fixing CI failures and resolving merge conflicts.
 # Can be triggered on-demand via /repo-assist <instructions>.
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"a3af97665ddb7cb1cd5872c91359928e90aa5fd46a02d8d4849eea55a9929125","compiler_version":"v0.63.0","strict":true,"agent_id":"copilot","agent_model":"gpt-5"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"ec103d6a7f47bc323f89f64f5c96ea504d1493cd47850a595ba06680a73dc20f","compiler_version":"v0.63.0","strict":true,"agent_id":"copilot","agent_model":"gpt-5"}
 
 name: "Pipeline Repo Assist"
 "on":
@@ -75,6 +75,7 @@ concurrency:
       github.event.issue.number ||
       github.event.pull_request.number ||
       github.event.inputs.issue_number ||
+      ((github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'backlog') ||
       github.run_id
     }}
 

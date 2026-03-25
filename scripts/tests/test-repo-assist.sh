@@ -17,4 +17,14 @@ grep -F 'dispatch-workflow:' "$WORKFLOW" >/dev/null || {
   exit 1
 }
 
+grep -F "((github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'backlog')" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: repo-assist.md must use a stable backlog concurrency key for schedule/workflow_dispatch runs" >&2
+  exit 1
+}
+
+grep -F 'cancel-in-progress: true' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: repo-assist.md must continue cancelling superseded runs within the shared concurrency group" >&2
+  exit 1
+}
+
 echo "repo-assist.md tests passed"
