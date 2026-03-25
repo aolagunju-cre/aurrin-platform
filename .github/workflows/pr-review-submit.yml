@@ -67,8 +67,7 @@ jobs:
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request != null &&
       startsWith(github.event.comment.body, '[PIPELINE-VERDICT]') &&
-      contains(github.event.comment.body, 'gh-aw-agentic-workflow: Pipeline Review Agent') &&
-      (github.event.comment.user.login == github.repository_owner || endsWith(github.event.comment.user.login, '[bot]'))
+      contains(github.event.comment.body, 'gh-aw-agentic-workflow: Pipeline Review Agent')
 
     concurrency:
       group: "pr-review-submit-${{ github.event.issue.number }}"
@@ -99,13 +98,35 @@ jobs:
             echo "Autonomous healing is paused via PIPELINE_HEALING_ENABLED."
           fi
 
+      - name: Verify verdict comment author has write access
+        id: check-access
+        env:
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          PERM=$(gh api repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission \
+            --jq '.permission' 2>/dev/null || echo "none")
+          if [[ "$PERM" != "admin" && "$PERM" != "write" && "$PERM" != "maintain" ]]; then
+            echo "::error::User ${{ github.event.comment.user.login }} does not have write access"
+            exit 1
+          fi
+          echo "approved_by=${{ github.event.comment.user.login }}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve review actor login
+        id: review-actor
+        env:
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          LOGIN=$(gh api user --jq '.login' 2>/dev/null || echo "github-actions[bot]")
+          echo "login=${LOGIN}" >> "$GITHUB_OUTPUT"
+
       - name: Check idempotency (skip if same verdict already reviewed at current HEAD)
         id: idempotency
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
           COMMENT_ID: ${{ github.event.comment.id }}
+          REVIEW_ACTOR_LOGIN: ${{ steps.review-actor.outputs.login }}
         run: |
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
@@ -120,7 +141,7 @@ jobs:
           echo "target_state=${TARGET_STATE}" >> "$GITHUB_OUTPUT"
 
           EXISTING=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-            --jq "[.[] | select(.user.login == \"github-actions[bot]\" and .commit_id == \"${HEAD_SHA}\" and .state == \"${TARGET_STATE}\")] | length")
+            --jq "[.[] | select(.user.login == \"${REVIEW_ACTOR_LOGIN}\" and .commit_id == \"${HEAD_SHA}\" and .state == \"${TARGET_STATE}\")] | length")
 
           if [ "$EXISTING" -gt 0 ]; then
             echo "Already reviewed with ${TARGET_STATE} at head SHA ${HEAD_SHA}. Skipping."
@@ -134,7 +155,7 @@ jobs:
         if: steps.idempotency.outputs.skip != 'true'
         id: review
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           COMMENT_ID: ${{ github.event.comment.id }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
@@ -168,12 +189,12 @@ jobs:
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
           if [ "$VERDICT" = "APPROVE" ]; then
-            REVIEW_BODY="## Pipeline Review — Approved"$'\n\n'"See the full Pipeline Review Agent verdict in [the linked comment](${COMMENT_URL})."$'\n\n'"**Summary**: ${SUMMARY}"$'\n\n'"---"$'\n'"*Submitted by Pipeline Review Submit (github-actions[bot]).*"
+            REVIEW_BODY="## Pipeline Review — Approved"$'\n\n'"See the full Pipeline Review Agent verdict in [the linked comment](${COMMENT_URL})."$'\n\n'"**Summary**: ${SUMMARY}"$'\n\n'"---"$'\n'"*Submitted by PR Review Submit.*"
           else
-            REVIEW_BODY="## Pipeline Review — Changes Requested"$'\n\n'"See the full Pipeline Review Agent verdict in [the linked comment](${COMMENT_URL})."$'\n\n'"**Summary**: ${SUMMARY}"$'\n\n'"---"$'\n'"*Submitted by Pipeline Review Submit (github-actions[bot]).*"
+            REVIEW_BODY="## Pipeline Review — Changes Requested"$'\n\n'"See the full Pipeline Review Agent verdict in [the linked comment](${COMMENT_URL})."$'\n\n'"**Summary**: ${SUMMARY}"$'\n\n'"---"$'\n'"*Submitted by PR Review Submit.*"
           fi
 
-          # Submit the formal review as github-actions[bot] (via GITHUB_TOKEN)
+          # Submit the formal review using the configured automation credential.
           gh api \
             --method POST \
             -H "Accept: application/vnd.github+json" \
@@ -186,10 +207,11 @@ jobs:
       - name: Set review status check
         if: always() && steps.idempotency.outputs.head_sha != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ steps.idempotency.outputs.head_sha }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
+          REVIEW_ACTOR_LOGIN: ${{ steps.review-actor.outputs.login }}
         run: |
           # The "review" status check is required by the branch protection ruleset.
           # Always set it — even if the review step was skipped by idempotency,
@@ -198,7 +220,7 @@ jobs:
           if [ -z "$VERDICT" ]; then
             # Review was skipped — check existing review to determine verdict
             VERDICT=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-              --jq '[.[] | select(.user.login == "github-actions[bot]")] | last | .state // ""' || echo "")
+              --jq "[.[] | select(.user.login == \"${REVIEW_ACTOR_LOGIN}\")] | last | .state // \"\"" || echo "")
           fi
           if [ -z "$VERDICT" ]; then
             echo "No verdict available — skipping status check"
@@ -296,7 +318,7 @@ jobs:
             BODY="${BODY}"$'\n\n'"- **File**: \`${BLOCKED_FILE}\`"
             BODY="${BODY}"$'\n'"- **Policy**: \`${BLOCKED_ACTION}\`"
             BODY="${BODY}"$'\n'"- **Reason**: ${BLOCKED_REASON}"
-            BODY="${BODY}"$'\n\n'"To approve, the repository owner must comment \`/approve-sensitive\` on this PR."
+            BODY="${BODY}"$'\n\n'"To approve, a maintainer with write access must comment \`/approve-sensitive\` on this PR."
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
           else
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
@@ -314,7 +336,7 @@ jobs:
           gh api --method POST "/repos/${REPO}/statuses/${HEAD_SHA}" \
             -f state="pending" \
             -f context="sensitive-review" \
-            -f description="Sensitive path change — awaiting /approve-sensitive from repo owner"
+            -f description="Sensitive path change — awaiting /approve-sensitive from a maintainer"
           echo "Set sensitive-review pending status on ${HEAD_SHA}"
 
       - name: Enable auto-merge (APPROVE only)
@@ -464,7 +486,7 @@ jobs:
       - name: Dispatch owning agent for next cycle
         if: always() && steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict != '' && steps.healing.outputs.enabled == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVIEW_VERDICT: ${{ steps.review.outputs.verdict }}
           REVIEW_SUMMARY: ${{ steps.review.outputs.summary }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -571,13 +593,22 @@ jobs:
             echo "Autonomous healing is paused via PIPELINE_HEALING_ENABLED."
           fi
 
+      - name: Resolve review actor login
+        id: review-actor
+        env:
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          LOGIN=$(gh api user --jq '.login' 2>/dev/null || echo "github-actions[bot]")
+          echo "login=${LOGIN}" >> "$GITHUB_OUTPUT"
+
       - name: Check idempotency (skip if same verdict already reviewed at current HEAD)
         id: idempotency
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
           REPO: ${{ github.repository }}
           TARGET_VERDICT: ${{ github.event.inputs.verdict }}
+          REVIEW_ACTOR_LOGIN: ${{ steps.review-actor.outputs.login }}
         run: |
           HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
@@ -590,7 +621,7 @@ jobs:
           echo "target_state=${TARGET_STATE}" >> "$GITHUB_OUTPUT"
 
           EXISTING=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-            --jq "[.[] | select(.user.login == \"github-actions[bot]\" and .commit_id == \"${HEAD_SHA}\" and .state == \"${TARGET_STATE}\")] | length")
+            --jq "[.[] | select(.user.login == \"${REVIEW_ACTOR_LOGIN}\" and .commit_id == \"${HEAD_SHA}\" and .state == \"${TARGET_STATE}\")] | length")
 
           if [ "$EXISTING" -gt 0 ]; then
             echo "Already reviewed with ${TARGET_STATE} at head SHA ${HEAD_SHA}. Skipping."
@@ -604,7 +635,7 @@ jobs:
         if: steps.idempotency.outputs.skip != 'true'
         id: review
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
           VERDICT: ${{ github.event.inputs.verdict }}
           SUMMARY: ${{ github.event.inputs.summary }}
@@ -636,15 +667,16 @@ jobs:
       - name: Set review status check
         if: always() && steps.idempotency.outputs.head_sha != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ steps.idempotency.outputs.head_sha }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
           REPO: ${{ github.repository }}
+          REVIEW_ACTOR_LOGIN: ${{ steps.review-actor.outputs.login }}
         run: |
           VERDICT="${{ steps.review.outputs.verdict }}"
           if [ -z "$VERDICT" ]; then
             VERDICT=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-              --jq '[.[] | select(.user.login == "github-actions[bot]")] | last | .state // ""' || echo "")
+              --jq "[.[] | select(.user.login == \"${REVIEW_ACTOR_LOGIN}\")] | last | .state // \"\"" || echo "")
           fi
           if [ -z "$VERDICT" ]; then
             VERDICT="${{ github.event.inputs.verdict }}"
@@ -745,7 +777,7 @@ jobs:
             BODY="${BODY}"$'\n\n'"- **File**: \`${BLOCKED_FILE}\`"
             BODY="${BODY}"$'\n'"- **Policy**: \`${BLOCKED_ACTION}\`"
             BODY="${BODY}"$'\n'"- **Reason**: ${BLOCKED_REASON}"
-            BODY="${BODY}"$'\n\n'"To approve, the repository owner must comment \`/approve-sensitive\` on this PR."
+            BODY="${BODY}"$'\n\n'"To approve, a maintainer with write access must comment \`/approve-sensitive\` on this PR."
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
           else
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body \
@@ -763,7 +795,7 @@ jobs:
           gh api --method POST "/repos/${REPO}/statuses/${HEAD_SHA}" \
             -f state="pending" \
             -f context="sensitive-review" \
-            -f description="Sensitive path change — awaiting /approve-sensitive from repo owner"
+            -f description="Sensitive path change — awaiting /approve-sensitive from a maintainer"
           echo "Set sensitive-review pending status on ${HEAD_SHA}"
 
       - name: Enable auto-merge (APPROVE only)
@@ -926,7 +958,7 @@ jobs:
       - name: Dispatch owning agent for next cycle
         if: always() && steps.healing.outputs.enabled == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVIEW_VERDICT: ${{ steps.review.outputs.verdict }}
           INPUT_VERDICT: ${{ github.event.inputs.verdict }}
           REVIEW_SUMMARY: ${{ github.event.inputs.summary }}
@@ -1008,8 +1040,7 @@ jobs:
     if: |
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request != null &&
-      (startsWith(github.event.comment.body, '/approve-sensitive') || startsWith(github.event.comment.body, '/approve_sensitive')) &&
-      github.event.comment.user.login == github.repository_owner
+      (startsWith(github.event.comment.body, '/approve-sensitive') || startsWith(github.event.comment.body, '/approve_sensitive'))
 
     concurrency:
       group: "pr-review-submit-${{ github.event.issue.number }}"
@@ -1023,6 +1054,19 @@ jobs:
             scripts/check-autonomy-policy.sh
             autonomy-policy.yml
           sparse-checkout-cone-mode: false
+
+      - name: Verify approver has write access
+        id: check-access
+        env:
+          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          PERM=$(gh api repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission \
+            --jq '.permission' 2>/dev/null || echo "none")
+          if [[ "$PERM" != "admin" && "$PERM" != "write" && "$PERM" != "maintain" ]]; then
+            echo "::error::User ${{ github.event.comment.user.login }} does not have write access"
+            exit 1
+          fi
+          echo "approved_by=${{ github.event.comment.user.login }}" >> "$GITHUB_OUTPUT"
 
       - name: Approve sensitive path change
         env:

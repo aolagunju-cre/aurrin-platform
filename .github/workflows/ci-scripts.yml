@@ -36,7 +36,13 @@ jobs:
           fi
       - name: Test pipeline PR classification
         run: bash scripts/tests/test-classify-pipeline-pr.sh
+      - name: Test architecture approval dispatch token
+        run: bash scripts/tests/test-architecture-approve.sh
       - name: Test pr-review-agent lock patch script
         run: bash scripts/tests/test-patch-pr-review-agent-lock.sh
       - name: Test pr-review-agent activation bypass
         run: bash scripts/tests/test-pr-review-agent-activation.sh
+      - name: Test pr-review dispatch wiring
+        run: bash scripts/tests/test-pr-review-dispatch-wiring.sh
+      - name: Test repo-assist protected files policy
+        run: bash scripts/tests/test-repo-assist.sh

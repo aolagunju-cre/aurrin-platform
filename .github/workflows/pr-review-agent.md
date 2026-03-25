@@ -9,6 +9,11 @@ on:
   pull_request:
     types: [opened, synchronize, ready_for_review]
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to review explicitly. Leave empty to fall back to the latest open [Pipeline] PR."
+        required: false
+        type: number
 
 timeout-minutes: 15
 
@@ -45,7 +50,8 @@ You are an AI code reviewer for `${{ github.repository }}`. Your job is to revie
 
 2. **Identify the PR to review**:
    - If triggered by a `pull_request` event, the PR number is `${{ github.event.pull_request.number }}`.
-   - If triggered by a slash command or dispatch, find the most recent open `[Pipeline]` PR that has not yet been reviewed.
+   - If triggered by `workflow_dispatch` and `${{ github.event.inputs.pr_number }}` is non-empty, review PR #${{ github.event.inputs.pr_number }}.
+   - If triggered by `workflow_dispatch` and `${{ github.event.inputs.pr_number }}` is empty, find the most recent open `[Pipeline]` PR that has not yet been reviewed.
 
 3. **Read the full PR diff** — run `gh pr diff <PR_NUMBER>` with no truncation. Read the complete diff. Do not truncate or summarize.
 

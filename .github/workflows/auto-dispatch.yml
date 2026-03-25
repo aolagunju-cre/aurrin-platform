@@ -111,7 +111,7 @@ jobs:
         if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true'
         id: guard
         env:
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           WORKFLOW_FILE: ${{ steps.classify.outputs.workflow_file }}
         run: |
@@ -167,7 +167,7 @@ jobs:
         if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.guard.outputs.skip != 'true'
         id: dispatch_agent
         env:
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           WORKFLOW_FILE: ${{ steps.classify.outputs.workflow_file }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}

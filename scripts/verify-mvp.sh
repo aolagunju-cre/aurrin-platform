@@ -37,6 +37,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 CHECKS=(
+  "bash scripts/tests/test-architecture-approve.sh"
   "bash scripts/tests/test-auto-dispatch.sh"
   "bash scripts/tests/test-check-autonomy-policy.sh"
   "bash scripts/tests/test-ci-failure-resolve.sh"
@@ -50,7 +51,9 @@ CHECKS=(
   "bash scripts/tests/test-pipeline-watchdog.sh"
   "bash scripts/tests/test-patch-pr-review-agent-lock.sh"
   "bash scripts/tests/test-pr-review-agent-activation.sh"
+  "bash scripts/tests/test-pr-review-dispatch-wiring.sh"
   "bash scripts/tests/test-pr-review-submit-policy-gate.sh"
+  "bash scripts/tests/test-repo-assist.sh"
   "bash scripts/tests/test-render-ci-repair-command.sh"
   "bash scripts/tests/test-run-lifecycle-lib.sh"
   "bash scripts/tests/test-self-healing-drill-dispatch-substate.sh"

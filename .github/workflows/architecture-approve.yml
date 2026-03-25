@@ -50,7 +50,7 @@ jobs:
 
       - name: Dispatch prd-decomposer
         env:
-          GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh workflow run prd-decomposer.lock.yml \
             --repo ${{ github.repository }} \

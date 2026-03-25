@@ -31,4 +31,19 @@ grep -F -- '-f issue_number="$ISSUE_NUMBER"' "$WORKFLOW" >/dev/null || {
   exit 1
 }
 
+if grep -Fq 'GH_TOKEN="$GH_AW_GITHUB_TOKEN" gh workflow run' "$WORKFLOW"; then
+  echo "FAIL: auto-dispatch-requeue should use the workflow GITHUB_TOKEN for workflow_dispatch" >&2
+  exit 1
+fi
+
+if grep -Fq 'GH_AW_GITHUB_TOKEN is unavailable; cannot re-dispatch via workflow_dispatch.' "$WORKFLOW"; then
+  echo "FAIL: auto-dispatch-requeue should not depend on GH_AW_GITHUB_TOKEN for workflow_dispatch" >&2
+  exit 1
+fi
+
+if grep -Fq 'GH_AW_GITHUB_TOKEN is unavailable; cannot retry transient provider failures.' "$WORKFLOW"; then
+  echo "FAIL: auto-dispatch-requeue should not block transient retries on GH_AW_GITHUB_TOKEN" >&2
+  exit 1
+fi
+
 echo "auto-dispatch-requeue.yml tests passed"

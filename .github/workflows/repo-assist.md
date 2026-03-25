@@ -58,12 +58,12 @@ safe-outputs:
     title-prefix: "[Pipeline] "
     labels: [automation, pipeline]
     max: 4
-    protected-files: fallback-to-issue
+    protected-files: allowed
   push-to-pull-request-branch:
     target: "*"
     title-prefix: "[Pipeline] "
     max: 4
-    protected-files: fallback-to-issue
+    protected-files: allowed
   add-comment:
     discussions: false
     max: 10
@@ -81,10 +81,13 @@ safe-outputs:
     allowed: [ready, in-progress, blocked]
     max: 10
     target: "*"
-  # NOTE: pr-review-agent usually auto-triggers via pull_request:opened, but we
-  # also explicitly dispatch it as a safety net for bot-authored PR creation
-  # paths where GitHub may suppress events. The review agent's concurrency
-  # group ensures duplicate runs are harmless.
+  dispatch-workflow:
+    workflows: [pr-review-agent]
+    max: 4
+  # NOTE: bot-authored PR creation can suppress downstream pull_request events,
+  # so dispatch pr-review-agent explicitly with the exact PR number returned by
+  # create_pull_request. The review agent's concurrency group keeps duplicates
+  # harmless if pull_request also fires normally.
 
 tools:
   web-fetch:
@@ -272,7 +275,7 @@ If Targeted Issue Dispatch Mode is active, Task 1 must operate only on issue `#$
       - Title matching the issue title
       - Body containing: `Closes #N`, the authoritative PRD source, a short `PRD Fidelity` note describing any corrected issue drift, a description of changes, and test results
       - AI disclosure: "This PR was created by Pipeline Assistant."
-   j. **Trigger the reviewer**: After creating the PR, run `gh workflow run pr-review-agent.lock.yml` to dispatch the review agent. GitHub's anti-cascade protection suppresses automatic `pull_request:opened` triggers from App tokens, so this explicit dispatch is required.
+   j. **Trigger the reviewer**: Immediately after each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do **not** run `gh workflow run`; use the safe-output tool so review targets the correct PR even when bot-authored PRs suppress automatic `pull_request` triggers.
    k. Label the source issue `in-progress`.
 4. Update memory with attempts and outcomes.
 

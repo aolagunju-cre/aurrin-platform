@@ -12,5 +12,6 @@ grep -F 'List open issues labeled `pipeline` + `frontend` + (`feature`, `test`, 
 grep -F 'Choose the oldest actionable frontend issue with no open/merged covering PR.' "$WORKFLOW" >/dev/null
 grep -F 'If no actionable `frontend + pipeline` issue exists, call `noop` with a brief explanation and stop.' "$WORKFLOW" >/dev/null
 grep -F 'frontend-agent/issue-<N>-<short-desc>' "$WORKFLOW" >/dev/null
+grep -F 'protected-files: allowed' "$WORKFLOW" >/dev/null
 
 echo "frontend-agent.md tests passed"

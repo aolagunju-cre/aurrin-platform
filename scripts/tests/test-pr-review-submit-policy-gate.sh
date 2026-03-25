@@ -19,11 +19,49 @@ grep -F "Skipping autonomous merge for PR classification:" "$WORKFLOW" >/dev/nul
 grep -F "Autonomous merge blocked by autonomy policy." "$WORKFLOW" >/dev/null
 grep -F "bug\" or . == \"docs\" or . == \"test\"" "$WORKFLOW" >/dev/null
 grep -F "startsWith(github.event.comment.body, '/approve_sensitive')" "$WORKFLOW" >/dev/null
+grep -F 'gh api repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission' "$WORKFLOW" >/dev/null
+grep -F "Resolve review actor login" "$WORKFLOW" >/dev/null
+grep -F "gh api user --jq '.login'" "$WORKFLOW" >/dev/null
+grep -F 'User ${{ github.event.comment.user.login }} does not have write access' "$WORKFLOW" >/dev/null
 grep -F 'COMMENT_URL=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}"' "$WORKFLOW" >/dev/null
 grep -F 'See the full Pipeline Review Agent verdict in [the linked comment]' "$WORKFLOW" >/dev/null
 grep -F 'Cannot use \`/approve-sensitive\` here.' "$WORKFLOW" >/dev/null
 grep -F 'no active \`sensitive_app_change\` policy match' "$WORKFLOW" >/dev/null
 grep -F 'BLOCKING_ACTION="$ACTION"' "$WORKFLOW" >/dev/null
+grep -F 'awaiting /approve-sensitive from a maintainer' "$WORKFLOW" >/dev/null
+grep -F 'Submitted by PR Review Submit.' "$WORKFLOW" >/dev/null
+
+if grep -Fq "github.event.comment.user.login == github.repository_owner" "$WORKFLOW"; then
+  echo "FAIL: pr-review-submit.yml still hardcodes github.repository_owner as the trusted commenter" >&2
+  exit 1
+fi
+
+if grep -Fq 'Submitted by Pipeline Review Submit (github-actions[bot]).' "$WORKFLOW"; then
+  echo "FAIL: pr-review-submit.yml still hardcodes github-actions[bot] as the review identity" >&2
+  exit 1
+fi
+
+if grep -Fq 'repository owner must comment `/approve-sensitive`' "$WORKFLOW"; then
+  echo "FAIL: pr-review-submit.yml still requires the repo owner for /approve-sensitive" >&2
+  exit 1
+fi
+
+if grep -Fq 'awaiting /approve-sensitive from repo owner' "$WORKFLOW"; then
+  echo "FAIL: pr-review-submit.yml still waits on the repo owner for sensitive approval" >&2
+  exit 1
+fi
+
+ruby -e '
+  text = File.read(ARGV[0])
+  count = text.scan(/- name: Set review status check\n(?:.*\n){0,8}?\s+GH_TOKEN: \$\{\{ secrets\.GH_AW_GITHUB_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/).length
+  abort("FAIL: expected both review status check steps to use GH_AW_GITHUB_TOKEN with GITHUB_TOKEN fallback") unless count >= 2
+' "$WORKFLOW"
+
+ruby -e '
+  text = File.read(ARGV[0])
+  count = text.scan(/- name: Dispatch owning agent for next cycle\n(?:.*\n){0,8}?\s+GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/).length
+  abort("FAIL: expected both follow-up dispatch steps to use GITHUB_TOKEN") unless count >= 2
+' "$WORKFLOW"
 
 POLICY_STEP_COUNT=$(grep -c "id: policy" "$WORKFLOW")
 if [ "$POLICY_STEP_COUNT" -lt 2 ]; then
