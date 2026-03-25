@@ -30,6 +30,7 @@ grep -F 'no active \`sensitive_app_change\` policy match' "$WORKFLOW" >/dev/null
 grep -F 'BLOCKING_ACTION="$ACTION"' "$WORKFLOW" >/dev/null
 grep -F 'awaiting /approve-sensitive from a maintainer' "$WORKFLOW" >/dev/null
 grep -F 'Submitted by PR Review Submit.' "$WORKFLOW" >/dev/null
+grep -F '2>/dev/null || echo "0"' "$WORKFLOW" >/dev/null
 
 if grep -Fq "github.event.comment.user.login == github.repository_owner" "$WORKFLOW"; then
   echo "FAIL: pr-review-submit.yml still hardcodes github.repository_owner as the trusted commenter" >&2
