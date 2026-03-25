@@ -40,23 +40,33 @@ jobs:
         run: bash scripts/tests/test-architecture-approve.sh
       - name: Test auto-dispatch token wiring
         run: bash scripts/tests/test-auto-dispatch.sh
+      - name: Test CI validation wiring
+        run: bash scripts/tests/test-ci-node-layout.sh
       - name: Test issue dependency extraction
         run: bash scripts/tests/test-extract-issue-dependencies.sh
       - name: Test auto-dispatch requeue token wiring
         run: bash scripts/tests/test-auto-dispatch-requeue.sh
       - name: Test deploy validation wiring
         run: bash scripts/tests/test-deploy-validation-wiring.sh
+      - name: Test PRD decomposer contract sections
+        run: bash scripts/tests/test-prd-decomposer-contract-sections.sh
       - name: Test GitHub MCP token precedence patch script
         run: bash scripts/tests/test-patch-github-mcp-token-precedence.sh
       - name: Test pr-review-agent lock patch script
         run: bash scripts/tests/test-patch-pr-review-agent-lock.sh
       - name: Test pr-review-agent activation bypass
         run: bash scripts/tests/test-pr-review-agent-activation.sh
+      - name: Test pr-review-agent validation review rules
+        run: bash scripts/tests/test-pr-review-agent-validation-review.sh
       - name: Test pr-review dispatch wiring
         run: bash scripts/tests/test-pr-review-dispatch-wiring.sh
       - name: Test pr-review submit policy gate
         run: bash scripts/tests/test-pr-review-submit-policy-gate.sh
       - name: Test repo-assist protected files policy
         run: bash scripts/tests/test-repo-assist.sh
+      - name: Test repo-assist validation gate
+        run: bash scripts/tests/test-repo-assist-validation-gate.sh
       - name: Test Copilot retry wrapper
         run: bash scripts/tests/test-run-copilot-with-retry.sh
+      - name: Test implementation validator
+        run: bash scripts/tests/test-validate-implementation.sh

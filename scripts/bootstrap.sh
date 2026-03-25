@@ -46,6 +46,7 @@ echo "Labels created."
 # Compile workflows
 echo "Compiling gh-aw workflows..."
 gh aw compile
+bash "$SCRIPT_DIR/patch-copilot-lock-workflows.sh"
 bash "$SCRIPT_DIR/patch-github-mcp-token-precedence.sh"
 bash "$SCRIPT_DIR/patch-pr-review-agent-lock.sh"
 echo "Workflows compiled."

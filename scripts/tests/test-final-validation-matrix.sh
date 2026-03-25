@@ -37,6 +37,11 @@ run_check "auto-dispatch" "bash scripts/tests/test-auto-dispatch.sh"
 run_check "resolve-deployment-url" "bash scripts/tests/test-resolve-deployment-url.sh"
 run_check "deploy-validation-wiring" "bash scripts/tests/test-deploy-validation-wiring.sh"
 run_check "retry-state" "bash scripts/tests/test-retry-state.sh"
+run_check "ci-node-layout" "bash scripts/tests/test-ci-node-layout.sh"
+run_check "prd-decomposer-contract-sections" "bash scripts/tests/test-prd-decomposer-contract-sections.sh"
+run_check "repo-assist-validation-gate" "bash scripts/tests/test-repo-assist-validation-gate.sh"
+run_check "pr-review-agent-validation-review" "bash scripts/tests/test-pr-review-agent-validation-review.sh"
+run_check "validate-implementation" "bash scripts/tests/test-validate-implementation.sh"
 
 # Greenfield mock smoke
 run_check "extract-prd-mock" "bash scripts/tests/test-extract-prd-mock.sh"
