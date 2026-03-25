@@ -4,6 +4,10 @@
  * allowing easy mocking in tests without the Supabase SDK.
  */
 
+import type { OutboxJob, OutboxJobInsert, OutboxJobState } from '../jobs/types';
+
+export type { OutboxJob, OutboxJobInsert, OutboxJobState };
+
 export interface FileRecord {
   id: string;
   owner_id: string;
@@ -49,6 +53,9 @@ export interface SupabaseDBClient {
   deleteFile(fileId: string): Promise<{ error: Error | null }>;
   getExpiredFiles(beforeDate: Date): Promise<{ data: FileRecord[]; error: Error | null }>;
   insertAuditLog(log: AuditLogInsert): Promise<{ error: Error | null }>;
+  insertOutboxJob(job: OutboxJobInsert): Promise<{ data: OutboxJob | null; error: Error | null }>;
+  fetchPendingJobs(limit: number): Promise<{ data: OutboxJob[]; error: Error | null }>;
+  updateJobState(id: string, state: OutboxJobState, updates?: Partial<Pick<OutboxJob, 'last_error' | 'retry_count' | 'scheduled_at' | 'started_at' | 'completed_at'>>): Promise<{ error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -78,6 +85,9 @@ export function getSupabaseClient(): SupabaseClient {
         deleteFile: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getExpiredFiles: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertAuditLog: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertOutboxJob: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        fetchPendingJobs: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateJobState: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
       },
     };
     return stub;
@@ -232,6 +242,75 @@ export function getSupabaseClient(): SupabaseClient {
         });
         if (!response.ok) {
           return { error: new Error(`Audit log insert failed: ${response.statusText}`) };
+        }
+        return { error: null };
+      } catch (err) {
+        return { error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertOutboxJob(job) {
+      try {
+        const body: Record<string, unknown> = {
+          job_type: job.job_type,
+          payload: job.payload,
+          aggregate_id: job.aggregate_id ?? null,
+          aggregate_type: job.aggregate_type ?? null,
+          scheduled_at: job.scheduled_at ?? null,
+          max_retries: job.max_retries ?? 3,
+        };
+        const response = await fetch(`${supabaseUrl}/rest/v1/outbox_jobs`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Outbox insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as OutboxJob[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async fetchPendingJobs(limit) {
+      try {
+        const now = new Date().toISOString();
+        // Fetch pending jobs where scheduled_at is null (immediate) or in the past
+        const url =
+          `${supabaseUrl}/rest/v1/outbox_jobs` +
+          `?state=eq.pending` +
+          `&or=(scheduled_at.is.null,scheduled_at.lte.${encodeURIComponent(now)})` +
+          `&order=created_at.asc` +
+          `&limit=${limit}` +
+          `&select=*`;
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`Fetch pending jobs failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as OutboxJob[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateJobState(id, state, updates = {}) {
+      try {
+        const body: Record<string, unknown> = { state };
+        if (updates.last_error !== undefined) body.last_error = updates.last_error;
+        if (updates.retry_count !== undefined) body.retry_count = updates.retry_count;
+        if (updates.scheduled_at !== undefined) body.scheduled_at = updates.scheduled_at;
+        if (updates.started_at !== undefined) body.started_at = updates.started_at;
+        if (updates.completed_at !== undefined) body.completed_at = updates.completed_at;
+        const response = await fetch(`${supabaseUrl}/rest/v1/outbox_jobs?id=eq.${id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          return { error: new Error(`Update job state failed: ${response.statusText}`) };
         }
         return { error: null };
       } catch (err) {
