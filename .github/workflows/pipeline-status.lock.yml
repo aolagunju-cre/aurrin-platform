@@ -258,7 +258,7 @@ jobs:
       model: ${{ needs.activation.outputs.model }}
       output: ${{ steps.collect_output.outputs.output }}
       output_types: ${{ steps.collect_output.outputs.output_types }}
-      agent_execution_status: ${{ steps.agentic_execution.outputs.output_present == 'true' && 'success' || 'failure' }}
+      agent_execution_status: ${{ (steps.collect_output.outputs.output_types != '' || steps.agentic_execution.outputs.output_present == 'true') && 'success' || 'failure' }}
       copilot_tolerated_failure: ${{ steps.agentic_execution.outputs.tolerated_failure || 'false' }}
       copilot_transient_error: ${{ steps.agentic_execution.outputs.transient_error_detected || 'false' }}
     steps:
@@ -717,7 +717,7 @@ jobs:
           cp "$GH_AW_SAFE_OUTPUTS" /tmp/gh-aw/safeoutputs.jsonl 2>/dev/null || true
       - name: Ingest agent output
         id: collect_output
-        if: always() && steps.agentic_execution.outputs.output_present == 'true'
+        if: always()
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
@@ -754,15 +754,15 @@ jobs:
         if: always() && steps.agentic_execution.outputs.tolerated_failure == 'true'
         run: |
           echo "::warning title=GitHub Copilot failure tolerated::Copilot exited ${{ steps.agentic_execution.outputs.exit_code }} after ${{ steps.agentic_execution.outputs.attempts }} attempt(s) but produced /tmp/gh-aw/agent_output.json, so the workflow is continuing."
-      - name: Fail for upstream Copilot transient error without agent output
-        if: always() && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected == 'true'
+      - name: Fail for upstream Copilot transient error without recoverable safe outputs
+        if: always() && steps.collect_output.outputs.output_types == '' && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected == 'true'
         run: |
-          echo "::error title=Upstream Copilot transient failure::GitHub Copilot CLI exhausted retries without producing /tmp/gh-aw/agent_output.json."
+          echo "::error title=Upstream Copilot transient failure::GitHub Copilot CLI exhausted retries without producing recoverable safe outputs."
           exit 1
-      - name: Fail for Copilot CLI missing agent output
-        if: always() && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected != 'true'
+      - name: Fail for Copilot CLI missing recoverable safe outputs
+        if: always() && steps.collect_output.outputs.output_types == '' && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected != 'true'
         run: |
-          echo "::error title=Copilot CLI missing agent output::GitHub Copilot CLI exited without producing /tmp/gh-aw/agent_output.json."
+          echo "::error title=Copilot CLI missing safe outputs::GitHub Copilot CLI exited without producing recoverable safe outputs."
           exit 1
       - name: Print firewall logs
         if: always()

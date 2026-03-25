@@ -70,6 +70,41 @@ def ensure_substitution!(content, from, to, label)
   raise "Could not patch #{label}" unless content.sub!(from, to)
 end
 
+def ensure_collect_output_ingests_safe_outputs!(content, workflow_name)
+  guarded = "      - name: Ingest agent output\n        id: collect_output\n        if: always() && steps.agentic_execution.outputs.output_present == 'true'\n"
+  unguarded = "      - name: Ingest agent output\n        id: collect_output\n        if: always()\n"
+
+  return if content.include?(unguarded)
+  raise "Could not patch #{workflow_name} collect_output guard" unless content.sub!(guarded, unguarded)
+end
+
+def ensure_agent_outputs_block!(content, block, workflow_name)
+  legacy_block = <<'TEXT'
+      output_types: ${{ steps.collect_output.outputs.output_types }}
+      agent_execution_status: ${{ steps.agentic_execution.outputs.output_present == 'true' && 'success' || 'failure' }}
+      copilot_tolerated_failure: ${{ steps.agentic_execution.outputs.tolerated_failure || 'false' }}
+      copilot_transient_error: ${{ steps.agentic_execution.outputs.transient_error_detected || 'false' }}
+TEXT
+  bare_block = "      output_types: ${{ steps.collect_output.outputs.output_types }}\n"
+
+  return if content.include?(block)
+  return if content.sub!(legacy_block, block)
+  raise "Could not patch #{workflow_name} outputs" unless content.sub!(bare_block, block)
+end
+
+def replace_status_steps!(content, status_steps, workflow_name)
+  pattern = /^      - name: Note tolerated Copilot CLI failure\n.*?(?=^      - name: Print firewall logs\n)/m
+  return if content.include?(status_steps)
+
+  if pattern.match?(content)
+    content.sub!(pattern, status_steps)
+    return
+  end
+
+  anchor = "      - name: Print firewall logs\n"
+  ensure_substitution!(content, anchor, "#{status_steps}#{anchor}", "#{workflow_name} status steps")
+end
+
 def replace_detection_section!(content, baseline_content)
   pattern = /^      - name: Execute GitHub Copilot CLI\n        if: always\(\) && steps\.detection_guard\.outputs\.run_detection == 'true'\n        id: detection_agentic_execution\n.*?(?=^  conclusion:\n)/m
   baseline_match = pattern.match(baseline_content)
@@ -93,15 +128,15 @@ status_steps = <<'YAML'
         if: always() && steps.agentic_execution.outputs.tolerated_failure == 'true'
         run: |
           echo "::warning title=GitHub Copilot failure tolerated::Copilot exited ${{ steps.agentic_execution.outputs.exit_code }} after ${{ steps.agentic_execution.outputs.attempts }} attempt(s) but produced /tmp/gh-aw/agent_output.json, so the workflow is continuing."
-      - name: Fail for upstream Copilot transient error without agent output
-        if: always() && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected == 'true'
+      - name: Fail for upstream Copilot transient error without recoverable safe outputs
+        if: always() && steps.collect_output.outputs.output_types == '' && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected == 'true'
         run: |
-          echo "::error title=Upstream Copilot transient failure::GitHub Copilot CLI exhausted retries without producing /tmp/gh-aw/agent_output.json."
+          echo "::error title=Upstream Copilot transient failure::GitHub Copilot CLI exhausted retries without producing recoverable safe outputs."
           exit 1
-      - name: Fail for Copilot CLI missing agent output
-        if: always() && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected != 'true'
+      - name: Fail for Copilot CLI missing recoverable safe outputs
+        if: always() && steps.collect_output.outputs.output_types == '' && steps.agentic_execution.outputs.output_present != 'true' && steps.agentic_execution.outputs.transient_error_detected != 'true'
         run: |
-          echo "::error title=Copilot CLI missing agent output::GitHub Copilot CLI exited without producing /tmp/gh-aw/agent_output.json."
+          echo "::error title=Copilot CLI missing safe outputs::GitHub Copilot CLI exited without producing recoverable safe outputs."
           exit 1
 YAML
 
@@ -127,23 +162,17 @@ workflow_paths.each do |path|
 
   replace_detection_section!(content, baseline_content)
 
-  agent_outputs_from = "      output_types: ${{ steps.collect_output.outputs.output_types }}\n"
   agent_outputs_to = <<'TEXT'
       output_types: ${{ steps.collect_output.outputs.output_types }}
-      agent_execution_status: ${{ steps.agentic_execution.outputs.output_present == 'true' && 'success' || 'failure' }}
+      agent_execution_status: ${{ (steps.collect_output.outputs.output_types != '' || steps.agentic_execution.outputs.output_present == 'true') && 'success' || 'failure' }}
       copilot_tolerated_failure: ${{ steps.agentic_execution.outputs.tolerated_failure || 'false' }}
       copilot_transient_error: ${{ steps.agentic_execution.outputs.transient_error_detected || 'false' }}
 TEXT
-  ensure_substitution!(content, agent_outputs_from, agent_outputs_to, "#{File.basename(path)} outputs")
+  ensure_agent_outputs_block!(content, agent_outputs_to, File.basename(path))
 
-  collect_output_from = "      - name: Ingest agent output\n        id: collect_output\n        if: always()\n"
-  collect_output_to = "      - name: Ingest agent output\n        id: collect_output\n        if: always() && steps.agentic_execution.outputs.output_present == 'true'\n"
-  ensure_substitution!(content, collect_output_from, collect_output_to, "#{File.basename(path)} collect_output guard")
+  ensure_collect_output_ingests_safe_outputs!(content, File.basename(path))
 
-  unless content.include?("      - name: Note tolerated Copilot CLI failure\n")
-    anchor = "      - name: Print firewall logs\n"
-    ensure_substitution!(content, anchor, "#{status_steps}#{anchor}", "#{File.basename(path)} status steps")
-  end
+  replace_status_steps!(content, status_steps, File.basename(path))
 
   failure_env_pattern = /          GH_AW_AGENT_CONCLUSION: \$\{\{ needs\.agent\.result \}\}\n          GH_AW_WORKFLOW_ID: (?<value>".*")\n/
   unless content.include?("          GH_AW_AGENT_EXECUTION_STATUS: ${{ needs.agent.outputs.agent_execution_status }}\n")
