@@ -60,6 +60,10 @@ dispatch_step = <<'STEP'.chomp
           gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"
 STEP
 dispatch_step_name = "      - name: Dispatch pr-review-submit for posted verdict\n"
+safe_outputs_header = "\n  safe_outputs:\n"
+safe_outputs_end_marker = "\n  conclusion:\n"
+safe_outputs_pull_requests_line = "      pull-requests: write\n"
+safe_outputs_actions_line = "      actions: write\n"
 
 unless content.include?(new_activated_output)
   raise "Could not find pre_activation activated output in #{path}" unless content.sub!(old_activated_output, new_activated_output)
@@ -89,6 +93,21 @@ content.gsub!(old_github_token_expr, new_github_token_expr)
 
 raise "Patched github-token precedence missing in #{path}" unless content.include?(new_github_token_expr)
 raise "Unpatched github-token precedence remains in #{path}" if content.include?(old_github_token_expr)
+
+safe_outputs_start = content.index(safe_outputs_header)
+raise "Could not find safe_outputs job in #{path}" unless safe_outputs_start
+safe_outputs_end = content.index(safe_outputs_end_marker, safe_outputs_start) || content.length
+safe_outputs_block = content[safe_outputs_start...safe_outputs_end]
+
+unless safe_outputs_block.include?(safe_outputs_actions_line)
+  pull_requests_index = safe_outputs_block.index(safe_outputs_pull_requests_line)
+  raise "Could not add actions: write to safe_outputs permissions in #{path}" unless pull_requests_index
+  insert_at = safe_outputs_start + pull_requests_index + safe_outputs_pull_requests_line.length
+  content.insert(insert_at, safe_outputs_actions_line)
+end
+
+safe_outputs_block = content[safe_outputs_start...(content.index(safe_outputs_end_marker, safe_outputs_start) || content.length)]
+raise "Patched safe_outputs actions permission missing in #{path}" unless safe_outputs_block.include?(safe_outputs_actions_line)
 
 unless content.include?(dispatch_step_name)
   upload_step = "      - name: Upload safe output items\n"

@@ -35,9 +35,16 @@ jobs:
             setupGlobals(core, github, context, exec, io);
             const { main } = require('/opt/gh-aw/actions/check_membership.cjs');
             await main();
+  safe_outputs:
+    permissions:
+      contents: read
+      discussions: write
+      issues: write
+      pull-requests: write
+    steps:
       - name: Process Safe Outputs
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         id: process_safe_outputs
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -45,6 +52,9 @@ jobs:
             setupGlobals(core, github, context, exec, io);
             const { main } = require('/opt/gh-aw/actions/check_membership.cjs');
             await main();
+      - name: Upload safe output items
+        if: always()
+        uses: actions/upload-artifact@v4
 YAML
 
 hash_file() {
@@ -63,6 +73,7 @@ grep -F "      - name: Activate same-repo pull request without membership gate" 
 grep -F "steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true'" "$WORKFLOW" >/dev/null
 grep -F "if: steps.activate_pull_request.outputs.activated != 'true'" "$WORKFLOW" >/dev/null
 grep -F 'github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
+grep -F '      actions: write' "$WORKFLOW" >/dev/null
 grep -F "      - name: Dispatch pr-review-submit for posted verdict" "$WORKFLOW" >/dev/null
 grep -F "if: steps.process_safe_outputs.outputs.comment_id != ''" "$WORKFLOW" >/dev/null
 grep -F 'gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"' "$WORKFLOW" >/dev/null
@@ -78,6 +89,11 @@ fi
 
 if grep -Fq 'github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}' "$WORKFLOW"; then
   echo "FAIL: old github-token precedence remained in pr-review-agent lock patch output" >&2
+  exit 1
+fi
+
+if ! ruby -e 'text = File.read(ARGV[0]); start = text.index("  safe_outputs:\n"); finish = text.index("\n  conclusion:\n", start || 0) || text.length; block = start ? text[start...finish] : nil; exit(block&.include?("      actions: write\n") ? 0 : 1)' "$WORKFLOW"; then
+  echo "FAIL: safe_outputs permissions did not gain actions: write" >&2
   exit 1
 fi
 
