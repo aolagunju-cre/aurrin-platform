@@ -6,6 +6,31 @@ WORKFLOW="$ROOT_DIR/.github/workflows/auto-dispatch-requeue.yml"
 
 ruby -e 'require "yaml"; YAML.load_file(ARGV[0]); puts "yaml-ok"' "$WORKFLOW" >/dev/null
 
+grep -F 'pull_request:' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must listen for merged pipeline pull requests" >&2
+  exit 1
+}
+
+grep -F 'types: [closed]' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must trigger on pull_request closed events" >&2
+  exit 1
+}
+
+grep -F "github.event_name == 'pull_request'" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must handle merged pull_request events in its gate" >&2
+  exit 1
+}
+
+grep -F 'github.event.pull_request.merged == true' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must require pull_request merges before advancing the backlog" >&2
+  exit 1
+}
+
+grep -F "startsWith(github.event.pull_request.title, '[Pipeline]')" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must scope merge-triggered backlog advances to pipeline PRs" >&2
+  exit 1
+}
+
 grep -F 'workflow_run.name == '\''Pipeline Repo Assist'\''' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must scope transient retries to Pipeline Repo Assist" >&2
   exit 1

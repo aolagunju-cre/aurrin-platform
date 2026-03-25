@@ -29,6 +29,7 @@ permissions: read-all
 network:
   allowed:
     - defaults
+    - node
 
 safe-outputs:
   add-comment:

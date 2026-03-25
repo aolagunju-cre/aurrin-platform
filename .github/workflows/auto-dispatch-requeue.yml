@@ -4,6 +4,8 @@ on:
   workflow_run:
     workflows: ["Pipeline Repo Assist", "Frontend Agent"]
     types: [completed]
+  pull_request:
+    types: [closed]
   workflow_dispatch: {}
 
 permissions:
@@ -25,9 +27,19 @@ jobs:
     # and there is nothing to requeue in those cases.
     if: |
       vars.PIPELINE_ACTIVE != 'false' &&
-      (github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion != 'skipped' &&
-       github.event.workflow_run.conclusion != 'cancelled'))
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.merged == true &&
+          startsWith(github.event.pull_request.title, '[Pipeline]')
+        ) ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion != 'skipped' &&
+          github.event.workflow_run.conclusion != 'cancelled'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -175,7 +187,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id || '' }}
         run: |
           set -euo pipefail
 

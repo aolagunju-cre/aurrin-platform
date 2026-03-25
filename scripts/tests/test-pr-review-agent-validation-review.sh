@@ -29,4 +29,9 @@ grep -F 'lacks at least one real boundary test for the in-scope behavior' "$PROM
   exit 1
 }
 
+grep -F '    - node' "$PROMPT" >/dev/null || {
+  echo "FAIL: pr-review-agent must allow the node ecosystem in network.allowed" >&2
+  exit 1
+}
+
 echo "pr-review-agent validation review tests passed"
