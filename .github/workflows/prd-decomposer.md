@@ -1,8 +1,8 @@
 ---
 description: |
-  Decomposes a Product Requirements Document (PRD) into atomic GitHub Issues.
+  Decomposes a Product Requirements Document (PRD) or oversized pipeline issue into atomic GitHub Issues.
   Each issue gets clear acceptance criteria, dependency references, and type labels.
-  Triggered by the /decompose command on any issue or discussion containing a PRD.
+  Triggered by the /decompose command on any issue or discussion containing a PRD, or by workflow_dispatch for issue splitting.
 
 on:
   workflow_dispatch:
@@ -68,7 +68,14 @@ You are a senior technical project manager. Your job is to read a Product Requir
 
 "${{ steps.sanitized.outputs.text }}"
 
-If `${{ github.event.inputs.issue_number }}` is non-empty, read the body of issue #${{ github.event.inputs.issue_number }} as the PRD and treat that issue as the source for this run.
+If `${{ github.event.inputs.issue_number }}` is non-empty, read the body of issue #${{ github.event.inputs.issue_number }} as the source for this run.
+
+If that source issue is already a `[Pipeline]` implementation issue, treat it as an oversized parent issue that must be split into bounded child issues. Preserve the parent issue's contract, but create smaller child issues that a coding agent can implement independently. In this split mode:
+
+- Keep the parent issue as an umbrella tracker rather than a direct implementation target.
+- Prefer 3-6 child issues unless the source contract clearly demands a different bounded decomposition.
+- Add the `blocked` label to the parent issue after creating the child issues so backlog automation does not send the parent back to `repo-assist`.
+- Post a summary comment on the parent issue that lists the child issues and states that follow-on implementation should happen on the children, not the parent.
 
 If the instructions above contain a URL or file path, fetch/read that content as the PRD. If the instructions are empty and `${{ github.event.inputs.issue_number }}` is empty, read the body of issue #${{ github.event.issue.number }} as the PRD.
 
@@ -208,7 +215,7 @@ Before creating issues, determine the target tech stack and deploy profile:
 
 After creating all issues:
 
-1. **Dispatch the `repo-assist` workflow** to begin implementation automatically.
+1. **Dispatch the `repo-assist` workflow** to begin implementation automatically on one newly created child issue.
 2. Post a summary comment on the original issue/discussion with:
 
 ```
@@ -222,6 +229,11 @@ After creating all issues:
 
 Total: N issues created. Implementation starting automatically.
 ```
+
+3. **If the source was an oversized existing `[Pipeline]` issue**, also:
+   - Add the `blocked` label to that parent issue
+   - Explicitly say the parent issue is now an umbrella tracker
+   - Tell future implementers to work the new child issues instead of the parent
 
 ## Quality Checklist
 

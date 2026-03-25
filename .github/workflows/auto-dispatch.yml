@@ -173,7 +173,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           DISPATCHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          if [ "$WORKFLOW_FILE" = "repo-assist.lock.yml" ]; then
+          if [ "$WORKFLOW_FILE" = "repo-assist.lock.yml" ] || [ "$WORKFLOW_FILE" = "prd-decomposer.lock.yml" ]; then
             gh workflow run "$WORKFLOW_FILE" \
               --repo "$REPO" \
               -f issue_number="$ISSUE_NUMBER"

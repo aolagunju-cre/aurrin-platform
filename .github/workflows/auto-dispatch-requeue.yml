@@ -449,7 +449,7 @@ jobs:
 
           echo "Re-dispatching issue #${SELECTED_ISSUE} via ${SELECTED_WORKFLOW} (route: ${SELECTED_ROUTE}, reason: ${SELECTED_REASON})."
           DISPATCHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ]; then
+          if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ] || [ "$SELECTED_WORKFLOW" = "prd-decomposer.lock.yml" ]; then
             gh workflow run "$SELECTED_WORKFLOW" \
               --repo "$REPO" \
               -f issue_number="$SELECTED_ISSUE"

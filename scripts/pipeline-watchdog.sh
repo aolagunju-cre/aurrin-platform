@@ -247,6 +247,17 @@ workflow_active_runs() {
   echo $((running + queued))
 }
 
+dispatch_issue_workflow() {
+  local workflow_file=$1
+  local issue_number=$2
+
+  if [ "$workflow_file" = "repo-assist.lock.yml" ] || [ "$workflow_file" = "prd-decomposer.lock.yml" ]; then
+    gh workflow run "$workflow_file" --repo "$REPO" -f issue_number="$issue_number"
+  else
+    gh workflow run "$workflow_file" --repo "$REPO"
+  fi
+}
+
 workflow_for_branch() {
   local head_branch=$1
   if printf '%s' "$head_branch" | grep -q '^frontend-agent/'; then
@@ -516,7 +527,7 @@ while IFS= read -r ISSUE_ROW; do
     continue
   fi
   echo "Dispatching ${ISSUE_WORKFLOW} for orphaned issue #${ISSUE_NUM}"
-  gh workflow run "$ISSUE_WORKFLOW" --repo "$REPO" || \
+  dispatch_issue_workflow "$ISSUE_WORKFLOW" "$ISSUE_NUM" || \
     echo "::warning::Could not dispatch ${ISSUE_WORKFLOW}"
   ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
   break

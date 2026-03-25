@@ -34,4 +34,14 @@ grep -F 'bash scripts/validate-implementation.sh' "$PROMPT" >/dev/null || {
   exit 1
 }
 
+grep -F 'If that source issue is already a `[Pipeline]` implementation issue' "$PROMPT" >/dev/null || {
+  echo "FAIL: prd-decomposer must support splitting oversized pipeline issues" >&2
+  exit 1
+}
+
+grep -F 'Add the `blocked` label to the parent issue' "$PROMPT" >/dev/null || {
+  echo "FAIL: prd-decomposer must mark split parent issues as blocked umbrella trackers" >&2
+  exit 1
+}
+
 echo "prd-decomposer contract section tests passed"

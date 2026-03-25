@@ -61,6 +61,11 @@ grep -F 'gh workflow run "$WORKFLOW_FILE" \' "$WORKFLOW" >/dev/null || {
   exit 1
 }
 
+grep -F 'if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ] || [ "$SELECTED_WORKFLOW" = "prd-decomposer.lock.yml" ]; then' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must pass issue_number to repo-assist and prd-decomposer re-dispatches" >&2
+  exit 1
+}
+
 grep -F -- '-f issue_number="$ISSUE_NUMBER"' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must target the same issue when retrying repo-assist" >&2
   exit 1

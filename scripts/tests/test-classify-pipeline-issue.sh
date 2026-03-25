@@ -50,6 +50,30 @@ AUTH_ISSUE=$(cat <<'JSON'
 JSON
 )
 
+BLOCKED_ISSUE=$(cat <<'JSON'
+{
+  "title": "[Pipeline] Split parent issue",
+  "labels": [
+    { "name": "pipeline" },
+    { "name": "blocked" },
+    { "name": "feature" }
+  ]
+}
+JSON
+)
+
+AGGREGATE_ISSUE=$(cat <<'JSON'
+{
+  "title": "[Pipeline] Admin Dashboard (Event, Rubric, Founder & Role Management)",
+  "body": "## Description\n\nOversized control plane issue.\n\n## Acceptance Criteria\n- [ ] Protected admin layout\n- [ ] Events page\n- [ ] Event detail page\n- [ ] API routes for events\n- [ ] Rubrics page\n- [ ] Rubric builder\n- [ ] API routes for rubrics\n- [ ] Founders page\n- [ ] Founder detail page\n- [ ] API routes for founders\n- [ ] Roles page\n- [ ] API routes for roles\n",
+  "labels": [
+    { "name": "pipeline" },
+    { "name": "feature" }
+  ]
+}
+JSON
+)
+
 RETRY_ISSUE=$(cat <<'JSON'
 {
   "title": "[Pipeline] CI Failure (rate-limit): quota exceeded",
@@ -66,6 +90,8 @@ ACTIONABLE_JSON=$(printf '%s' "$ACTIONABLE_ISSUE" | "$SCRIPT")
 STATUS_JSON=$(printf '%s' "$STATUS_ISSUE" | "$SCRIPT")
 TRACKER_JSON=$(printf '%s' "$TRACKER_ISSUE" | "$SCRIPT")
 AUTH_JSON=$(printf '%s' "$AUTH_ISSUE" | "$SCRIPT")
+BLOCKED_JSON=$(printf '%s' "$BLOCKED_ISSUE" | "$SCRIPT")
+AGGREGATE_JSON=$(printf '%s' "$AGGREGATE_ISSUE" | "$SCRIPT")
 RETRY_JSON=$(printf '%s' "$RETRY_ISSUE" | "$SCRIPT")
 
 printf '%s' "$ACTIONABLE_JSON" | jq -e '.actionable == true' >/dev/null
@@ -79,6 +105,8 @@ printf '%s' "$TRACKER_JSON" | jq -e '.actionable == false' >/dev/null
 printf '%s' "$TRACKER_JSON" | jq -e '.reason == "prd_tracking_issue"' >/dev/null
 
 printf '%s' "$AUTH_JSON" | jq -e '.actionable == false and .route == "needs_human"' >/dev/null
+printf '%s' "$BLOCKED_JSON" | jq -e '.actionable == false and .reason == "blocked_issue"' >/dev/null
+printf '%s' "$AGGREGATE_JSON" | jq -e '.actionable == true and .route == "prd_decomposer" and .workflow_file == "prd-decomposer.lock.yml" and .agent_command == "/decompose"' >/dev/null
 printf '%s' "$RETRY_JSON" | jq -e '.actionable == true and .route == "retry_with_backoff" and .backoff_seconds == 60' >/dev/null
 
 # Verify route metadata on default route
