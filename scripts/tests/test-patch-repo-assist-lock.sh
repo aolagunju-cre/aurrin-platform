@@ -56,7 +56,22 @@ grep -F "      - name: Fail targeted issue runs without actionable output" "$WOR
 grep -F "needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''" "$WORKFLOW" >/dev/null
 grep -F "Targeted issue #\${issue} ended with noop. Use missing_data or missing_tool with the exact blocker and next step instead of noop." "$WORKFLOW" >/dev/null
 grep -F "Targeted issue dispatch failed closed" "$WORKFLOW" >/dev/null
+grep -F "MESSAGE=\$(node -e '" "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Fail targeted issue runs without actionable output$" "$WORKFLOW")" -eq 1 ]
+
+python3 - "$WORKFLOW" > "$TMPDIR/targeted-guard.sh" <<'PY'
+import sys
+import yaml
+
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    data = yaml.safe_load(fh)
+
+steps = data["jobs"]["conclusion"]["steps"]
+script = next(step["run"] for step in steps if step.get("name") == "Fail targeted issue runs without actionable output")
+print(script)
+PY
+
+bash -n "$TMPDIR/targeted-guard.sh"
 
 echo "patch-repo-assist-lock.sh tests passed"

@@ -22,48 +22,46 @@ fail_step = <<'STEP'.chomp
           GH_AW_TARGET_ISSUE: ${{ github.event.inputs.issue_number }}
         run: |
           set +e
-          MESSAGE=$(
-            node <<'NODE'
-            const fs = require('fs');
+          MESSAGE=$(node -e '
+          const fs = require("fs");
 
-            const path = process.env.GH_AW_AGENT_OUTPUT;
-            const issue = process.env.GH_AW_TARGET_ISSUE;
-            const successTypes = new Set(['create_pull_request', 'push_to_pull_request_branch']);
-            const blockerTypes = new Set(['missing_data', 'missing_tool']);
+          const path = process.env.GH_AW_AGENT_OUTPUT;
+          const issue = process.env.GH_AW_TARGET_ISSUE;
+          const successTypes = new Set(["create_pull_request", "push_to_pull_request_branch"]);
+          const blockerTypes = new Set(["missing_data", "missing_tool"]);
 
-            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
-            const items = Array.isArray(data.items) ? data.items : [];
-            const types = items.map(item => item && item.type).filter(Boolean);
+          const data = JSON.parse(fs.readFileSync(path, "utf8"));
+          const items = Array.isArray(data.items) ? data.items : [];
+          const types = items.map(item => item && item.type).filter(Boolean);
 
-            if (types.some(type => successTypes.has(type))) {
-              process.exit(0);
-            }
+          if (types.some(type => successTypes.has(type))) {
+            process.exit(0);
+          }
 
-            const blocker = items.find(item => item && blockerTypes.has(item.type));
-            if (blocker) {
-              const details = [];
-              if (blocker.reason) details.push(blocker.reason);
-              if (blocker.context) details.push(`Context: ${blocker.context}`);
-              if (blocker.alternatives) details.push(`Next step: ${blocker.alternatives}`);
-              if (blocker.tool) details.push(`Tool: ${blocker.tool}`);
-              if (blocker.data_type) details.push(`Data: ${blocker.data_type}`);
+          const blocker = items.find(item => item && blockerTypes.has(item.type));
+          if (blocker) {
+            const details = [];
+            if (blocker.reason) details.push(blocker.reason);
+            if (blocker.context) details.push(`Context: ${blocker.context}`);
+            if (blocker.alternatives) details.push(`Next step: ${blocker.alternatives}`);
+            if (blocker.tool) details.push(`Tool: ${blocker.tool}`);
+            if (blocker.data_type) details.push(`Data: ${blocker.data_type}`);
 
-              const message = [
-                `Targeted issue #${issue} did not create or update a PR.`,
-                `${blocker.type} reported${details.length ? `: ${details.join(' ')}` : '.'}`,
-              ].join(' ');
-              console.log(message);
-              process.exit(2);
-            }
+            const message = [
+              `Targeted issue #${issue} did not create or update a PR.`,
+              `${blocker.type} reported${details.length ? `: ${details.join(" ")}` : "."}`,
+            ].join(" ");
+            console.log(message);
+            process.exit(2);
+          }
 
-            const noop = items.find(item => item && item.type === 'noop');
-            const noopMessage = noop && noop.message ? noop.message : 'Agent produced no actionable or blocker safe outputs.';
-            console.log(
-              `Targeted issue #${issue} ended with noop. Use missing_data or missing_tool with the exact blocker and next step instead of noop. Details: ${noopMessage}`,
-            );
-            process.exit(3);
-            NODE
-          )
+          const noop = items.find(item => item && item.type === "noop");
+          const noopMessage = noop && noop.message ? noop.message : "Agent produced no actionable or blocker safe outputs.";
+          console.log(
+            `Targeted issue #${issue} ended with noop. Use missing_data or missing_tool with the exact blocker and next step instead of noop. Details: ${noopMessage}`,
+          );
+          process.exit(3);
+          ')
           STATUS=$?
           set -e
 
@@ -77,6 +75,14 @@ fail_step = <<'STEP'.chomp
             exit 1
           fi
 STEP
+
+legacy_step_pattern = /
+^      -\ name:\ Fail\ targeted\ issue\ runs\ without\ actionable\ output\n
+.*?
+(?=^      -\ name:\ Invalidate\ GitHub\ App\ token\n)
+/mx
+
+content.sub!(legacy_step_pattern, "#{fail_step}\n")
 
 unless content.include?(step_name)
   if content.include?(insert_before)
@@ -97,6 +103,7 @@ raise "Patched targeted issue guard missing in #{path}" unless content.include?(
 raise "Duplicate targeted issue guard detected in #{path}" unless content.scan(step_name).length == 1
 raise "Targeted issue guard missing noop guidance in #{path}" unless content.include?("Use missing_data or missing_tool with the exact blocker and next step instead of noop")
 raise "Targeted issue guard missing workflow_dispatch issue_number condition in #{path}" unless content.include?("github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''")
+raise "Legacy heredoc-based targeted issue guard remains in #{path}" if content.include?("node <<'NODE'")
 
 File.write(path, content) if content != original
 RUBY
