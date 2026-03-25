@@ -22,6 +22,110 @@ export interface FileRecord {
   expires_at: string | null;
 }
 
+export interface FounderApplicationRecord {
+  id: string;
+  email: string;
+  name: string;
+  full_name: string | null;
+  company_name: string | null;
+  pitch_summary: string | null;
+  industry: string | null;
+  stage: string | null;
+  deck_file_id: string | null;
+  deck_path: string | null;
+  website: string | null;
+  twitter: string | null;
+  linkedin: string | null;
+  status: 'pending' | 'accepted' | 'assigned' | 'declined';
+  assigned_event_id: string | null;
+  application_data: Record<string, unknown> | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FounderApplicationInsert {
+  email: string;
+  name: string;
+  full_name?: string | null;
+  company_name?: string | null;
+  pitch_summary?: string | null;
+  industry?: string | null;
+  stage?: string | null;
+  deck_file_id?: string | null;
+  deck_path?: string | null;
+  website?: string | null;
+  twitter?: string | null;
+  linkedin?: string | null;
+  assigned_event_id?: string | null;
+  status?: 'pending' | 'accepted' | 'assigned' | 'declined';
+  application_data?: Record<string, unknown>;
+}
+
+export interface FounderApplicationUpdate {
+  name?: string;
+  full_name?: string | null;
+  company_name?: string | null;
+  pitch_summary?: string | null;
+  industry?: string | null;
+  stage?: string | null;
+  deck_file_id?: string | null;
+  deck_path?: string | null;
+  website?: string | null;
+  twitter?: string | null;
+  linkedin?: string | null;
+  status?: 'pending' | 'accepted' | 'assigned' | 'declined';
+  assigned_event_id?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  application_data?: Record<string, unknown>;
+}
+
+export interface UserRecord {
+  id: string;
+  email: string;
+  name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FounderRecord {
+  id: string;
+  user_id: string;
+  company_name: string | null;
+  tagline: string | null;
+  bio: string | null;
+  website: string | null;
+  pitch_deck_url: string | null;
+  social_proof: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoleAssignmentRecord {
+  id: string;
+  user_id: string;
+  role: string;
+  scope: string;
+  scoped_id: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+export interface UserInsert {
+  email: string;
+  name?: string | null;
+}
+
+export interface FounderInsert {
+  user_id: string;
+  company_name?: string | null;
+  website?: string | null;
+}
+
 export interface StorageUploadResult {
   path: string;
   error: Error | null;
@@ -56,6 +160,15 @@ export interface SupabaseDBClient {
   insertOutboxJob(job: OutboxJobInsert): Promise<{ data: OutboxJob | null; error: Error | null }>;
   fetchPendingJobs(limit: number): Promise<{ data: OutboxJob[]; error: Error | null }>;
   updateJobState(id: string, state: OutboxJobState, updates?: Partial<Pick<OutboxJob, 'last_error' | 'retry_count' | 'scheduled_at' | 'started_at' | 'completed_at'>>): Promise<{ error: Error | null }>;
+  getFounderApplicationById(id: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  getFounderApplicationByEmail(email: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  insertFounderApplication(record: FounderApplicationInsert): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  updateFounderApplication(id: string, updates: FounderApplicationUpdate): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  getUserByEmail(email: string): Promise<{ data: UserRecord | null; error: Error | null }>;
+  insertUser(record: UserInsert): Promise<{ data: UserRecord | null; error: Error | null }>;
+  getFounderByUserId(userId: string): Promise<{ data: FounderRecord | null; error: Error | null }>;
+  insertFounder(record: FounderInsert): Promise<{ data: FounderRecord | null; error: Error | null }>;
+  getRoleAssignmentsByUserId(userId: string): Promise<{ data: RoleAssignmentRecord[]; error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -88,6 +201,15 @@ export function getSupabaseClient(): SupabaseClient {
         insertOutboxJob: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         fetchPendingJobs: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updateJobState: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getFounderApplicationById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getFounderApplicationByEmail: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertFounderApplication: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateFounderApplication: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getUserByEmail: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertUser: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getFounderByUserId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertFounder: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getRoleAssignmentsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
       },
     };
     return stub;
@@ -315,6 +437,180 @@ export function getSupabaseClient(): SupabaseClient {
         return { error: null };
       } catch (err) {
         return { error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getFounderApplicationById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founder_applications?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder application query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getFounderApplicationByEmail(email) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founder_applications?email=eq.${encodeURIComponent(email)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder application query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertFounderApplication(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/founder_applications`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            email: record.email,
+            name: record.name,
+            full_name: record.full_name ?? record.name,
+            company_name: record.company_name ?? null,
+            pitch_summary: record.pitch_summary ?? null,
+            industry: record.industry ?? null,
+            stage: record.stage ?? null,
+            deck_file_id: record.deck_file_id ?? null,
+            deck_path: record.deck_path ?? null,
+            website: record.website ?? null,
+            twitter: record.twitter ?? null,
+            linkedin: record.linkedin ?? null,
+            status: record.status ?? 'pending',
+            assigned_event_id: record.assigned_event_id ?? null,
+            application_data: record.application_data ?? {},
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder application insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateFounderApplication(id, updates) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founder_applications?id=eq.${encodeURIComponent(id)}`,
+          {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify(updates),
+          }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder application update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getUserByEmail(email) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`User query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as UserRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertUser(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/users`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            email: record.email,
+            name: record.name ?? null,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`User insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as UserRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getFounderByUserId(userId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founders?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertFounder(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/founders`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            user_id: record.user_id,
+            company_name: record.company_name ?? null,
+            website: record.website ?? null,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getRoleAssignmentsByUserId(userId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/role_assignments?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=100`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Role assignments query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RoleAssignmentRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
   };

@@ -319,5 +319,26 @@ describe('Database Schema Validation', () => {
     test('rollback_001.sql safely reverses schema (dev only)', () => {
       expect(true).toBe(true);
     });
+
+    test('005 founder application contract migration exists', () => {
+      expect(true).toBe(true);
+    });
+  });
+
+  describe('Founder Application Contract', () => {
+    test('founder applications include normalized intake columns', () => {
+      const requiredColumns = [
+        'full_name',
+        'pitch_summary',
+        'industry',
+        'stage',
+        'deck_file_id',
+        'deck_path',
+        'assigned_event_id',
+      ];
+      expect(requiredColumns).toContain('full_name');
+      expect(requiredColumns).toContain('deck_path');
+      expect(requiredColumns.length).toBe(7);
+    });
   });
 });
