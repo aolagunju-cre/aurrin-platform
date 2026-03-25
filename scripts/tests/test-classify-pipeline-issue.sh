@@ -74,6 +74,18 @@ AGGREGATE_ISSUE=$(cat <<'JSON'
 JSON
 )
 
+BOUNDED_CHILD_ISSUE=$(cat <<'JSON'
+{
+  "title": "[Pipeline] Implement admin events management UI and /api/admin/events contract",
+  "body": "## PRD Traceability\n- **Source PRD**: #36\n\n## Existing Contracts to Read\n- `AGENTS.md`\n- `.deploy-profile`\n- `.github/deploy-profiles/nextjs-vercel.yml`\n- `studio/src/lib/db/migrations/001_initial_schema.sql`\n- `studio/src/lib/db/migrations/005_founder_application_contract.sql`\n- `studio/src/lib/db/client.ts`\n- `studio/src/lib/audit/log.ts`\n- `studio/src/lib/auth/session.ts`\n- `studio/src/middleware.ts`\n- `studio/src/app/api/protected/admin/founder-applications/[applicationId]/route.ts`\n- `studio/src/app/(protected)/admin/layout.tsx`\n\n## Acceptance Criteria\n- [ ] events page\n- [ ] event detail page\n- [ ] api routes\n- [ ] assign judges\n- [ ] assign founders\n- [ ] audit records\n- [ ] event form\n- [ ] tests\n\n## Required Validation\n- `bash scripts/validate-implementation.sh`\n- `cd studio && npm test -- --runInBand test/admin-events-route.test.ts`\n",
+  "labels": [
+    { "name": "pipeline" },
+    { "name": "feature" }
+  ]
+}
+JSON
+)
+
 RETRY_ISSUE=$(cat <<'JSON'
 {
   "title": "[Pipeline] CI Failure (rate-limit): quota exceeded",
@@ -92,6 +104,7 @@ TRACKER_JSON=$(printf '%s' "$TRACKER_ISSUE" | "$SCRIPT")
 AUTH_JSON=$(printf '%s' "$AUTH_ISSUE" | "$SCRIPT")
 BLOCKED_JSON=$(printf '%s' "$BLOCKED_ISSUE" | "$SCRIPT")
 AGGREGATE_JSON=$(printf '%s' "$AGGREGATE_ISSUE" | "$SCRIPT")
+BOUNDED_CHILD_JSON=$(printf '%s' "$BOUNDED_CHILD_ISSUE" | "$SCRIPT")
 RETRY_JSON=$(printf '%s' "$RETRY_ISSUE" | "$SCRIPT")
 
 printf '%s' "$ACTIONABLE_JSON" | jq -e '.actionable == true' >/dev/null
@@ -107,6 +120,7 @@ printf '%s' "$TRACKER_JSON" | jq -e '.reason == "prd_tracking_issue"' >/dev/null
 printf '%s' "$AUTH_JSON" | jq -e '.actionable == false and .route == "needs_human"' >/dev/null
 printf '%s' "$BLOCKED_JSON" | jq -e '.actionable == false and .reason == "blocked_issue"' >/dev/null
 printf '%s' "$AGGREGATE_JSON" | jq -e '.actionable == true and .route == "prd_decomposer" and .workflow_file == "prd-decomposer.lock.yml" and .agent_command == "/decompose"' >/dev/null
+printf '%s' "$BOUNDED_CHILD_JSON" | jq -e '.actionable == true and .route == "repo_assist" and .workflow_file == "repo-assist.lock.yml" and .reason == "actionable"' >/dev/null
 printf '%s' "$RETRY_JSON" | jq -e '.actionable == true and .route == "retry_with_backoff" and .backoff_seconds == 60' >/dev/null
 
 # Verify route metadata on default route

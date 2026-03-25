@@ -17,13 +17,11 @@ has_label() {
 }
 
 issue_needs_split() {
-  local missing_contract_sections=false
-
-  if [[ "$BODY" != *"## Existing Contracts to Read"* ]] || [[ "$BODY" != *"## Required Validation"* ]]; then
-    missing_contract_sections=true
+  if [[ "$BODY" == *"## Existing Contracts to Read"* ]] && [[ "$BODY" == *"## Required Validation"* ]]; then
+    return 1
   fi
 
-  if [ "$missing_contract_sections" = true ] && [ "${CHECKLIST_COUNT:-0}" -ge 10 ]; then
+  if [ "${CHECKLIST_COUNT:-0}" -ge 10 ]; then
     return 0
   fi
 
