@@ -58,7 +58,6 @@ jobs:
            github.event.workflow_run.conclusion == 'timed_out')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
@@ -83,11 +82,6 @@ jobs:
             gh api "/repos/${REPO}/issues/${issue_number}/comments?per_page=100" 2>/dev/null \
               | jq -c --arg marker "$marker" '[.[] | select(.body | contains($marker))]' || echo '[]'
           }
-
-          if [ -z "${GH_AW_GITHUB_TOKEN:-}" ]; then
-            echo "::warning::GH_AW_GITHUB_TOKEN is unavailable; cannot retry transient provider failures."
-            exit 0
-          fi
 
           LOGS=$(gh run view "$RUN_ID" --repo "$REPO" --log-failed 2>/dev/null || gh run view "$RUN_ID" --repo "$REPO" --log 2>/dev/null || true)
           LOGS_LOWER=$(printf '%s' "$LOGS" | tr '[:upper:]' '[:lower:]')
@@ -137,7 +131,7 @@ jobs:
           fi
 
           DISPATCHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          GH_TOKEN="$GH_AW_GITHUB_TOKEN" gh workflow run "$WORKFLOW_FILE" \
+          gh workflow run "$WORKFLOW_FILE" \
             --repo "$REPO" \
             -f issue_number="$ISSUE_NUMBER"
 
@@ -180,7 +174,6 @@ jobs:
         if: steps.healing.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
@@ -254,11 +247,6 @@ jobs:
               --json databaseId,status \
               | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length'
           }
-
-          if [ -z "${GH_AW_GITHUB_TOKEN:-}" ]; then
-            echo "::warning::GH_AW_GITHUB_TOKEN is unavailable; cannot re-dispatch via workflow_dispatch."
-            exit 0
-          fi
 
           OPEN_PRS=$(gh pr list --repo "$REPO" --state open --limit 100 --json body 2>/dev/null || echo '[]')
           LINKED_ISSUES=$(printf '%s' "$OPEN_PRS" | jq -r '.[].body // empty' 2>/dev/null \
@@ -381,11 +369,11 @@ jobs:
           echo "Re-dispatching issue #${SELECTED_ISSUE} via ${SELECTED_WORKFLOW} (route: ${SELECTED_ROUTE})."
           DISPATCHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ]; then
-            GH_TOKEN="$GH_AW_GITHUB_TOKEN" gh workflow run "$SELECTED_WORKFLOW" \
+            gh workflow run "$SELECTED_WORKFLOW" \
               --repo "$REPO" \
               -f issue_number="$SELECTED_ISSUE"
           else
-            GH_TOKEN="$GH_AW_GITHUB_TOKEN" gh workflow run "$SELECTED_WORKFLOW" \
+            gh workflow run "$SELECTED_WORKFLOW" \
               --repo "$REPO"
           fi
 

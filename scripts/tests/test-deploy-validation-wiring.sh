@@ -33,6 +33,16 @@ grep -F 'working-directory: ${{ steps.app-root.outputs.path }}' "$DEPLOY_WORKFLO
   exit 1
 }
 
+grep -F 'rootDirectory = ""' "$DEPLOY_WORKFLOW" >/dev/null || {
+  echo "FAIL: deploy-vercel.yml must clear the pulled Vercel rootDirectory before build/deploy" >&2
+  exit 1
+}
+
+grep -F 'outputDirectory = null' "$DEPLOY_WORKFLOW" >/dev/null || {
+  echo "FAIL: deploy-vercel.yml must clear stale Vercel outputDirectory overrides before build/deploy" >&2
+  exit 1
+}
+
 grep -F 'studio/package.json' "$DEPLOY_PROFILE" >/dev/null || {
   echo "FAIL: nextjs-vercel profile must detect the scaffolded studio/package.json" >&2
   exit 1

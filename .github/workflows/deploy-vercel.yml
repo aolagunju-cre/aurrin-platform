@@ -73,9 +73,20 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          # Vercel project has rootDirectory=studio, but we're already in studio/.
-          # Clear rootDirectory so vercel build doesn't double the path.
-          jq '.projectSettings.rootDirectory = null' .vercel/project.json > .vercel/project.json.tmp \
+          # Normalize local project settings so Vercel does not append the
+          # configured root directory a second time when we already run in APP_ROOT.
+          jq '
+            if has("projectSettings") then
+              .projectSettings.rootDirectory = "" |
+              .projectSettings.outputDirectory = null
+            else .
+            end |
+            if has("settings") then
+              .settings.rootDirectory = "" |
+              .settings.outputDirectory = null
+            else .
+            end
+          ' .vercel/project.json > .vercel/project.json.tmp \
             && mv .vercel/project.json.tmp .vercel/project.json
 
       - name: Build
@@ -90,7 +101,21 @@ jobs:
         working-directory: ${{ steps.app-root.outputs.path }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+        run: |
+          jq '
+            if has("projectSettings") then
+              .projectSettings.rootDirectory = "" |
+              .projectSettings.outputDirectory = null
+            else .
+            end |
+            if has("settings") then
+              .settings.rootDirectory = "" |
+              .settings.outputDirectory = null
+            else .
+            end
+          ' .vercel/project.json > .vercel/project.json.tmp \
+            && mv .vercel/project.json.tmp .vercel/project.json
+          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
       - name: Finish in repo handoff mode
         if: steps.creds.outputs.configured != 'true'
