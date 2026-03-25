@@ -165,8 +165,9 @@ If `${{ github.event.inputs.issue_number }}` is non-empty, this run was dispatch
 In Targeted Issue Dispatch Mode:
 - Treat issue `#${{ github.event.inputs.issue_number }}` as the only candidate for Task 1 in this run.
 - Fetch that issue directly instead of scanning the backlog to choose a task.
-- If the issue is closed, missing, non-actionable, or still blocked by dependencies, exit without substituting a different issue.
+- If the issue is closed, missing, non-actionable, or still blocked by dependencies, do not substitute a different issue. Report the blocker explicitly with `missing_data` or `missing_tool`, including the next step needed to unblock the issue.
 - Do not rotate to unrelated implementation tasks in this run. After the targeted issue path completes, you may still perform Task 5 and Task 6.
+- If the targeted issue cannot be implemented safely in this run, do **not** use `noop`. Emit `missing_data` or `missing_tool` with the exact blocker, why it blocks implementation, and the next step required.
 
 ## Architecture Context
 
@@ -352,5 +353,7 @@ If Targeted Issue Dispatch Mode is active, Task 1 must operate only on issue `#$
 ## No-Work Fallback (ALWAYS DO THIS LAST)
 
 After completing all tasks above, if **no outputs were produced** during this run (no PRs created, no comments posted, no issues created, no labels changed, no pushes, and no project status update succeeded), call `noop` with a brief summary explaining why there was nothing to do. This ensures the workflow completes successfully rather than failing with no output.
+
+Exception: if Targeted Issue Dispatch Mode is active, never use `noop` as the final outcome. Emit `missing_data` or `missing_tool` with the exact blocker and next step instead, so the targeted run fails closed with actionable guidance.
 
 Example: "Pipeline is idle — no open implementable issues, no open Pipeline PRs requiring maintenance, and no review feedback to address. Run 04 appears complete."

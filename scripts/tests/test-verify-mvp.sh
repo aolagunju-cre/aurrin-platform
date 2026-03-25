@@ -45,6 +45,7 @@ printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-extract-linked
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-patch-codex-openrouter-http-locks.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-patch-pr-review-agent-lock.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-patch-github-mcp-token-precedence.sh" >/dev/null
+printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-patch-repo-assist-lock.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-agent-activation.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-agent-validation-review.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-submit-policy-gate.sh" >/dev/null

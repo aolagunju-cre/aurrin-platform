@@ -1283,6 +1283,67 @@ jobs:
             setupGlobals(core, github, context, exec, io);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/notify_comment_error.cjs');
             await main();
+      - name: Fail targeted issue runs without actionable output
+        if: always() && needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != '' && steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT != ''
+        env:
+          GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
+          GH_AW_TARGET_ISSUE: ${{ github.event.inputs.issue_number }}
+        run: |
+          set +e
+          MESSAGE=$(
+            node <<'NODE'
+            const fs = require('fs');
+
+            const path = process.env.GH_AW_AGENT_OUTPUT;
+            const issue = process.env.GH_AW_TARGET_ISSUE;
+            const successTypes = new Set(['create_pull_request', 'push_to_pull_request_branch']);
+            const blockerTypes = new Set(['missing_data', 'missing_tool']);
+
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const items = Array.isArray(data.items) ? data.items : [];
+            const types = items.map(item => item && item.type).filter(Boolean);
+
+            if (types.some(type => successTypes.has(type))) {
+              process.exit(0);
+            }
+
+            const blocker = items.find(item => item && blockerTypes.has(item.type));
+            if (blocker) {
+              const details = [];
+              if (blocker.reason) details.push(blocker.reason);
+              if (blocker.context) details.push(`Context: ${blocker.context}`);
+              if (blocker.alternatives) details.push(`Next step: ${blocker.alternatives}`);
+              if (blocker.tool) details.push(`Tool: ${blocker.tool}`);
+              if (blocker.data_type) details.push(`Data: ${blocker.data_type}`);
+
+              const message = [
+                `Targeted issue #${issue} did not create or update a PR.`,
+                `${blocker.type} reported${details.length ? `: ${details.join(' ')}` : '.'}`,
+              ].join(' ');
+              console.log(message);
+              process.exit(2);
+            }
+
+            const noop = items.find(item => item && item.type === 'noop');
+            const noopMessage = noop && noop.message ? noop.message : 'Agent produced no actionable or blocker safe outputs.';
+            console.log(
+              `Targeted issue #${issue} ended with noop. Use missing_data or missing_tool with the exact blocker and next step instead of noop. Details: ${noopMessage}`,
+            );
+            process.exit(3);
+            NODE
+          )
+          STATUS=$?
+          set -e
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error title=Targeted issue run produced no actionable output::$MESSAGE"
+            {
+              echo "### Targeted issue dispatch failed closed"
+              echo
+              echo "$MESSAGE"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
       - name: Invalidate GitHub App token
         if: always() && steps.safe-outputs-app-token.outputs.token != ''
         env:

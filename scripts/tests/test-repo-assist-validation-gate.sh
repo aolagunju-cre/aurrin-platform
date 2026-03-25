@@ -29,4 +29,9 @@ grep -F 'If a listed repo contract path is missing, stop and comment instead of 
   exit 1
 }
 
+grep -F 'Exception: if Targeted Issue Dispatch Mode is active, never use `noop` as the final outcome.' "$PROMPT" >/dev/null || {
+  echo "FAIL: targeted issue mode must fail closed instead of ending with noop" >&2
+  exit 1
+}
+
 echo "repo-assist validation gate tests passed"

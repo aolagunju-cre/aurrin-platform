@@ -48,6 +48,7 @@ echo "Compiling gh-aw workflows..."
 gh aw compile
 bash "$SCRIPT_DIR/patch-codex-openrouter-http-locks.sh"
 bash "$SCRIPT_DIR/patch-github-mcp-token-precedence.sh"
+bash "$SCRIPT_DIR/patch-repo-assist-lock.sh"
 bash "$SCRIPT_DIR/patch-pr-review-agent-lock.sh"
 echo "Workflows compiled."
 

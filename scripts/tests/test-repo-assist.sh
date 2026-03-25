@@ -22,6 +22,11 @@ grep -F "((github.event_name == 'workflow_dispatch' || github.event_name == 'sch
   exit 1
 }
 
+grep -F 'do **not** use `noop`. Emit `missing_data` or `missing_tool` with the exact blocker' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: targeted issue mode must forbid noop-only completions" >&2
+  exit 1
+}
+
 grep -F 'cancel-in-progress: true' "$WORKFLOW" >/dev/null || {
   echo "FAIL: repo-assist.md must continue cancelling superseded runs within the shared concurrency group" >&2
   exit 1
