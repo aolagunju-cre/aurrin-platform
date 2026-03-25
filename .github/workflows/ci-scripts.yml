@@ -46,6 +46,8 @@ jobs:
         run: bash scripts/tests/test-auto-dispatch-requeue.sh
       - name: Test deploy validation wiring
         run: bash scripts/tests/test-deploy-validation-wiring.sh
+      - name: Test GitHub MCP token precedence patch script
+        run: bash scripts/tests/test-patch-github-mcp-token-precedence.sh
       - name: Test pr-review-agent lock patch script
         run: bash scripts/tests/test-patch-pr-review-agent-lock.sh
       - name: Test pr-review-agent activation bypass

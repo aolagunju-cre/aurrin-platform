@@ -51,6 +51,7 @@ CHECKS=(
   "bash scripts/tests/test-extract-linked-issue-numbers.sh"
   "bash scripts/tests/test-frontend-agent.sh"
   "bash scripts/tests/test-log-decision.sh"
+  "bash scripts/tests/test-patch-github-mcp-token-precedence.sh"
   "bash scripts/tests/test-pipeline-watchdog.sh"
   "bash scripts/tests/test-patch-pr-review-agent-lock.sh"
   "bash scripts/tests/test-pr-review-agent-activation.sh"
