@@ -175,6 +175,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
 
@@ -248,19 +249,63 @@ jobs:
               | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length'
           }
 
+          open_dependency_numbers() {
+            local issue_body=$1
+            local blocked=()
+            local dependency_number
+
+            while IFS= read -r dependency_number; do
+              [ -n "$dependency_number" ] || continue
+              if printf '%s' "$OPEN_ISSUES" | jq -e --arg dep "$dependency_number" '[.[] | .number] | index(($dep | tonumber)) != null' >/dev/null; then
+                blocked+=("#${dependency_number}")
+              fi
+            done < <(printf '%s' "$issue_body" | bash scripts/extract-issue-dependencies.sh)
+
+            if [ "${#blocked[@]}" -gt 0 ]; then
+              printf '%s\n' "${blocked[*]}"
+            fi
+          }
+
+          find_issue_for_run() {
+            local run_id=$1
+            local comments_json
+            local match_count
+
+            [ -n "$run_id" ] || return 0
+
+            while IFS= read -r issue_row; do
+              [ -z "$issue_row" ] && continue
+              local candidate
+              candidate=$(printf '%s' "$issue_row" | jq -r '.number')
+              comments_json=$(find_marker_comments "$candidate" "$DISPATCH_MARKER")
+              match_count=$(printf '%s' "$comments_json" | jq --arg run_id "$run_id" '[.[] | select((.body | contains("agent_run_id=" + $run_id)) or (.body | contains("repo_assist_run_id=" + $run_id)))] | length')
+              if [ "${match_count:-0}" -gt 0 ]; then
+                printf '%s\n' "$candidate"
+                return 0
+              fi
+            done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c '.[]')
+          }
+
           OPEN_PRS=$(gh pr list --repo "$REPO" --state open --limit 100 --json body 2>/dev/null || echo '[]')
           LINKED_ISSUES=$(printf '%s' "$OPEN_PRS" | jq -r '.[].body // empty' 2>/dev/null \
             | bash scripts/extract-linked-issue-numbers.sh "$REPO" || true)
+          OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --limit 500 --json number 2>/dev/null || echo '[]')
           PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --limit 200 \
-            --json number,title,createdAt,labels 2>/dev/null || echo '[]')
+            --json number,title,createdAt,labels,body 2>/dev/null || echo '[]')
+          TRIGGER_ISSUE=$(find_issue_for_run "${TRIGGER_RUN_ID:-}")
 
           SELECTED_ISSUE=""
           SELECTED_WORKFLOW=""
           SELECTED_ROUTE=""
+          SELECTED_REASON=""
+          FALLBACK_ISSUE=""
+          FALLBACK_WORKFLOW=""
+          FALLBACK_ROUTE=""
 
           while IFS= read -r ISSUE_ROW; do
             [ -z "$ISSUE_ROW" ] && continue
             ISSUE_NUM=$(printf '%s' "$ISSUE_ROW" | jq -r '.number')
+            ISSUE_BODY=$(printf '%s' "$ISSUE_ROW" | jq -r '.body // ""')
 
             ISSUE_CLASSIFICATION=$(printf '%s' "$ISSUE_ROW" | scripts/classify-pipeline-issue.sh)
             ISSUE_ACTIONABLE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.actionable')
@@ -277,9 +322,31 @@ jobs:
               continue
             fi
 
+            BLOCKING_DEPENDENCIES=$(open_dependency_numbers "$ISSUE_BODY" || true)
+            if [ -n "$BLOCKING_DEPENDENCIES" ]; then
+              echo "Issue #${ISSUE_NUM}: waiting on open dependencies ${BLOCKING_DEPENDENCIES}."
+              continue
+            fi
+
+            ISSUE_ACTIVE=$(workflow_active_count "$ISSUE_WORKFLOW")
+            if [ "${ISSUE_ACTIVE:-0}" -gt 0 ]; then
+              echo "Issue #${ISSUE_NUM}: ${ISSUE_WORKFLOW} already active (${ISSUE_ACTIVE} run(s)); checking next queued issue."
+              continue
+            fi
+
             DEFERRED_JSON=$(find_marker_comment "$ISSUE_NUM" "$DEFERRED_MARKER")
             DEFERRED_ID=$(printf '%s' "$DEFERRED_JSON" | jq -r '.id // empty')
             if [ -z "$DEFERRED_ID" ]; then
+              if [ -n "$TRIGGER_ISSUE" ] && [ "$ISSUE_NUM" = "$TRIGGER_ISSUE" ]; then
+                echo "Issue #${ISSUE_NUM}: skipping immediate re-dispatch of the just-completed issue."
+                continue
+              fi
+
+              if [ -z "$FALLBACK_ISSUE" ]; then
+                FALLBACK_ISSUE="$ISSUE_NUM"
+                FALLBACK_WORKFLOW="$ISSUE_WORKFLOW"
+                FALLBACK_ROUTE="$ISSUE_ROUTE"
+              fi
               continue
             fi
 
@@ -349,24 +416,26 @@ jobs:
               fi
             fi
 
-            ISSUE_ACTIVE=$(workflow_active_count "$ISSUE_WORKFLOW")
-            if [ "${ISSUE_ACTIVE:-0}" -gt 0 ]; then
-              echo "Issue #${ISSUE_NUM}: ${ISSUE_WORKFLOW} already active (${ISSUE_ACTIVE} run(s)); checking next deferred issue."
-              continue
-            fi
-
             SELECTED_ISSUE="$ISSUE_NUM"
             SELECTED_WORKFLOW="$ISSUE_WORKFLOW"
             SELECTED_ROUTE="$ISSUE_ROUTE"
+            SELECTED_REASON="requeue_after_guard_skip"
             break
           done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c 'sort_by(.createdAt)[]')
 
           if [ -z "$SELECTED_ISSUE" ]; then
-            echo "No deferred actionable issues require re-dispatch."
+            SELECTED_ISSUE="$FALLBACK_ISSUE"
+            SELECTED_WORKFLOW="$FALLBACK_WORKFLOW"
+            SELECTED_ROUTE="$FALLBACK_ROUTE"
+            SELECTED_REASON="requeue_backlog_fallback"
+          fi
+
+          if [ -z "$SELECTED_ISSUE" ]; then
+            echo "No deferred actionable issues require re-dispatch and no backlog fallback candidate is ready."
             exit 0
           fi
 
-          echo "Re-dispatching issue #${SELECTED_ISSUE} via ${SELECTED_WORKFLOW} (route: ${SELECTED_ROUTE})."
+          echo "Re-dispatching issue #${SELECTED_ISSUE} via ${SELECTED_WORKFLOW} (route: ${SELECTED_ROUTE}, reason: ${SELECTED_REASON})."
           DISPATCHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ]; then
             gh workflow run "$SELECTED_WORKFLOW" \
@@ -398,7 +467,7 @@ jobs:
             '<!-- self-healing-dispatch:v1' \
             'dispatch_workflow=Auto-Dispatch Pipeline Issues' \
             'dispatch_origin_workflow=Auto-Dispatch Requeue' \
-            'dispatch_reason=requeue_after_guard_skip' \
+            "dispatch_reason=${SELECTED_REASON}" \
             "route=${SELECTED_ROUTE}" \
             "workflow_file=${SELECTED_WORKFLOW}" \
             "dispatch_workflow_run_id=${GITHUB_RUN_ID}" \

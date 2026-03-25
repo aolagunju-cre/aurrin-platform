@@ -39,6 +39,7 @@ printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-frontend-agent
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pipeline-watchdog.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-classify-pipeline-pr.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-duplicate-code-detector.sh" >/dev/null
+printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-extract-issue-dependencies.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-extract-linked-issue-numbers.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-patch-pr-review-agent-lock.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-agent-activation.sh" >/dev/null

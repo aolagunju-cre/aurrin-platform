@@ -47,6 +47,7 @@ CHECKS=(
   "bash scripts/tests/test-classify-pipeline-pr.sh"
   "bash scripts/tests/test-deploy-validation-wiring.sh"
   "bash scripts/tests/test-duplicate-code-detector.sh"
+  "bash scripts/tests/test-extract-issue-dependencies.sh"
   "bash scripts/tests/test-extract-linked-issue-numbers.sh"
   "bash scripts/tests/test-frontend-agent.sh"
   "bash scripts/tests/test-log-decision.sh"

@@ -40,6 +40,8 @@ jobs:
         run: bash scripts/tests/test-architecture-approve.sh
       - name: Test auto-dispatch token wiring
         run: bash scripts/tests/test-auto-dispatch.sh
+      - name: Test issue dependency extraction
+        run: bash scripts/tests/test-extract-issue-dependencies.sh
       - name: Test auto-dispatch requeue token wiring
         run: bash scripts/tests/test-auto-dispatch-requeue.sh
       - name: Test deploy validation wiring

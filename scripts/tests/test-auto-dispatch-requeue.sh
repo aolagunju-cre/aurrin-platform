@@ -21,6 +21,16 @@ grep -F "Auto-retrying issue #\${ISSUE_NUMBER} after a transient provider failur
   exit 1
 }
 
+grep -F 'bash scripts/extract-issue-dependencies.sh' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must consult explicit issue dependencies before choosing backlog fallback" >&2
+  exit 1
+}
+
+grep -F -- '--json number,title,createdAt,labels,body' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must read issue bodies for dependency-aware backlog fallback" >&2
+  exit 1
+}
+
 grep -F 'gh workflow run "$WORKFLOW_FILE" \' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must dispatch the owning workflow" >&2
   exit 1
@@ -45,5 +55,20 @@ if grep -Fq 'GH_AW_GITHUB_TOKEN is unavailable; cannot retry transient provider 
   echo "FAIL: auto-dispatch-requeue should not block transient retries on GH_AW_GITHUB_TOKEN" >&2
   exit 1
 fi
+
+grep -F 'Issue #${ISSUE_NUM}: skipping immediate re-dispatch of the just-completed issue.' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must avoid immediately re-dispatching the run that just completed" >&2
+  exit 1
+}
+
+grep -F 'SELECTED_REASON="requeue_backlog_fallback"' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must tag backlog fallback redispatches distinctly" >&2
+  exit 1
+}
+
+grep -F '"dispatch_reason=${SELECTED_REASON}"' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must persist the selected dispatch reason in its marker comment" >&2
+  exit 1
+}
 
 echo "auto-dispatch-requeue.yml tests passed"
