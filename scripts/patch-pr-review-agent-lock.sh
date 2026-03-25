@@ -30,6 +30,8 @@ STEP
 
 old_activated_output = "      activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}"
 new_activated_output = "      activated: ${{ steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true' }}"
+old_github_token_expr = "github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}"
+new_github_token_expr = "github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}"
 
 unless content.include?(new_activated_output)
   raise "Could not find pre_activation activated output in #{path}" unless content.sub!(old_activated_output, new_activated_output)
@@ -54,6 +56,11 @@ raise "Patched bypass step missing in #{path}" unless content.include?(bypass_st
 raise "Patched membership guard missing in #{path}" unless content.include?(membership_guard)
 raise "Duplicate bypass step detected in #{path}" unless content.scan(bypass_step).length == 1
 raise "Duplicate membership guard detected in #{path}" unless content.scan(membership_guard).length == 1
+
+content.gsub!(old_github_token_expr, new_github_token_expr)
+
+raise "Patched github-token precedence missing in #{path}" unless content.include?(new_github_token_expr)
+raise "Unpatched github-token precedence remains in #{path}" if content.include?(old_github_token_expr)
 
 File.write(path, content) if content != original
 RUBY

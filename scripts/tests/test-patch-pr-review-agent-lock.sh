@@ -29,6 +29,15 @@ jobs:
         env:
           GH_AW_REQUIRED_ROLES: admin,maintainer,write
         with:
+          github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');
+            setupGlobals(core, github, context, exec, io);
+            const { main } = require('/opt/gh-aw/actions/check_membership.cjs');
+            await main();
+      - name: Process Safe Outputs
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { setupGlobals } = require('/opt/gh-aw/actions/setup_globals.cjs');
@@ -52,12 +61,18 @@ SECOND_HASH=$(hash_file "$WORKFLOW")
 grep -F "      - name: Activate same-repo pull request without membership gate" "$WORKFLOW" >/dev/null
 grep -F "steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true'" "$WORKFLOW" >/dev/null
 grep -F "if: steps.activate_pull_request.outputs.activated != 'true'" "$WORKFLOW" >/dev/null
+grep -F 'github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Activate same-repo pull request without membership gate$" "$WORKFLOW")" -eq 1 ]
 [ "$(grep -c "^        if: steps.activate_pull_request.outputs.activated != 'true'$" "$WORKFLOW")" -eq 1 ]
 
 if grep -q "^- name: Activate same-repo pull request without membership gate$" "$WORKFLOW"; then
   echo "FAIL: bypass step was inserted without workflow indentation" >&2
+  exit 1
+fi
+
+if grep -Fq 'github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}' "$WORKFLOW"; then
+  echo "FAIL: old github-token precedence remained in pr-review-agent lock patch output" >&2
   exit 1
 fi
 
