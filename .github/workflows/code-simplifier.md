@@ -15,15 +15,25 @@ tracker-id: code-simplifier
 imports:
   - shared/reporting.md
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+engine:
+  id: codex
+  model: openai/gpt-5-codex
+  env:
+    OPENAI_BASE_URL: https://openrouter.ai/api/v1
+
 safe-outputs:
   create-pull-request:
     title-prefix: "[code-simplifier] "
     labels: [refactoring, code-quality, automation]
-    reviewers: [copilot]
     expires: 1d
 
 network:
   allowed:
+    - defaults
+    - openrouter.ai
     - dotnet
 
 tools:

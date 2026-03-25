@@ -8,9 +8,19 @@ on:
 
 timeout-minutes: 10
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 engine:
-  id: copilot
-  model: gpt-5
+  id: codex
+  model: openai/gpt-5-codex
+  env:
+    OPENAI_BASE_URL: https://openrouter.ai/api/v1
+
+network:
+  allowed:
+    - defaults
+    - openrouter.ai
 
 permissions: read-all
 

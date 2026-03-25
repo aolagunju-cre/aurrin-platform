@@ -319,7 +319,7 @@ refused to do, and why.
 | Secret | Purpose |
 |---|---|
 | `GH_AW_GITHUB_TOKEN` | Auto-merge, workflow dispatch, and GitHub API actions that must outlive `GITHUB_TOKEN` cascade limits |
-| `COPILOT_GITHUB_TOKEN` | Copilot engine token for gh-aw workflows |
+| `OPENAI_API_KEY` | Codex/OpenAI engine token for gh-aw workflows |
 | `GH_AW_PROJECT_GITHUB_TOKEN` | Project board access for repo-assist updates |
 | `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` | Vercel deploy identity |
 
@@ -328,7 +328,7 @@ refused to do, and why.
 | Variable | Purpose | Default |
 |---|---|---|
 | `PIPELINE_HEALING_ENABLED` | Kill switch for autonomous healing. Set to `false` to pause dispatch, repair, and auto-merge while keeping detection and recording active. | unset (healing enabled) |
-| `GH_AW_MODEL_AGENT_COPILOT` | Model used by continuous improvement agents (`code-simplifier`, `duplicate-code-detector`). Older agents (`repo-assist`, `pipeline-status`) hardcode their model. | `gpt-5` |
+| `GH_AW_MODEL_AGENT_COPILOT` | Legacy model override variable retained for compatibility with older continuous-improvement workflows. | `gpt-5` |
 
 ## Repo Settings
 

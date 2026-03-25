@@ -17,13 +17,18 @@ on:
 
 timeout-minutes: 15
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 engine:
-  id: copilot
-  model: gpt-5
+  id: codex
+  model: openai/gpt-5-codex
 
 permissions: read-all
 
-network: defaults
+network:
+  allowed:
+    - defaults
 
 safe-outputs:
   github-app:

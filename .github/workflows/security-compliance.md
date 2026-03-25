@@ -4,6 +4,9 @@ description: Fix critical vulnerabilities before audit deadline with full tracki
 timeout-minutes: 30
 strict: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   workflow_dispatch:
     inputs:
@@ -23,7 +26,16 @@ permissions:
   contents: read
   security-events: read
 
-engine: copilot
+engine:
+  id: codex
+  model: openai/gpt-5-codex
+  env:
+    OPENAI_BASE_URL: https://openrouter.ai/api/v1
+
+network:
+  allowed:
+    - defaults
+    - openrouter.ai
 
 safe-outputs:
   create-issue:
