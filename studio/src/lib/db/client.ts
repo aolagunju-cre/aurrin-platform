@@ -141,6 +141,38 @@ export interface RoleAssignmentInsert {
   created_by: string;
 }
 
+export type EventStatus = 'upcoming' | 'live' | 'archived';
+
+export interface EventRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  status: EventStatus;
+  starts_at: string;
+  ends_at: string;
+  config: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EventInsert {
+  name: string;
+  description?: string | null;
+  status?: EventStatus;
+  starts_at: string;
+  ends_at: string;
+  config?: Record<string, unknown>;
+}
+
+export interface EventUpdate {
+  name?: string;
+  description?: string | null;
+  status?: EventStatus;
+  starts_at?: string;
+  ends_at?: string;
+  config?: Record<string, unknown>;
+}
+
 export interface UserSearchRecord {
   id: string;
   email: string;
@@ -374,6 +406,10 @@ export interface SupabaseDBClient {
   listRoleAssignments(): Promise<{ data: RoleAssignmentListRecord[]; error: Error | null }>;
   insertRoleAssignment(record: RoleAssignmentInsert): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
   deleteRoleAssignment(id: string): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
+  listEvents(): Promise<{ data: EventRecord[]; error: Error | null }>;
+  getEventById(id: string): Promise<{ data: EventRecord | null; error: Error | null }>;
+  insertEvent(record: EventInsert): Promise<{ data: EventRecord | null; error: Error | null }>;
+  updateEvent(id: string, updates: EventUpdate): Promise<{ data: EventRecord | null; error: Error | null }>;
   searchUsersByEmail(query: string, limit?: number): Promise<{ data: UserSearchRecord[]; error: Error | null }>;
   listRubricTemplates(): Promise<{ data: RubricTemplateRecord[]; error: Error | null }>;
   getRubricTemplateById(id: string): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
@@ -449,6 +485,10 @@ export function getSupabaseClient(): SupabaseClient {
         listRoleAssignments: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         deleteRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listEvents: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getEventById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         searchUsersByEmail: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listRubricTemplates: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getRubricTemplateById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -986,6 +1026,79 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Role assignment delete failed: ${response.statusText}`) };
         }
         const rows = await response.json() as RoleAssignmentRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listEvents() {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/events?select=*&order=starts_at.desc&limit=500`, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`Events query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EventRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getEventById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/events?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Event query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EventRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertEvent(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/events`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            name: record.name,
+            description: record.description ?? null,
+            status: record.status ?? 'upcoming',
+            starts_at: record.starts_at,
+            ends_at: record.ends_at,
+            config: record.config ?? {},
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Event insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EventRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateEvent(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Event update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EventRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
