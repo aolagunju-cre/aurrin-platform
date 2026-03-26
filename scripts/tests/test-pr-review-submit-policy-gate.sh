@@ -26,7 +26,12 @@ grep -F "FALLBACK_MERGE_TOKEN" "$WORKFLOW" >/dev/null
 grep -F 'Primary merge token failed for PR #${PR_NUMBER}; retrying with fallback token.' "$WORKFLOW" >/dev/null
 grep -F "Dispatch requeue after MVP merge" "$WORKFLOW" >/dev/null
 grep -F 'gh workflow run auto-dispatch-requeue.yml --repo "$REPO"' "$WORKFLOW" >/dev/null
-grep -F 'Dispatched auto-dispatch-requeue after MVP merge of PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
+grep -F 'Dispatched and verified auto-dispatch-requeue after MVP merge of PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
+grep -F "PRIMARY_DISPATCH_TOKEN" "$WORKFLOW" >/dev/null
+grep -F "FALLBACK_DISPATCH_TOKEN" "$WORKFLOW" >/dev/null
+grep -F 'Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch.' "$WORKFLOW" >/dev/null
+grep -F 'Primary dispatch token did not produce a verified requeue run for PR #${PR_NUMBER}; retrying with fallback token.' "$WORKFLOW" >/dev/null
+grep -F 'Dispatch requeue after MVP merge reported success path but no auto-dispatch-requeue run was created for PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
 grep -F 'gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch' "$WORKFLOW" >/dev/null
 grep -F "merged via MVP fast-track mode" "$WORKFLOW" >/dev/null
 grep -F "bug\" or . == \"docs\" or . == \"test\"" "$WORKFLOW" >/dev/null
@@ -97,6 +102,18 @@ fi
 MVP_REQUEUE_COUNT=$(grep -c "name: Dispatch requeue after MVP merge" "$WORKFLOW")
 if [ "$MVP_REQUEUE_COUNT" -lt 2 ]; then
   echo "FAIL: expected MVP requeue dispatch steps in both pr-review-submit jobs" >&2
+  exit 1
+fi
+
+PRIMARY_DISPATCH_COUNT=$(grep -c "PRIMARY_DISPATCH_TOKEN" "$WORKFLOW")
+if [ "$PRIMARY_DISPATCH_COUNT" -lt 2 ]; then
+  echo "FAIL: expected both MVP requeue steps to use primary dispatch tokens" >&2
+  exit 1
+fi
+
+CONFIRMED_REQUEUE_COUNT=$(grep -c "Confirmed auto-dispatch-requeue run" "$WORKFLOW")
+if [ "$CONFIRMED_REQUEUE_COUNT" -lt 2 ]; then
+  echo "FAIL: expected both MVP requeue steps to verify that a requeue run was actually created" >&2
   exit 1
 fi
 
