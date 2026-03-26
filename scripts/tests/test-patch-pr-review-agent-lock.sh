@@ -55,6 +55,22 @@ jobs:
       - name: Upload safe output items
         if: always()
         uses: actions/upload-artifact@v4
+  agent:
+    steps:
+      - name: Check if detection needed
+        id: detection_guard
+        if: always()
+        env:
+          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
+          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+        run: |
+          if [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+            echo "run_detection=true" >> "$GITHUB_OUTPUT"
+            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
+          else
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: no agent outputs or patches to analyze"
+          fi
 YAML
 
 hash_file() {
@@ -77,6 +93,8 @@ grep -F '      actions: write' "$WORKFLOW" >/dev/null
 grep -F "      - name: Dispatch pr-review-submit for posted verdict" "$WORKFLOW" >/dev/null
 grep -F "if: steps.process_safe_outputs.outputs.comment_id != ''" "$WORKFLOW" >/dev/null
 grep -F 'gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"' "$WORKFLOW" >/dev/null
+grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/null
+grep -F 'Detection skipped: PIPELINE_MVP_MODE=true' "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Activate same-repo pull request without membership gate$" "$WORKFLOW")" -eq 1 ]
 [ "$(grep -c "^        if: steps.activate_pull_request.outputs.activated != 'true'$" "$WORKFLOW")" -eq 1 ]

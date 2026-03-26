@@ -8,10 +8,12 @@ WORKFLOW="$ROOT_DIR/.github/workflows/pipeline-watchdog.yml"
 bash -n "$SCRIPT"
 
 grep -F 'cron: "*/20 * * * *"' "$WORKFLOW" >/dev/null
-grep -F 'workflows: ["PR Review Submit"]' "$WORKFLOW" >/dev/null
+grep -F 'workflows: ["PR Review Submit", "Node CI"]' "$WORKFLOW" >/dev/null
 grep -F 'types: [completed]' "$WORKFLOW" >/dev/null
 grep -F "run: bash scripts/pipeline-watchdog.sh" "$WORKFLOW" >/dev/null
 grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/null
+grep -F "MVP_MERGE_THRESHOLD_SECONDS:" "$WORKFLOW" >/dev/null
+grep -F "MVP_FAST_MERGE_TARGET_PR:" "$WORKFLOW" >/dev/null
 grep -F "workflow_active_runs()" "$SCRIPT" >/dev/null
 grep -F "dispatch_issue_workflow()" "$SCRIPT" >/dev/null
 grep -F "dispatch_requeue_workflow()" "$SCRIPT" >/dev/null
@@ -22,6 +24,9 @@ grep -F "sync_pr_repair_labels()" "$SCRIPT" >/dev/null
 grep -F 'reconcile-parent-pipeline-issues.sh' "$SCRIPT" >/dev/null
 grep -F '=== Reconciling blocked parent pipeline issues ===' "$SCRIPT" >/dev/null
 grep -F 'PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"' "$SCRIPT" >/dev/null
+grep -F 'MVP_MERGE_THRESHOLD_SECONDS="${MVP_MERGE_THRESHOLD_SECONDS:-1200}"' "$SCRIPT" >/dev/null
+grep -F 'MVP_FAST_MERGE_TARGET_PR="${MVP_FAST_MERGE_TARGET_PR:-}"' "$SCRIPT" >/dev/null
+grep -F 'skipping because fast-track merge is targeting PR #' "$SCRIPT" >/dev/null
 grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"' "$SCRIPT" >/dev/null
 grep -F 'Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping orphaned-issue dispatch to preserve one-PR-at-a-time flow.' "$SCRIPT" >/dev/null

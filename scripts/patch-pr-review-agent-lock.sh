@@ -64,6 +64,45 @@ safe_outputs_header = "\n  safe_outputs:\n"
 safe_outputs_end_marker = "\n  conclusion:\n"
 safe_outputs_pull_requests_line = "      pull-requests: write\n"
 safe_outputs_actions_line = "      actions: write\n"
+detection_skip_message = "Detection skipped: PIPELINE_MVP_MODE=true"
+
+old_detection_guard = <<'STEP'.chomp
+      - name: Check if detection needed
+        id: detection_guard
+        if: always()
+        env:
+          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
+          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+        run: |
+          if [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+            echo "run_detection=true" >> "$GITHUB_OUTPUT"
+            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
+          else
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: no agent outputs or patches to analyze"
+          fi
+STEP
+
+new_detection_guard = <<'STEP'.chomp
+      - name: Check if detection needed
+        id: detection_guard
+        if: always()
+        env:
+          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
+          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+          PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}
+        run: |
+          if [[ "${PIPELINE_MVP_MODE:-false}" == "true" ]]; then
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: PIPELINE_MVP_MODE=true"
+          elif [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+            echo "run_detection=true" >> "$GITHUB_OUTPUT"
+            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
+          else
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: no agent outputs or patches to analyze"
+          fi
+STEP
 
 unless content.include?(new_activated_output)
   raise "Could not find pre_activation activated output in #{path}" unless content.sub!(old_activated_output, new_activated_output)
@@ -93,6 +132,10 @@ content.gsub!(old_github_token_expr, new_github_token_expr)
 
 raise "Patched github-token precedence missing in #{path}" unless content.include?(new_github_token_expr)
 raise "Unpatched github-token precedence remains in #{path}" if content.include?(old_github_token_expr)
+
+content.sub!(old_detection_guard, new_detection_guard) unless content.include?(detection_skip_message)
+raise "Patched detection guard missing in #{path}" unless content.include?(detection_skip_message)
+raise "Patched detection guard missing PIPELINE_MVP_MODE env in #{path}" unless content.include?('PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}')
 
 safe_outputs_start = content.index(safe_outputs_header)
 raise "Could not find safe_outputs job in #{path}" unless safe_outputs_start

@@ -12,6 +12,22 @@ WORKFLOW="$TMPDIR/repo-assist.lock.yml"
 cat > "$WORKFLOW" <<'YAML'
 name: test
 jobs:
+  agent:
+    steps:
+      - name: Check if detection needed
+        id: detection_guard
+        if: always()
+        env:
+          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
+          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+        run: |
+          if [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+            echo "run_detection=true" >> "$GITHUB_OUTPUT"
+            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
+          else
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: no agent outputs or patches to analyze"
+          fi
   conclusion:
     needs:
       - activation
@@ -63,6 +79,8 @@ grep -F "Targeted issue dispatch failed closed" "$WORKFLOW" >/dev/null
 grep -F "MESSAGE=\$(node -e '" "$WORKFLOW" >/dev/null
 grep -F "      - name: Deduplicate repeated create_pull_request outputs" "$WORKFLOW" >/dev/null
 grep -F "bash scripts/dedupe-create-pr-safe-outputs.sh" "$WORKFLOW" >/dev/null
+grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/null
+grep -F 'Detection skipped: PIPELINE_MVP_MODE=true' "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Fail targeted issue runs without actionable output$" "$WORKFLOW")" -eq 1 ]
 [ "$(grep -c "^      - name: Deduplicate repeated create_pull_request outputs$" "$WORKFLOW")" -eq 1 ]

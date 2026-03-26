@@ -79,6 +79,47 @@ grep -F "$TMPDIR/console|test" "$LOG_FILE" >/dev/null || {
   exit 1
 }
 
+DOCS_ONLY_LOG="$TMPDIR/docs-only.log"
+export LOG_FILE="$DOCS_ONLY_LOG"
+: > "$DOCS_ONLY_LOG"
+(
+  cd "$TMPDIR"
+  VALIDATION_CHANGED_FILES=$'README.md\ndocs/guide.md' PATH="$TMPDIR/bin:$PATH" bash scripts/validate-implementation.sh >/dev/null
+)
+
+if [ -s "$DOCS_ONLY_LOG" ]; then
+  echo "FAIL: validate-implementation.sh must skip npm commands for docs-only changes" >&2
+  exit 1
+fi
+
+TEST_ONLY_LOG="$TMPDIR/test-only.log"
+export LOG_FILE="$TEST_ONLY_LOG"
+: > "$TEST_ONLY_LOG"
+(
+  cd "$TMPDIR"
+  VALIDATION_CHANGED_FILES=$'studio/test/admin-events-route.test.ts\ndocs/guide.md' PATH="$TMPDIR/bin:$PATH" bash scripts/validate-implementation.sh >/dev/null
+)
+
+grep -F "$TMPDIR/studio|ci" "$TEST_ONLY_LOG" >/dev/null || {
+  echo "FAIL: validate-implementation.sh must run npm ci for app test-only changes" >&2
+  exit 1
+}
+
+grep -F "$TMPDIR/studio|test" "$TEST_ONLY_LOG" >/dev/null || {
+  echo "FAIL: validate-implementation.sh must run npm test for app test-only changes" >&2
+  exit 1
+}
+
+if grep -Fq "$TMPDIR/studio|run build" "$TEST_ONLY_LOG"; then
+  echo "FAIL: validate-implementation.sh must skip npm run build for test-only changes" >&2
+  exit 1
+fi
+
+if grep -Fq "$TMPDIR/console|" "$TEST_ONLY_LOG"; then
+  echo "FAIL: validate-implementation.sh must not run console commands when only studio tests changed" >&2
+  exit 1
+fi
+
 printf 'unsupported-profile\n' > "$TMPDIR/.deploy-profile"
 if (
   cd "$TMPDIR"

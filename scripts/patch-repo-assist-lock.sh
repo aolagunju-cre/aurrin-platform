@@ -14,6 +14,7 @@ step_name = "      - name: Fail targeted issue runs without actionable output\n"
 insert_before = "      - name: Invalidate GitHub App token\n"
 fallback_insert_after = "      - name: Update reaction comment with completion status\n"
 dedupe_step_name = "      - name: Deduplicate repeated create_pull_request outputs\n"
+detection_skip_message = "Detection skipped: PIPELINE_MVP_MODE=true"
 
 fail_step = <<'STEP'.chomp
       - name: Fail targeted issue runs without actionable output
@@ -90,6 +91,44 @@ dedupe_step = <<'STEP'.chomp
             /tmp/gh-aw/safeoutputs.jsonl
 STEP
 
+old_detection_guard = <<'STEP'.chomp
+      - name: Check if detection needed
+        id: detection_guard
+        if: always()
+        env:
+          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
+          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+        run: |
+          if [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+            echo "run_detection=true" >> "$GITHUB_OUTPUT"
+            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
+          else
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: no agent outputs or patches to analyze"
+          fi
+STEP
+
+new_detection_guard = <<'STEP'.chomp
+      - name: Check if detection needed
+        id: detection_guard
+        if: always()
+        env:
+          OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
+          HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+          PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}
+        run: |
+          if [[ "${PIPELINE_MVP_MODE:-false}" == "true" ]]; then
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: PIPELINE_MVP_MODE=true"
+          elif [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+            echo "run_detection=true" >> "$GITHUB_OUTPUT"
+            echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
+          else
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: no agent outputs or patches to analyze"
+          fi
+STEP
+
 legacy_step_pattern = /
 ^      -\ name:\ Fail\ targeted\ issue\ runs\ without\ actionable\ output\n
 .*?
@@ -119,6 +158,10 @@ raise "Targeted issue guard missing noop guidance in #{path}" unless content.inc
 raise "Targeted issue guard missing workflow_dispatch issue_number condition in #{path}" unless content.include?("github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''")
 raise "Targeted issue guard missing numeric issue check in #{path}" unless content.match?(/if \(!\/\^\\d\+\$\/\.test\(issue \|\| ""\)\) \{/)
 raise "Legacy heredoc-based targeted issue guard remains in #{path}" if content.include?("node <<'NODE'")
+
+content.sub!(old_detection_guard, new_detection_guard) unless content.include?(detection_skip_message)
+raise "Patched detection guard missing in #{path}" unless content.include?(detection_skip_message)
+raise "Patched detection guard missing PIPELINE_MVP_MODE env in #{path}" unless content.include?('PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}')
 
 process_safe_outputs_step = "      - name: Process Safe Outputs\n"
 raise "Could not find Process Safe Outputs step in #{path}" unless content.include?(process_safe_outputs_step)

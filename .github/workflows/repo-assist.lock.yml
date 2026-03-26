@@ -1019,8 +1019,12 @@ jobs:
         env:
           OUTPUT_TYPES: ${{ steps.collect_output.outputs.output_types }}
           HAS_PATCH: ${{ steps.collect_output.outputs.has_patch }}
+          PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}
         run: |
-          if [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
+          if [[ "${PIPELINE_MVP_MODE:-false}" == "true" ]]; then
+            echo "run_detection=false" >> "$GITHUB_OUTPUT"
+            echo "Detection skipped: PIPELINE_MVP_MODE=true"
+          elif [[ -n "$OUTPUT_TYPES" || "$HAS_PATCH" == "true" ]]; then
             echo "run_detection=true" >> "$GITHUB_OUTPUT"
             echo "Detection will run: output_types=$OUTPUT_TYPES, has_patch=$HAS_PATCH"
           else

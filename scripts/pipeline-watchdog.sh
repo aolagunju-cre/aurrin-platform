@@ -10,6 +10,8 @@ STATE_MARKER='<!-- ci-repair-state:v1'
 STALE_THRESHOLD=1200
 ESCALATE_THRESHOLD=7200
 MAX_REPAIR_ATTEMPTS=2
+MVP_MERGE_THRESHOLD_SECONDS="${MVP_MERGE_THRESHOLD_SECONDS:-1200}"
+MVP_FAST_MERGE_TARGET_PR="${MVP_FAST_MERGE_TARGET_PR:-}"
 NOW=$(date -u +%s)
 NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 ACTIONS_TAKEN=0
@@ -307,11 +309,15 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
   while IFS= read -r PR_ROW; do
     [ -z "$PR_ROW" ] && continue
     PR_NUM=$(printf '%s' "$PR_ROW" | jq -r '.number')
+    if [ -n "$MVP_FAST_MERGE_TARGET_PR" ] && [ "$PR_NUM" != "$MVP_FAST_MERGE_TARGET_PR" ]; then
+      echo "PR #${PR_NUM}: skipping because fast-track merge is targeting PR #${MVP_FAST_MERGE_TARGET_PR}."
+      continue
+    fi
     PR_UPDATED=$(printf '%s' "$PR_ROW" | jq -r '.updatedAt')
     PR_EPOCH=$(to_epoch "$PR_UPDATED")
     AGE=$((NOW - PR_EPOCH))
-    if [ "$AGE" -lt "$STALE_THRESHOLD" ]; then
-      echo "PR #${PR_NUM}: MVP merge nudge waiting until stale threshold (${AGE}s ago)."
+    if [ "$AGE" -lt "$MVP_MERGE_THRESHOLD_SECONDS" ]; then
+      echo "PR #${PR_NUM}: MVP merge nudge waiting until merge threshold (${AGE}s ago, threshold ${MVP_MERGE_THRESHOLD_SECONDS}s)."
       continue
     fi
 
