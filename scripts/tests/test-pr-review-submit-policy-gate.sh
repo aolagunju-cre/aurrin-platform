@@ -29,6 +29,7 @@ grep -F 'gh workflow run auto-dispatch-requeue.yml --repo "$REPO"' "$WORKFLOW" >
 grep -F 'Dispatched and verified auto-dispatch-requeue after MVP merge of PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
 grep -F "PRIMARY_DISPATCH_TOKEN" "$WORKFLOW" >/dev/null
 grep -F "FALLBACK_DISPATCH_TOKEN" "$WORKFLOW" >/dev/null
+grep -F 'GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
 grep -F 'Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch.' "$WORKFLOW" >/dev/null
 grep -F 'Primary dispatch token did not produce a verified requeue run for PR #${PR_NUMBER}; retrying with fallback token.' "$WORKFLOW" >/dev/null
 grep -F 'Dispatch requeue after MVP merge reported success path but no auto-dispatch-requeue run was created for PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
@@ -114,6 +115,16 @@ fi
 CONFIRMED_REQUEUE_COUNT=$(grep -c "Confirmed auto-dispatch-requeue run" "$WORKFLOW")
 if [ "$CONFIRMED_REQUEUE_COUNT" -lt 2 ]; then
   echo "FAIL: expected both MVP requeue steps to verify that a requeue run was actually created" >&2
+  exit 1
+fi
+
+DISPATCH_GH_TOKEN_COUNT=$(ruby -e '
+  text = File.read(ARGV[0])
+  count = text.scan(/- name: Dispatch requeue after MVP merge\n(?:.*\n){0,10}?\s+GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/).length
+  puts count
+' "$WORKFLOW")
+if [ "$DISPATCH_GH_TOKEN_COUNT" -lt 2 ]; then
+  echo "FAIL: expected both MVP requeue steps to keep GH_TOKEN for GitHub CLI read operations" >&2
   exit 1
 fi
 

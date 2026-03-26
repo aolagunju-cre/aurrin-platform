@@ -545,6 +545,7 @@ jobs:
       - name: Dispatch requeue after MVP merge
         if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRIMARY_DISPATCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FALLBACK_DISPATCH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -1155,6 +1156,7 @@ jobs:
       - name: Dispatch requeue after MVP merge
         if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PRIMARY_DISPATCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FALLBACK_DISPATCH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
