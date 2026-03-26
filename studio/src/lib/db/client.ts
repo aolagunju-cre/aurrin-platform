@@ -181,7 +181,16 @@ export interface SupabaseDBClient {
   insertAuditLog(log: AuditLogInsert): Promise<{ error: Error | null }>;
   insertOutboxJob(job: OutboxJobInsert): Promise<{ data: OutboxJob | null; error: Error | null }>;
   fetchPendingJobs(limit: number): Promise<{ data: OutboxJob[]; error: Error | null }>;
-  updateJobState(id: string, state: OutboxJobState, updates?: Partial<Pick<OutboxJob, 'last_error' | 'retry_count' | 'scheduled_at' | 'started_at' | 'completed_at'>>): Promise<{ error: Error | null }>;
+  updateJobState(
+    id: string,
+    state: OutboxJobState,
+    updates?: Partial<
+      Pick<
+        OutboxJob,
+        'last_error' | 'retry_count' | 'scheduled_at' | 'started_at' | 'completed_at' | 'email_id' | 'error_message'
+      >
+    >
+  ): Promise<{ error: Error | null }>;
   getFounderApplicationById(id: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   getFounderApplicationByEmail(email: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   insertFounderApplication(record: FounderApplicationInsert): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
@@ -462,6 +471,8 @@ export function getSupabaseClient(): SupabaseClient {
         if (updates.scheduled_at !== undefined) body.scheduled_at = updates.scheduled_at;
         if (updates.started_at !== undefined) body.started_at = updates.started_at;
         if (updates.completed_at !== undefined) body.completed_at = updates.completed_at;
+        if (updates.email_id !== undefined) body.email_id = updates.email_id;
+        if (updates.error_message !== undefined) body.error_message = updates.error_message;
         const response = await fetch(`${supabaseUrl}/rest/v1/outbox_jobs?id=eq.${id}`, {
           method: 'PATCH',
           headers,

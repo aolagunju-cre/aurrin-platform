@@ -40,9 +40,9 @@ Request Handler
 import { enqueueJob } from '@/lib/jobs/enqueue';
 
 // Fire-and-forget: enqueue an email
-await enqueueJob('email', {
+await enqueueJob('send_email', {
   to: 'founder@example.com',
-  template: 'welcome',
+  template_name: 'welcome_founder',
   data: { name: 'Jane' },
 });
 
@@ -122,7 +122,7 @@ await enqueueJob('webhook', payload, { max_retries: 5 });
    SELECT * FROM outbox_jobs WHERE state = 'dead_letter' ORDER BY updated_at DESC;
    ```
 
-2. Inspect `last_error` to understand the failure.
+2. Inspect `last_error` / `error_message` to understand the failure.
 
 3. To replay a dead job, reset its state:
    ```sql

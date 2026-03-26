@@ -8,6 +8,7 @@ export type OutboxJobState =
 
 /** Job types supported by the background worker. */
 export type JobType =
+  | 'send_email'
   | 'email'
   | 'pdf_generate'
   | 'social_asset'
@@ -26,6 +27,8 @@ export interface OutboxJob {
   retry_count: number;
   max_retries: number;
   last_error: string | null;
+  email_id: string | null;
+  error_message: string | null;
   scheduled_at: string | null;
   started_at: string | null;
   completed_at: string | null;
@@ -45,6 +48,7 @@ export interface OutboxJobInsert {
 export interface JobResult {
   success: boolean;
   error?: string;
+  email_id?: string;
 }
 
 /** Exponential backoff delays (seconds) per retry attempt (0-indexed). */

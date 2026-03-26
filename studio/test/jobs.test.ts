@@ -23,6 +23,8 @@ function makeJob(overrides: Partial<OutboxJob> = {}): OutboxJob {
     retry_count: 0,
     max_retries: DEFAULT_MAX_RETRIES,
     last_error: null,
+    email_id: null,
+    error_message: null,
     scheduled_at: null,
     started_at: null,
     completed_at: null,
@@ -88,6 +90,28 @@ describe('enqueueJob', () => {
     );
     expect(result.id).toBe('job-1');
     expect(result.state).toBe('pending');
+  });
+
+  it('supports send_email outbox payload contract', async () => {
+    const client = makeClient();
+    setSupabaseClient(client);
+
+    await enqueueJob('send_email', {
+      to: 'founder@example.com',
+      template_name: 'welcome_founder',
+      data: { name: 'Founder' },
+    });
+
+    expect(client.db.insertOutboxJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        job_type: 'send_email',
+        payload: {
+          to: 'founder@example.com',
+          template_name: 'welcome_founder',
+          data: { name: 'Founder' },
+        },
+      })
+    );
   });
 
   it('passes aggregate_id and aggregate_type when provided', async () => {
@@ -174,6 +198,7 @@ describe('processPendingJobs', () => {
     const finalCall = updateCalls[updateCalls.length - 1];
     expect(finalCall[1]).toBe('failed');
     expect(finalCall[2]).toMatchObject({
+      error_message: expect.any(String),
       retry_count: 1,
       scheduled_at: expect.any(String),
     });
@@ -218,6 +243,40 @@ describe('processPendingJobs', () => {
     const result = await processPendingJobs();
     expect(result.processed).toBe(2);
     expect(result.succeeded).toBe(2);
+  });
+
+  it('dispatches send_email jobs without regressing legacy email jobs', async () => {
+    const jobs = [
+      makeJob({
+        id: 'send-email-job',
+        job_type: 'send_email',
+        payload: { to: 'a@b.com', template: 'welcome' },
+      }),
+      makeJob({
+        id: 'legacy-email-job',
+        job_type: 'email',
+        payload: { to: 'c@d.com', template: 'welcome' },
+      }),
+    ];
+    const client = makeClient({
+      fetchPendingJobs: jest.fn().mockResolvedValue({ data: jobs, error: null }),
+    });
+    setSupabaseClient(client);
+
+    const result = await processPendingJobs();
+
+    expect(result.processed).toBe(2);
+    expect(result.succeeded).toBe(2);
+    expect(client.db.updateJobState).toHaveBeenCalledWith(
+      'send-email-job',
+      'completed',
+      expect.objectContaining({ email_id: null, error_message: null })
+    );
+    expect(client.db.updateJobState).toHaveBeenCalledWith(
+      'legacy-email-job',
+      'completed',
+      expect.objectContaining({ email_id: null, error_message: null })
+    );
   });
 });
 

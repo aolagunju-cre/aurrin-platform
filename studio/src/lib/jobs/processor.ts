@@ -12,6 +12,7 @@ const BATCH_SIZE = 10;
 /** Dispatch a job to the appropriate handler based on its type. */
 async function dispatchJob(job: OutboxJob): Promise<JobResult> {
   switch (job.job_type) {
+    case 'send_email':
     case 'email':
       return handleEmailJob(job.payload);
     case 'pdf_generate':
@@ -73,6 +74,8 @@ export async function processPendingJobs(): Promise<ProcessResult> {
     if (result.success) {
       await client.db.updateJobState(job.id, 'completed', {
         completed_at: new Date().toISOString(),
+        email_id: result.email_id ?? null,
+        error_message: null,
       });
       stats.succeeded++;
       console.log(`[jobs/processor] Job ${job.id} completed`);
@@ -83,6 +86,7 @@ export async function processPendingJobs(): Promise<ProcessResult> {
       if (newRetryCount >= maxRetries) {
         await client.db.updateJobState(job.id, 'dead_letter', {
           last_error: result.error ?? 'Unknown error',
+          error_message: result.error ?? 'Unknown error',
           retry_count: newRetryCount,
         });
         stats.dead++;
@@ -90,6 +94,7 @@ export async function processPendingJobs(): Promise<ProcessResult> {
       } else {
         await client.db.updateJobState(job.id, 'failed', {
           last_error: result.error ?? 'Unknown error',
+          error_message: result.error ?? 'Unknown error',
           retry_count: newRetryCount,
           scheduled_at: nextRetryAt(newRetryCount),
         });
