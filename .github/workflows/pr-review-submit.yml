@@ -386,7 +386,7 @@ jobs:
             exit 1
           fi
 
-          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft)
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft,headRefName,baseRefName,author)
           PIPELINE_PR=$(printf '%s' "$PR_JSON" | bash scripts/classify-pipeline-pr.sh | jq -r '.pipeline_pr')
           if [ "$PIPELINE_PR" != "true" ]; then
             echo "PR #${PR_NUMBER} is not a pipeline PR. Skipping MVP fast-track merge."
@@ -880,7 +880,7 @@ jobs:
             exit 1
           fi
 
-          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft)
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft,headRefName,baseRefName,author)
           PIPELINE_PR=$(printf '%s' "$PR_JSON" | bash scripts/classify-pipeline-pr.sh | jq -r '.pipeline_pr')
           if [ "$PIPELINE_PR" != "true" ]; then
             echo "PR #${PR_NUMBER} is not a pipeline PR. Skipping MVP fast-track merge."
