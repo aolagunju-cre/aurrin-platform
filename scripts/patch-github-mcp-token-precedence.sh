@@ -10,7 +10,9 @@ root_dir = ARGV.shift
 workflow_paths =
   if ARGV.empty?
     Dir[File.join(root_dir, ".github/workflows/*.lock.yml")].select do |path|
-      File.read(path).include?("${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}")
+      content = File.read(path)
+      content.include?("${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}") ||
+        content.include?('"GITHUB_PERSONAL_ACCESS_TOKEN" = "$GH_AW_GITHUB_TOKEN"')
     end
   else
     ARGV.map { |path| File.expand_path(path, root_dir) }
@@ -23,14 +25,17 @@ end
 
 old_expr = "${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}"
 new_expr = "${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}"
+old_mcp_mapping = '"GITHUB_PERSONAL_ACCESS_TOKEN" = "$GH_AW_GITHUB_TOKEN"'
+new_mcp_mapping = '"GITHUB_PERSONAL_ACCESS_TOKEN" = "$GITHUB_MCP_SERVER_TOKEN"'
 
 patched = []
 
 workflow_paths.each do |path|
   content = File.read(path)
-  next unless content.include?(old_expr)
+  next unless content.include?(old_expr) || content.include?(old_mcp_mapping)
 
   updated = content.gsub(old_expr, new_expr)
+  updated = updated.gsub(old_mcp_mapping, new_mcp_mapping)
   next if updated == content
 
   File.write(path, updated)

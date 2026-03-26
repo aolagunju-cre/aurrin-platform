@@ -17,12 +17,19 @@ jobs:
           github-token: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
         env:
           GITHUB_MCP_SERVER_TOKEN: ${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+      - run: |
+          cat > /tmp/config.toml <<'CFG'
+          [mcp_servers.github]
+          env = { "GITHUB_HOST" = "$GITHUB_SERVER_URL", "GITHUB_PERSONAL_ACCESS_TOKEN" = "$GH_AW_GITHUB_TOKEN", "GITHUB_READ_ONLY" = "1", "GITHUB_TOOLSETS" = "all" }
+          CFG
 EOF
 
 bash "$SCRIPT" "$WORKFLOW" >/dev/null
 
 NEW_EXPR='${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}'
 OLD_EXPR='${{ secrets.GH_AW_GITHUB_MCP_SERVER_TOKEN || secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}'
+NEW_MAPPING='"GITHUB_PERSONAL_ACCESS_TOKEN" = "$GITHUB_MCP_SERVER_TOKEN"'
+OLD_MAPPING='"GITHUB_PERSONAL_ACCESS_TOKEN" = "$GH_AW_GITHUB_TOKEN"'
 
 grep -F "$NEW_EXPR" "$WORKFLOW" >/dev/null || {
   echo "FAIL: patch script must prefer GITHUB_TOKEN before custom MCP tokens" >&2
@@ -31,6 +38,16 @@ grep -F "$NEW_EXPR" "$WORKFLOW" >/dev/null || {
 
 if grep -Fq "$OLD_EXPR" "$WORKFLOW"; then
   echo "FAIL: patch script must remove stale MCP token precedence" >&2
+  exit 1
+fi
+
+grep -F "$NEW_MAPPING" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: patch script must bind MCP personal access token to GITHUB_MCP_SERVER_TOKEN" >&2
+  exit 1
+}
+
+if grep -Fq "$OLD_MAPPING" "$WORKFLOW"; then
+  echo "FAIL: patch script must remove hardcoded GH_AW_GITHUB_TOKEN MCP bindings" >&2
   exit 1
 fi
 
@@ -53,6 +70,16 @@ do
 
   if grep -Fq "$OLD_EXPR" "$workflow"; then
     echo "FAIL: $(basename "$workflow") still uses stale GitHub MCP token precedence" >&2
+    exit 1
+  fi
+
+  grep -F "$NEW_MAPPING" "$workflow" >/dev/null || {
+    echo "FAIL: $(basename "$workflow") must bind MCP auth to GITHUB_MCP_SERVER_TOKEN" >&2
+    exit 1
+  }
+
+  if grep -Fq "$OLD_MAPPING" "$workflow"; then
+    echo "FAIL: $(basename "$workflow") still hardcodes GH_AW_GITHUB_TOKEN in MCP config" >&2
     exit 1
   fi
 done
