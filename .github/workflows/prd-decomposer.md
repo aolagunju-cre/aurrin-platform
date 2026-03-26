@@ -114,9 +114,12 @@ If the instructions above contain a URL or file path, fetch/read that content as
      - Always include `AGENTS.md`
      - Always include `.deploy-profile`
      - Always include `.github/deploy-profiles/<active-profile>.yml`
+     - Only include paths that already exist on the current default branch at decomposition time
      - Add current schema or migration file paths for DB or storage work
      - Add current session, JWT, auth, or request helper file paths for auth or request handling work
      - Add both caller/component paths and route/handler paths for UI-to-API boundary work
+     - Prefer existing shared scaffolds, guards, helpers, or predecessor routes over future issue-target files
+     - Do **not** list files that this issue or a sibling issue is expected to create later; those belong in acceptance criteria or technical notes, not in `## Existing Contracts to Read`
    - A `## Description` section explaining what to build and why
    - A `## Acceptance Criteria` section as a markdown checklist
    - A `## Dependencies` section (use "Depends on #aw_ID" for issues in this batch)
@@ -242,6 +245,8 @@ Before creating each issue, verify:
 - [ ] PRD Traceability identifies the authoritative source and exact in-scope requirements
 - [ ] In-scope normative requirements from the PRD were preserved exactly
 - [ ] Existing Contracts to Read lists concrete repo paths and includes `AGENTS.md`, `.deploy-profile`, and `.github/deploy-profiles/<active-profile>.yml`
+- [ ] Every path listed under Existing Contracts to Read already exists on the current default branch
+- [ ] Existing Contracts to Read does not reference files that will only be created by this issue or a sibling issue
 - [ ] Acceptance criteria are testable (not "works correctly")
 - [ ] Dependencies are accurate
 - [ ] Required Validation starts with `bash scripts/validate-implementation.sh` and adds issue-specific validation bullets

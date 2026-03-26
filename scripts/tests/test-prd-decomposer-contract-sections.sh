@@ -29,6 +29,16 @@ grep -F '`.github/deploy-profiles/<active-profile>.yml`' "$PROMPT" >/dev/null ||
   exit 1
 }
 
+grep -F 'Only include paths that already exist on the current default branch at decomposition time' "$PROMPT" >/dev/null || {
+  echo "FAIL: prd-decomposer must restrict Existing Contracts to Read to existing repo paths" >&2
+  exit 1
+}
+
+grep -F 'Do **not** list files that this issue or a sibling issue is expected to create later' "$PROMPT" >/dev/null || {
+  echo "FAIL: prd-decomposer must forbid future/sibling issue paths in Existing Contracts to Read" >&2
+  exit 1
+}
+
 grep -F 'bash scripts/validate-implementation.sh' "$PROMPT" >/dev/null || {
   echo "FAIL: prd-decomposer must require the canonical validator first" >&2
   exit 1
