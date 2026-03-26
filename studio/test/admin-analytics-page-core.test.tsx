@@ -62,6 +62,41 @@ describe('AdminAnalyticsPage core', () => {
         });
       }
 
+      if (url.startsWith('/api/admin/analytics/mentoring')) {
+        return okResponse({
+          matchAcceptanceRate: 0.5,
+          matchAcceptanceRatePercent: 50,
+        });
+      }
+
+      if (url.startsWith('/api/admin/analytics/revenue')) {
+        return okResponse({
+          mrr: 123400,
+          mrrTrend: [{ month: '2026-01', amountCents: 100000 }],
+          churnRate: 0.2,
+          churnRateByMonth: [{ month: '2026-01', amountCents: 2 }],
+          subscriptionTotals: { active: 5, cancelled: 1, total: 6 },
+        });
+      }
+
+      if (url.startsWith('/api/admin/analytics/cohorts')) {
+        return okResponse({
+          byFounderStage: [{ value: 'seed', count: 2, averageScore: 71, averageValidationRating: 78 }],
+          byIndustry: [{ value: 'fintech', count: 2, averageScore: 71, averageValidationRating: 78 }],
+          byEventCohort: [
+            {
+              eventId: 'evt-1',
+              eventName: 'Jan Pitch Night',
+              date: '2026-01-15T00:00:00.000Z',
+              count: 2,
+              averageScore: 71,
+              matchedWithMentorsRate: 0.5,
+              retentionToNextEventRate: 0.25,
+            },
+          ],
+        });
+      }
+
       return { ok: false, json: async () => ({ success: false, message: `Unhandled ${url}` }) };
     });
 
@@ -87,6 +122,9 @@ describe('AdminAnalyticsPage core', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/admin/analytics/kpis?startDate=2025-03-01&endDate=2026-03-01');
       expect(fetchMock).toHaveBeenCalledWith('/api/admin/analytics/founder-scores?startDate=2025-03-01&endDate=2026-03-01');
       expect(fetchMock).toHaveBeenCalledWith('/api/admin/analytics/validation?startDate=2025-03-01&endDate=2026-03-01');
+      expect(fetchMock).toHaveBeenCalledWith('/api/admin/analytics/mentoring?startDate=2025-03-01&endDate=2026-03-01');
+      expect(fetchMock).toHaveBeenCalledWith('/api/admin/analytics/revenue?startDate=2025-03-01&endDate=2026-03-01');
+      expect(fetchMock).toHaveBeenCalledWith('/api/admin/analytics/cohorts?startDate=2025-03-01&endDate=2026-03-01');
     });
   });
 
@@ -136,6 +174,27 @@ describe('AdminAnalyticsPage core', () => {
           ok: true,
           json: async () => ({ success: true, data: { histogram: [], trends: [] } }),
         };
+      }
+      if (url.startsWith('/api/admin/analytics/mentoring')) {
+        return { ok: true, json: async () => ({ success: true, data: { matchAcceptanceRate: 0, matchAcceptanceRatePercent: 0 } }) };
+      }
+      if (url.startsWith('/api/admin/analytics/revenue')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: {
+              mrr: 0,
+              mrrTrend: [],
+              churnRate: 0,
+              churnRateByMonth: [],
+              subscriptionTotals: { active: 0, cancelled: 0, total: 0 },
+            },
+          }),
+        };
+      }
+      if (url.startsWith('/api/admin/analytics/cohorts')) {
+        return { ok: true, json: async () => ({ success: true, data: { byFounderStage: [], byIndustry: [], byEventCohort: [] } }) };
       }
       return {
         ok: true,

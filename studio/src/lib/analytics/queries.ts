@@ -44,12 +44,18 @@ export interface EventTimeSeriesPoint {
 export interface CohortBucket {
   value: string;
   count: number;
+  averageScore: number;
+  averageValidationRating: number;
 }
 
 export interface EventCohortBucket {
   eventId: string;
+  eventName: string;
+  date: string;
   count: number;
   averageScore: number;
+  matchedWithMentorsRate: number;
+  retentionToNextEventRate: number;
 }
 
 export interface CohortAggregates {
@@ -105,6 +111,13 @@ interface AudienceResponseRow {
 
 interface MentorMatchRow {
   id: string;
+  founder_id: string;
+  event_id: string | null;
+  status: string | null;
+}
+
+interface MentorMatchStatusRow {
+  id: string;
   status: string | null;
 }
 
@@ -125,15 +138,28 @@ interface TransactionRow {
 
 interface FounderPitchRow {
   id: string;
+  founder_id: string;
   event_id: string;
   score_aggregate: number | string | null;
+  validation_summary: unknown;
   created_at: string;
 }
 
 interface FounderApplicationRow {
   id: string;
+  email: string | null;
   stage: string | null;
   industry: string | null;
+}
+
+interface UserRow {
+  id: string;
+  email: string | null;
+}
+
+interface FounderRowDetailed {
+  id: string;
+  user_id: string;
 }
 
 const analyticsCache = new Map<string, CacheEntry>();
@@ -191,6 +217,42 @@ function average(values: number[]): number {
     return 0;
   }
   return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function normalizeText(value: string | null | undefined, fallback = 'unspecified'): string {
+  const normalized = (value ?? '').trim();
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function toValidationRating(value: unknown): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const candidates = [
+      record.averageRating,
+      record.avgRating,
+      record.average_rating,
+      record.avg_rating,
+      record.ratingAverage,
+      record.rating_average,
+      record.average,
+      record.avg,
+      record.score,
+    ];
+    for (const candidate of candidates) {
+      const rating = toValidationRating(candidate);
+      if (rating > 0) {
+        return rating;
+      }
+    }
+  }
+  return 0;
 }
 
 async function queryTable<T>(
@@ -258,7 +320,7 @@ export async function getKpiBaseAggregates(options: AnalyticsQueryOptions = {}):
         queryTable<RoleAssignmentRow>('role_assignments', 'user_id,role', options),
         queryTable<JudgeScoreRow>('judge_scores', 'id,is_submitted', options),
         queryTable<AudienceResponseRow>('audience_responses', 'id', options),
-        queryTable<MentorMatchRow>('mentor_matches', 'id,status', options),
+        queryTable<MentorMatchStatusRow>('mentor_matches', 'id,status', options),
         queryTable<SubscriptionRow>('subscriptions', 'id,status,cancel_at,canceled_at,created_at', options),
         queryTable<TransactionRow>('transactions', 'id,amount_cents,status,created_at', options),
       ]);
@@ -355,39 +417,165 @@ export async function getEventTimeSeries(options: AnalyticsQueryOptions = {}): P
 
 export async function getCohortAggregates(options: AnalyticsQueryOptions = {}): Promise<CohortAggregates> {
   return withAnalyticsCache(buildCacheKey('cohorts', options), options, async () => {
-    const [applications, founderPitches] = await Promise.all([
-      queryTable<FounderApplicationRow>('founder_applications', 'id,stage,industry', options),
-      queryTable<FounderPitchRow>('founder_pitches', 'id,event_id,score_aggregate,created_at', options),
+    const [applications, users, founders, founderPitches, mentorMatches, events] = await Promise.all([
+      queryTable<FounderApplicationRow>('founder_applications', 'id,email,stage,industry', options),
+      queryTable<UserRow>('users', 'id,email', options),
+      queryTable<FounderRowDetailed>('founders', 'id,user_id', options),
+      queryTable<FounderPitchRow>('founder_pitches', 'id,founder_id,event_id,score_aggregate,validation_summary,created_at', options),
+      queryTable<MentorMatchRow>('mentor_matches', 'id,founder_id,event_id,status', options),
+      queryTable<EventRow>('events', 'id,name,starts_at,created_at', options, 'starts_at'),
     ]);
 
-    const byStage = new Map<string, number>();
-    const byIndustry = new Map<string, number>();
-
-    for (const application of applications) {
-      const stage = (application.stage ?? 'unspecified').trim() || 'unspecified';
-      const industry = (application.industry ?? 'unspecified').trim() || 'unspecified';
-      byStage.set(stage, (byStage.get(stage) ?? 0) + 1);
-      byIndustry.set(industry, (byIndustry.get(industry) ?? 0) + 1);
-    }
-
-    const eventScores = new Map<string, number[]>();
-    for (const pitch of founderPitches) {
-      if (!eventScores.has(pitch.event_id)) {
-        eventScores.set(pitch.event_id, []);
+    const userIdByEmail = new Map<string, string>();
+    for (const user of users) {
+      const email = normalizeText(user.email, '').toLowerCase();
+      if (email) {
+        userIdByEmail.set(email, user.id);
       }
-      eventScores.get(pitch.event_id)?.push(toSafeNumber(pitch.score_aggregate));
     }
+
+    const founderIdToMetadata = new Map<string, { stage: string; industry: string }>();
+    const founderIdToUserId = new Map(founders.map((founder) => [founder.id, founder.user_id]));
+    const founderIdsByUserId = new Map<string, string[]>();
+    for (const founder of founders) {
+      const entries = founderIdsByUserId.get(founder.user_id) ?? [];
+      entries.push(founder.id);
+      founderIdsByUserId.set(founder.user_id, entries);
+    }
+    for (const application of applications) {
+      const email = normalizeText(application.email, '').toLowerCase();
+      const userId = email ? userIdByEmail.get(email) : undefined;
+      if (!userId) {
+        continue;
+      }
+      const linkedFounderIds = founderIdsByUserId.get(userId) ?? [];
+      for (const founderId of linkedFounderIds) {
+        founderIdToMetadata.set(founderId, {
+          stage: normalizeText(application.stage),
+          industry: normalizeText(application.industry),
+        });
+      }
+    }
+
+    const stageStats = new Map<string, { founders: Set<string>; scores: number[]; ratings: number[] }>();
+    const industryStats = new Map<string, { founders: Set<string>; scores: number[]; ratings: number[] }>();
+    const eventStats = new Map<
+      string,
+      { founderIds: Set<string>; scores: number[]; eventName: string; date: string }
+    >();
+
+    const eventDateById = new Map<string, string>();
+    const eventNameById = new Map<string, string>();
+    for (const event of events) {
+      eventDateById.set(event.id, event.starts_at ?? event.created_at);
+      eventNameById.set(event.id, event.name);
+    }
+
+    for (const pitch of founderPitches) {
+      const metadata = founderIdToMetadata.get(pitch.founder_id) ?? { stage: 'unspecified', industry: 'unspecified' };
+      const score = toSafeNumber(pitch.score_aggregate);
+      const validationRating = toValidationRating(pitch.validation_summary);
+
+      if (!stageStats.has(metadata.stage)) {
+        stageStats.set(metadata.stage, { founders: new Set(), scores: [], ratings: [] });
+      }
+      if (!industryStats.has(metadata.industry)) {
+        industryStats.set(metadata.industry, { founders: new Set(), scores: [], ratings: [] });
+      }
+
+      stageStats.get(metadata.stage)?.founders.add(pitch.founder_id);
+      industryStats.get(metadata.industry)?.founders.add(pitch.founder_id);
+      if (score >= 0 && score <= 100) {
+        stageStats.get(metadata.stage)?.scores.push(score);
+        industryStats.get(metadata.industry)?.scores.push(score);
+      }
+      if (validationRating > 0) {
+        stageStats.get(metadata.stage)?.ratings.push(validationRating);
+        industryStats.get(metadata.industry)?.ratings.push(validationRating);
+      }
+
+      if (!eventStats.has(pitch.event_id)) {
+        eventStats.set(pitch.event_id, {
+          founderIds: new Set(),
+          scores: [],
+          eventName: eventNameById.get(pitch.event_id) ?? pitch.event_id,
+          date: eventDateById.get(pitch.event_id) ?? pitch.created_at,
+        });
+      }
+      const eventStat = eventStats.get(pitch.event_id);
+      eventStat?.founderIds.add(pitch.founder_id);
+      if (score >= 0 && score <= 100) {
+        eventStat?.scores.push(score);
+      }
+    }
+
+    const acceptedFounderPairs = new Set<string>();
+    for (const match of mentorMatches) {
+      if (match.status !== 'accepted' || !match.founder_id || !match.event_id) {
+        continue;
+      }
+      acceptedFounderPairs.add(`${match.event_id}:${match.founder_id}`);
+    }
+
+    const founderEventHistory = new Map<string, string[]>();
+    for (const pitch of founderPitches) {
+      const dates = founderEventHistory.get(pitch.founder_id) ?? [];
+      dates.push(eventDateById.get(pitch.event_id) ?? pitch.created_at);
+      founderEventHistory.set(pitch.founder_id, dates);
+    }
+    for (const [founderId, dates] of founderEventHistory.entries()) {
+      founderEventHistory.set(founderId, dates.sort((a, b) => a.localeCompare(b)));
+    }
+
+    const byFounderStage = [...stageStats.entries()]
+      .map(([value, stats]) => ({
+        value,
+        count: stats.founders.size,
+        averageScore: average(stats.scores),
+        averageValidationRating: average(stats.ratings),
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const byIndustry = [...industryStats.entries()]
+      .map(([value, stats]) => ({
+        value,
+        count: stats.founders.size,
+        averageScore: average(stats.scores),
+        averageValidationRating: average(stats.ratings),
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const byEventCohort = [...eventStats.entries()]
+      .map(([eventId, stats]) => {
+        let matchedCount = 0;
+        let retainedCount = 0;
+        for (const founderId of stats.founderIds) {
+          if (acceptedFounderPairs.has(`${eventId}:${founderId}`)) {
+            matchedCount += 1;
+          }
+          const history = founderEventHistory.get(founderId) ?? [];
+          const eventDate = stats.date;
+          if (history.some((date) => date > eventDate)) {
+            retainedCount += 1;
+          }
+        }
+        const denominator = Math.max(1, stats.founderIds.size);
+        return {
+          eventId,
+          eventName: stats.eventName,
+          date: stats.date,
+          count: stats.founderIds.size,
+          averageScore: average(stats.scores),
+          matchedWithMentorsRate: matchedCount / denominator,
+          retentionToNextEventRate: retainedCount / denominator,
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     return {
-      byFounderStage: [...byStage.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count),
-      byIndustry: [...byIndustry.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count),
-      byEventCohort: [...eventScores.entries()]
-        .map(([eventId, scores]) => ({
-          eventId,
-          count: scores.length,
-          averageScore: average(scores.filter((score) => score >= 0 && score <= 100)),
-        }))
-        .sort((a, b) => b.count - a.count),
+      byFounderStage,
+      byIndustry,
+      byEventCohort,
     };
   });
 }

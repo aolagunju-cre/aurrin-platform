@@ -42,6 +42,51 @@ export interface ValidationResponse {
   totalValidationResponses: number;
 }
 
+export interface MentoringResponse {
+  matchAcceptanceRate: number;
+  matchAcceptanceRatePercent: number;
+}
+
+export interface MonthlyMetricPoint {
+  month: string;
+  amountCents: number;
+}
+
+export interface RevenueResponse {
+  mrr: number;
+  mrrTrend: MonthlyMetricPoint[];
+  churnRate: number;
+  churnRateByMonth: MonthlyMetricPoint[];
+  subscriptionTotals: {
+    active: number;
+    cancelled: number;
+    total: number;
+  };
+}
+
+export interface StageIndustryCohortPoint {
+  value: string;
+  count: number;
+  averageScore: number;
+  averageValidationRating: number;
+}
+
+export interface EventCohortPoint {
+  eventId: string;
+  eventName: string;
+  date: string;
+  count: number;
+  averageScore: number;
+  matchedWithMentorsRate: number;
+  retentionToNextEventRate: number;
+}
+
+export interface CohortResponse {
+  byFounderStage: StageIndustryCohortPoint[];
+  byIndustry: StageIndustryCohortPoint[];
+  byEventCohort: EventCohortPoint[];
+}
+
 interface ApiEnvelope<T> {
   success: boolean;
   data?: T;
@@ -125,4 +170,53 @@ export async function fetchFounderScores(range: DateRange): Promise<{
 
 export async function fetchValidationMetrics(range: DateRange): Promise<ValidationResponse> {
   return getJson<ValidationResponse>('/api/admin/analytics/validation', range);
+}
+
+export async function fetchMentoringMetrics(range: DateRange): Promise<MentoringResponse> {
+  return getJson<MentoringResponse>('/api/admin/analytics/mentoring', range);
+}
+
+export async function fetchRevenueMetrics(range: DateRange): Promise<RevenueResponse> {
+  return getJson<RevenueResponse>('/api/admin/analytics/revenue', range);
+}
+
+export async function fetchCohortMetrics(range: DateRange): Promise<CohortResponse> {
+  return getJson<CohortResponse>('/api/admin/analytics/cohorts', range);
+}
+
+export async function fetchAnalyticsExport(
+  type: 'csv' | 'json',
+  range: DateRange
+): Promise<{ blob: Blob; filename: string }> {
+  const params = new URLSearchParams();
+  params.set('type', type);
+  if (range.startDate) {
+    params.set('startDate', range.startDate);
+  }
+  if (range.endDate) {
+    params.set('endDate', range.endDate);
+  }
+
+  const response = await fetch(`/api/admin/analytics/export?${params.toString()}`);
+  if (!response.ok) {
+    let message = `Failed to export analytics report as ${type}.`;
+    try {
+      const payload = (await response.json()) as ApiEnvelope<never>;
+      if (payload.message) {
+        message = payload.message;
+      }
+    } catch {
+      // Fall back to default message when non-JSON responses are returned.
+    }
+    throw new Error(message);
+  }
+
+  const contentDisposition = response.headers.get('Content-Disposition') ?? '';
+  const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+  const filename = filenameMatch?.[1] ?? `analytics-export.${type}`;
+
+  return {
+    blob: await response.blob(),
+    filename,
+  };
 }
