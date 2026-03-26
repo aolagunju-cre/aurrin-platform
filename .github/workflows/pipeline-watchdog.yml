@@ -12,7 +12,7 @@ name: "Pipeline Watchdog"
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -53,5 +53,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_AW_GITHUB_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}
           REPO: ${{ github.repository }}
         run: bash scripts/pipeline-watchdog.sh

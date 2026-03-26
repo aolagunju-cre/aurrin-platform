@@ -5,8 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 REPO="${REPO:?REPO environment variable is required}"
+PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"
 STATE_MARKER='<!-- ci-repair-state:v1'
-STALE_THRESHOLD=1800
+STALE_THRESHOLD=1200
 ESCALATE_THRESHOLD=7200
 MAX_REPAIR_ATTEMPTS=2
 NOW=$(date -u +%s)
@@ -258,6 +259,10 @@ dispatch_issue_workflow() {
   fi
 }
 
+dispatch_requeue_workflow() {
+  gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"
+}
+
 workflow_for_branch() {
   local head_branch=$1
   if printf '%s' "$head_branch" | grep -q '^frontend-agent/'; then
@@ -280,9 +285,67 @@ echo "=== Pipeline Watchdog — $(date -u) ==="
 
 PIPELINE_PRS=$(gh pr list --repo "$REPO" --state open --json number,title,updatedAt \
   --jq '[.[] | select(.title | startswith("[Pipeline]"))]')
+PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels)
+
+echo ""
+echo "=== Checking MVP merge candidates ==="
+if [ "$PIPELINE_MVP_MODE" = "true" ]; then
+  while IFS= read -r PR_ROW; do
+    [ -z "$PR_ROW" ] && continue
+    PR_NUM=$(printf '%s' "$PR_ROW" | jq -r '.number')
+    PR_UPDATED=$(printf '%s' "$PR_ROW" | jq -r '.updatedAt')
+    PR_EPOCH=$(to_epoch "$PR_UPDATED")
+    AGE=$((NOW - PR_EPOCH))
+    if [ "$AGE" -lt "$STALE_THRESHOLD" ]; then
+      echo "PR #${PR_NUM}: MVP merge nudge waiting until stale threshold (${AGE}s ago)."
+      continue
+    fi
+
+    PR_DETAILS=$(gh pr view "$PR_NUM" --repo "$REPO" --json number,title,isDraft,headRefName,baseRefName,url)
+    PR_CLASSIFICATION=$(printf '%s' "$PR_DETAILS" | "$SCRIPT_DIR/classify-pipeline-pr.sh")
+    if [ "$(printf '%s' "$PR_CLASSIFICATION" | jq -r '.pipeline_pr')" != "true" ]; then
+      echo "PR #${PR_NUM}: not classified as a pipeline PR. Skipping MVP merge."
+      continue
+    fi
+
+    PR_BRANCH=$(printf '%s' "$PR_DETAILS" | jq -r '.headRefName')
+    BRANCH_WORKFLOW=$(workflow_for_branch "$PR_BRANCH")
+    BRANCH_ACTIVE=$(workflow_active_runs "$BRANCH_WORKFLOW")
+    if [ "$BRANCH_ACTIVE" -gt 0 ]; then
+      echo "PR #${PR_NUM}: ${BRANCH_WORKFLOW} already active (${BRANCH_ACTIVE} run(s)). Skipping MVP merge."
+      continue
+    fi
+
+    MERGE_TOKEN="${GH_AW_GITHUB_TOKEN:-${GH_TOKEN:-}}"
+    if [ -z "$MERGE_TOKEN" ]; then
+      echo "::warning::PR #${PR_NUM}: no token available for MVP merge."
+      continue
+    fi
+
+    if [ "$(printf '%s' "$PR_DETAILS" | jq -r '.isDraft')" = "true" ]; then
+      echo "PR #${PR_NUM}: marking draft ready before MVP merge."
+      if ! GH_TOKEN="$MERGE_TOKEN" gh pr ready "$PR_NUM" --repo "$REPO" >/dev/null; then
+        echo "::warning::Could not mark PR #${PR_NUM} ready for review before merge"
+        continue
+      fi
+    fi
+
+    echo "PR #${PR_NUM}: merging in MVP mode."
+    if GH_TOKEN="$MERGE_TOKEN" gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch; then
+      ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
+      break
+    fi
+    echo "::warning::Could not merge PR #${PR_NUM} during MVP watchdog pass"
+  done < <(printf '%s' "$PIPELINE_PRS" | jq -c '.[]')
+else
+  echo "PIPELINE_MVP_MODE=false; skipping MVP merge pass."
+fi
 
 echo ""
 echo "=== Checking CI repair incidents ==="
+if [ "$ACTIONS_TAKEN" -gt 0 ]; then
+  echo "Action already taken earlier in this cycle. Skipping CI repair incident pass."
+else
 while IFS= read -r PR_ROW; do
   [ -z "$PR_ROW" ] && continue
   PR_NUM=$(printf '%s' "$PR_ROW" | jq -r '.number')
@@ -416,11 +479,15 @@ while IFS= read -r PR_ROW; do
     break 2
   done < <(printf '%s' "$STATE_COMMENTS_JSON" | jq -c '.[]')
 done < <(printf '%s' "$PIPELINE_PRS" | jq -c '.[]')
+fi
 
 echo ""
 echo "=== Checking for stalled PRs ==="
 printf '%s' "$PIPELINE_PRS" | jq -r '.[] | "PR #\(.number): \(.title) (updated: \(.updatedAt))"'
 
+if [ "$ACTIONS_TAKEN" -gt 0 ]; then
+  echo "Action already taken earlier in this cycle. Skipping stalled-PR pass."
+else
 while IFS= read -r PR_ROW; do
   [ -z "$PR_ROW" ] && continue
   PR_NUM=$(printf '%s' "$PR_ROW" | jq -r '.number')
@@ -480,15 +547,50 @@ while IFS= read -r PR_ROW; do
   ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
   break
 done < <(printf '%s' "$PIPELINE_PRS" | jq -c '.[]')
+fi
 
 echo ""
 echo "=== Checking for orphaned issues ==="
-PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels)
 LINKED_ISSUES=$(printf '%s' "$PIPELINE_PRS" | jq -r '.[].number' | while read -r PR_N; do
   [ -z "$PR_N" ] && continue
   gh pr view "$PR_N" --repo "$REPO" --json body --jq '.body // ""' 2>/dev/null \
     | extract_linked_issue_numbers || true
 done | sort -u)
+
+echo ""
+echo "=== Checking for idle pipeline lanes ==="
+if [ "$ACTIONS_TAKEN" -eq 0 ]; then
+  REPO_ASSIST_ACTIVE=$(workflow_active_runs "repo-assist.lock.yml")
+  FRONTEND_ACTIVE=$(workflow_active_runs "frontend-agent.lock.yml")
+  PRD_DECOMPOSER_ACTIVE=$(workflow_active_runs "prd-decomposer.lock.yml")
+  REQUEUE_ACTIVE=$(workflow_active_runs "auto-dispatch-requeue.yml")
+  ACTIVE_PIPELINE_PRS=$(printf '%s' "$PIPELINE_PRS" | jq 'length')
+  ACTIONABLE_PIPELINE_ISSUES=0
+
+  while IFS= read -r ISSUE_ROW; do
+    [ -z "$ISSUE_ROW" ] && continue
+    ISSUE_ACTIONABLE=$(
+      printf '%s' "$ISSUE_ROW" | "$SCRIPT_DIR/classify-pipeline-issue.sh" | jq -r '.actionable'
+    )
+    if [ "$ISSUE_ACTIONABLE" = "true" ]; then
+      ACTIONABLE_PIPELINE_ISSUES=$((ACTIONABLE_PIPELINE_ISSUES + 1))
+    fi
+  done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c '.[]')
+
+  ACTIVE_IMPLEMENTATION_LANES=$((REPO_ASSIST_ACTIVE + FRONTEND_ACTIVE + PRD_DECOMPOSER_ACTIVE))
+  if [ "$ACTIVE_IMPLEMENTATION_LANES" -eq 0 ] && [ "$REQUEUE_ACTIVE" -eq 0 ] && [ "$ACTIVE_PIPELINE_PRS" -eq 0 ] && [ "$ACTIONABLE_PIPELINE_ISSUES" -gt 0 ]; then
+    echo "No active implementation lanes and ${ACTIONABLE_PIPELINE_ISSUES} actionable pipeline issue(s) remain. Dispatching auto-dispatch-requeue."
+    if dispatch_requeue_workflow; then
+      ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
+    else
+      echo "::warning::Could not dispatch auto-dispatch-requeue"
+    fi
+  else
+    echo "Idle-lane nudge skipped: repo-assist=${REPO_ASSIST_ACTIVE}, frontend-agent=${FRONTEND_ACTIVE}, prd-decomposer=${PRD_DECOMPOSER_ACTIVE}, auto-dispatch-requeue=${REQUEUE_ACTIVE}, open_prs=${ACTIVE_PIPELINE_PRS}, actionable_issues=${ACTIONABLE_PIPELINE_ISSUES}"
+  fi
+else
+  echo "Action already taken earlier in this cycle. Skipping idle-lane nudge."
+fi
 
 while IFS= read -r ISSUE_ROW; do
   [ -z "$ISSUE_ROW" ] && continue
