@@ -54,6 +54,7 @@ SECOND_HASH=$(hash_file "$WORKFLOW")
 
 grep -F "      - name: Fail targeted issue runs without actionable output" "$WORKFLOW" >/dev/null
 grep -F "needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''" "$WORKFLOW" >/dev/null
+grep -F 'if (!/^\d+$/.test(issue || "")) {' "$WORKFLOW" >/dev/null
 grep -F "Targeted issue #\${issue} ended with noop. Use missing_data or missing_tool with the exact blocker and next step instead of noop." "$WORKFLOW" >/dev/null
 grep -F "Targeted issue dispatch failed closed" "$WORKFLOW" >/dev/null
 grep -F "MESSAGE=\$(node -e '" "$WORKFLOW" >/dev/null

@@ -27,6 +27,16 @@ grep -F 'do **not** use `noop`. Emit `missing_data` or `missing_tool` with the e
   exit 1
 }
 
+grep -F 'non-empty **and consists only of digits**' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: targeted issue mode must apply only to numeric GitHub issue ids" >&2
+  exit 1
+}
+
+grep -F 'includes any non-digit characters, treat it as an internal or synthetic dispatch token' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: repo-assist.md must exempt synthetic issue tokens from targeted issue mode" >&2
+  exit 1
+}
+
 grep -F 'cancel-in-progress: true' "$WORKFLOW" >/dev/null || {
   echo "FAIL: repo-assist.md must continue cancelling superseded runs within the shared concurrency group" >&2
   exit 1

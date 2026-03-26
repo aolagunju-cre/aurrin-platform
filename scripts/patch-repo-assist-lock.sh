@@ -30,6 +30,10 @@ fail_step = <<'STEP'.chomp
           const successTypes = new Set(["create_pull_request", "push_to_pull_request_branch"]);
           const blockerTypes = new Set(["missing_data", "missing_tool"]);
 
+          if (!/^\d+$/.test(issue || "")) {
+            process.exit(0);
+          }
+
           const data = JSON.parse(fs.readFileSync(path, "utf8"));
           const items = Array.isArray(data.items) ? data.items : [];
           const types = items.map(item => item && item.type).filter(Boolean);
@@ -103,6 +107,7 @@ raise "Patched targeted issue guard missing in #{path}" unless content.include?(
 raise "Duplicate targeted issue guard detected in #{path}" unless content.scan(step_name).length == 1
 raise "Targeted issue guard missing noop guidance in #{path}" unless content.include?("Use missing_data or missing_tool with the exact blocker and next step instead of noop")
 raise "Targeted issue guard missing workflow_dispatch issue_number condition in #{path}" unless content.include?("github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''")
+raise "Targeted issue guard missing numeric issue check in #{path}" unless content.match?(/if \(!\/\^\\d\+\$\/\.test\(issue \|\| ""\)\) \{/)
 raise "Legacy heredoc-based targeted issue guard remains in #{path}" if content.include?("node <<'NODE'")
 
 File.write(path, content) if content != original

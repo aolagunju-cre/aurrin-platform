@@ -160,7 +160,12 @@ If the instructions are non-empty and do **not** contain `ci-repair-command:v1`,
 
 ### Targeted Issue Dispatch Mode
 
-If `${{ github.event.inputs.issue_number }}` is non-empty, this run was dispatched for a specific issue and is bound to issue `#${{ github.event.inputs.issue_number }}`.
+If `${{ github.event.inputs.issue_number }}` is non-empty **and consists only of digits**, this run was dispatched for a specific GitHub issue and is bound to issue `#${{ github.event.inputs.issue_number }}`.
+
+If `${{ github.event.inputs.issue_number }}` is non-empty but includes any non-digit characters, treat it as an internal or synthetic dispatch token rather than a real GitHub issue number. In that case:
+- Do **not** enter Targeted Issue Dispatch Mode.
+- Do **not** fail closed solely because the run ends in `noop`.
+- Continue with the normal command, maintenance, or backlog behavior for the run context.
 
 In Targeted Issue Dispatch Mode:
 - Treat issue `#${{ github.event.inputs.issue_number }}` as the only candidate for Task 1 in this run.
@@ -279,7 +284,7 @@ Each checkpoint value is a JSON string:
 
 Each run, work on 2-5 tasks from the list below. Use round-robin scheduling based on memory. Always do Task 5 (status update) and Task 6 (agentic workflow failure triage).
 
-If Targeted Issue Dispatch Mode is active, Task 1 must operate only on issue `#${{ github.event.inputs.issue_number }}`. Do not substitute another implementation issue in that run.
+If Targeted Issue Dispatch Mode is active for a numeric GitHub issue id, Task 1 must operate only on issue `#${{ github.event.inputs.issue_number }}`. Do not substitute another implementation issue in that run.
 
 ### Task 1: Implement Issues as Pull Requests
 
@@ -354,6 +359,6 @@ If Targeted Issue Dispatch Mode is active, Task 1 must operate only on issue `#$
 
 After completing all tasks above, if **no outputs were produced** during this run (no PRs created, no comments posted, no issues created, no labels changed, no pushes, and no project status update succeeded), call `noop` with a brief summary explaining why there was nothing to do. This ensures the workflow completes successfully rather than failing with no output.
 
-Exception: if Targeted Issue Dispatch Mode is active, never use `noop` as the final outcome. Emit `missing_data` or `missing_tool` with the exact blocker and next step instead, so the targeted run fails closed with actionable guidance.
+Exception: if Targeted Issue Dispatch Mode is active for a numeric GitHub issue id, never use `noop` as the final outcome. Emit `missing_data` or `missing_tool` with the exact blocker and next step instead, so the targeted run fails closed with actionable guidance.
 
 Example: "Pipeline is idle — no open implementable issues, no open Pipeline PRs requiring maintenance, and no review feedback to address. Run 04 appears complete."
