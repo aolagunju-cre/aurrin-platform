@@ -559,33 +559,48 @@ jobs:
             local attempt
             local poll
             local before
-            local actor_login
+            local dispatch_output
+            local run_url
             local run_id
 
             [ -z "$token" ] && return 1
-            actor_login=$(GH_TOKEN="$token" gh api user --jq '.login' 2>/dev/null || echo "")
 
             for attempt in $(seq 1 "$attempts"); do
               before=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-              if ! GH_TOKEN="$token" gh workflow run auto-dispatch-requeue.yml --repo "$REPO"; then
+              if ! dispatch_output=$(GH_TOKEN="$token" gh workflow run auto-dispatch-requeue.yml --repo "$REPO" 2>&1); then
                 echo "::warning::${label} dispatch attempt ${attempt}/${attempts} failed for auto-dispatch-requeue."
+                printf '%s\n' "$dispatch_output"
                 continue
+              fi
+
+              printf '%s\n' "$dispatch_output"
+              run_url=$(printf '%s\n' "$dispatch_output" | grep -Eo 'https://github\.com/[^[:space:]]+/actions/runs/[0-9]+' | tail -1 || true)
+              run_id=""
+              if [ -n "$run_url" ]; then
+                run_id="${run_url##*/}"
               fi
 
               for poll in $(seq 1 12); do
                 sleep 5
-                run_id=$(
-                  GH_TOKEN="$token" gh api "/repos/${REPO}/actions/workflows/auto-dispatch-requeue.yml/runs?event=workflow_dispatch&per_page=20" \
-                    --jq --arg since "$before" --arg actor "$actor_login" '
-                      .workflow_runs
-                      | map(select(.created_at >= $since and ($actor == "" or .actor.login == $actor)))
-                      | sort_by(.created_at)
-                      | reverse
-                      | .[0].id // empty
-                    ' 2>/dev/null || true
-                )
                 if [ -n "$run_id" ]; then
+                  if GH_TOKEN="$token" gh run view "$run_id" --repo "$REPO" --json databaseId --jq '.databaseId' >/dev/null 2>&1; then
+                    echo "Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch."
+                    return 0
+                  fi
+                else
+                  run_id=$(
+                    GH_TOKEN="$token" gh api "/repos/${REPO}/actions/workflows/auto-dispatch-requeue.yml/runs?event=workflow_dispatch&per_page=20" \
+                      --jq --arg since "$before" '
+                        .workflow_runs
+                        | map(select(.created_at >= $since))
+                        | sort_by(.created_at)
+                        | reverse
+                        | .[0].id // empty
+                      ' 2>/dev/null || true
+                  )
+                fi
+                if [ -n "$run_id" ] && GH_TOKEN="$token" gh run view "$run_id" --repo "$REPO" --json databaseId --jq '.databaseId' >/dev/null 2>&1; then
                   echo "Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch."
                   return 0
                 fi
@@ -1176,33 +1191,48 @@ jobs:
             local attempt
             local poll
             local before
-            local actor_login
+            local dispatch_output
+            local run_url
             local run_id
 
             [ -z "$token" ] && return 1
-            actor_login=$(GH_TOKEN="$token" gh api user --jq '.login' 2>/dev/null || echo "")
 
             for attempt in $(seq 1 "$attempts"); do
               before=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-              if ! GH_TOKEN="$token" gh workflow run auto-dispatch-requeue.yml --repo "$REPO"; then
+              if ! dispatch_output=$(GH_TOKEN="$token" gh workflow run auto-dispatch-requeue.yml --repo "$REPO" 2>&1); then
                 echo "::warning::${label} dispatch attempt ${attempt}/${attempts} failed for auto-dispatch-requeue."
+                printf '%s\n' "$dispatch_output"
                 continue
+              fi
+
+              printf '%s\n' "$dispatch_output"
+              run_url=$(printf '%s\n' "$dispatch_output" | grep -Eo 'https://github\.com/[^[:space:]]+/actions/runs/[0-9]+' | tail -1 || true)
+              run_id=""
+              if [ -n "$run_url" ]; then
+                run_id="${run_url##*/}"
               fi
 
               for poll in $(seq 1 12); do
                 sleep 5
-                run_id=$(
-                  GH_TOKEN="$token" gh api "/repos/${REPO}/actions/workflows/auto-dispatch-requeue.yml/runs?event=workflow_dispatch&per_page=20" \
-                    --jq --arg since "$before" --arg actor "$actor_login" '
-                      .workflow_runs
-                      | map(select(.created_at >= $since and ($actor == "" or .actor.login == $actor)))
-                      | sort_by(.created_at)
-                      | reverse
-                      | .[0].id // empty
-                    ' 2>/dev/null || true
-                )
                 if [ -n "$run_id" ]; then
+                  if GH_TOKEN="$token" gh run view "$run_id" --repo "$REPO" --json databaseId --jq '.databaseId' >/dev/null 2>&1; then
+                    echo "Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch."
+                    return 0
+                  fi
+                else
+                  run_id=$(
+                    GH_TOKEN="$token" gh api "/repos/${REPO}/actions/workflows/auto-dispatch-requeue.yml/runs?event=workflow_dispatch&per_page=20" \
+                      --jq --arg since "$before" '
+                        .workflow_runs
+                        | map(select(.created_at >= $since))
+                        | sort_by(.created_at)
+                        | reverse
+                        | .[0].id // empty
+                      ' 2>/dev/null || true
+                  )
+                fi
+                if [ -n "$run_id" ] && GH_TOKEN="$token" gh run view "$run_id" --repo "$REPO" --json databaseId --jq '.databaseId' >/dev/null 2>&1; then
                   echo "Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch."
                   return 0
                 fi

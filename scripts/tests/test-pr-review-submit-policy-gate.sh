@@ -31,6 +31,10 @@ grep -F "PRIMARY_DISPATCH_TOKEN" "$WORKFLOW" >/dev/null
 grep -F "FALLBACK_DISPATCH_TOKEN" "$WORKFLOW" >/dev/null
 grep -F 'GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
 grep -F 'Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch.' "$WORKFLOW" >/dev/null
+grep -F "dispatch_output=" "$WORKFLOW" >/dev/null
+grep -F "run_url=" "$WORKFLOW" >/dev/null
+grep -F 'grep -Eo '\''https://github\.com/[^[:space:]]+/actions/runs/[0-9]+'\''' "$WORKFLOW" >/dev/null
+grep -F 'gh run view "$run_id" --repo "$REPO" --json databaseId --jq '\''.databaseId'\''' "$WORKFLOW" >/dev/null
 grep -F 'Primary dispatch token did not produce a verified requeue run for PR #${PR_NUMBER}; retrying with fallback token.' "$WORKFLOW" >/dev/null
 grep -F 'Dispatch requeue after MVP merge reported success path but no auto-dispatch-requeue run was created for PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
 grep -F 'EFFECTIVE_PIPELINE_PR="${PIPELINE_PR:-}"' "$WORKFLOW" >/dev/null
@@ -118,6 +122,12 @@ fi
 CONFIRMED_REQUEUE_COUNT=$(grep -c "Confirmed auto-dispatch-requeue run" "$WORKFLOW")
 if [ "$CONFIRMED_REQUEUE_COUNT" -lt 2 ]; then
   echo "FAIL: expected both MVP requeue steps to verify that a requeue run was actually created" >&2
+  exit 1
+fi
+
+RUN_URL_PARSE_COUNT=$(grep -c "run_url=" "$WORKFLOW")
+if [ "$RUN_URL_PARSE_COUNT" -lt 2 ]; then
+  echo "FAIL: expected both MVP requeue steps to extract the dispatched run URL directly from gh workflow run output" >&2
   exit 1
 fi
 
