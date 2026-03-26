@@ -192,6 +192,130 @@ export interface RubricVersionInsert {
   event_id?: string | null;
 }
 
+export type CommerceBillingInterval = 'monthly' | 'yearly';
+export type CommerceSubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'unpaid';
+export type CommerceTransactionStatus = 'succeeded' | 'failed' | 'refunded';
+export type EntitlementSource = 'subscription' | 'purchase';
+
+export interface ProductRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  stripe_product_id: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductInsert {
+  name: string;
+  description?: string | null;
+  stripe_product_id?: string | null;
+  active?: boolean;
+}
+
+export interface ProductUpdate {
+  name?: string;
+  description?: string | null;
+  stripe_product_id?: string | null;
+  active?: boolean;
+}
+
+export interface PriceRecord {
+  id: string;
+  product_id: string;
+  stripe_price_id: string | null;
+  amount_cents: number;
+  currency: string;
+  billing_interval: CommerceBillingInterval;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PriceInsert {
+  product_id: string;
+  stripe_price_id?: string | null;
+  amount_cents: number;
+  currency?: string;
+  billing_interval: CommerceBillingInterval;
+  active?: boolean;
+}
+
+export interface PriceUpdate {
+  stripe_price_id?: string | null;
+  amount_cents?: number;
+  currency?: string;
+  billing_interval?: CommerceBillingInterval;
+  active?: boolean;
+}
+
+export interface SubscriptionRecord {
+  id: string;
+  user_id: string;
+  stripe_subscription_id: string | null;
+  stripe_customer_id: string | null;
+  price_id: string | null;
+  status: CommerceSubscriptionStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancel_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionUpsert {
+  id?: string;
+  user_id: string;
+  stripe_subscription_id: string;
+  stripe_customer_id?: string | null;
+  price_id?: string | null;
+  status: CommerceSubscriptionStatus;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
+  cancel_at?: string | null;
+}
+
+export interface TransactionRecord {
+  id: string;
+  user_id: string | null;
+  subscription_id: string | null;
+  stripe_event_id: string;
+  event_type: string;
+  amount_cents: number | null;
+  currency: string | null;
+  status: CommerceTransactionStatus;
+  created_at: string;
+}
+
+export interface TransactionInsert {
+  user_id?: string | null;
+  subscription_id?: string | null;
+  stripe_event_id: string;
+  event_type: string;
+  amount_cents?: number | null;
+  currency?: string | null;
+  status: CommerceTransactionStatus;
+}
+
+export interface EntitlementRecord {
+  id: string;
+  user_id: string;
+  product_id: string;
+  granted_at: string;
+  expires_at: string | null;
+  source: EntitlementSource;
+  created_at: string;
+}
+
+export interface EntitlementInsert {
+  user_id: string;
+  product_id: string;
+  granted_at?: string;
+  expires_at?: string | null;
+  source: EntitlementSource;
+}
+
 export interface SupabaseStorageClient {
   upload(bucket: string, path: string, file: Buffer | Blob, options?: { contentType?: string }): Promise<StorageUploadResult>;
   remove(bucket: string, paths: string[]): Promise<{ error: Error | null }>;
@@ -236,6 +360,19 @@ export interface SupabaseDBClient {
   listRubricVersionsByTemplateId(templateId: string): Promise<{ data: RubricVersionRecord[]; error: Error | null }>;
   getLatestRubricVersionByTemplateId(templateId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
   insertRubricVersion(record: RubricVersionInsert): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
+  listProducts(activeOnly?: boolean): Promise<{ data: ProductRecord[]; error: Error | null }>;
+  insertProduct(record: ProductInsert): Promise<{ data: ProductRecord | null; error: Error | null }>;
+  updateProduct(id: string, updates: ProductUpdate): Promise<{ data: ProductRecord | null; error: Error | null }>;
+  listPricesByProductId(productId: string, activeOnly?: boolean): Promise<{ data: PriceRecord[]; error: Error | null }>;
+  insertPrice(record: PriceInsert): Promise<{ data: PriceRecord | null; error: Error | null }>;
+  updatePrice(id: string, updates: PriceUpdate): Promise<{ data: PriceRecord | null; error: Error | null }>;
+  getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
+  listSubscriptionsByUserId(userId: string): Promise<{ data: SubscriptionRecord[]; error: Error | null }>;
+  upsertSubscription(record: SubscriptionUpsert): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
+  getTransactionByStripeEventId(stripeEventId: string): Promise<{ data: TransactionRecord | null; error: Error | null }>;
+  insertTransaction(record: TransactionInsert): Promise<{ data: TransactionRecord | null; error: Error | null }>;
+  listEntitlementsByUserId(userId: string): Promise<{ data: EntitlementRecord[]; error: Error | null }>;
+  insertEntitlement(record: EntitlementInsert): Promise<{ data: EntitlementRecord | null; error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -288,6 +425,19 @@ export function getSupabaseClient(): SupabaseClient {
         listRubricVersionsByTemplateId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getLatestRubricVersionByTemplateId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertRubricVersion: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listProducts: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertProduct: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateProduct: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listPricesByProductId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertPrice: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updatePrice: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getSubscriptionByStripeId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listSubscriptionsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        upsertSubscription: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getTransactionByStripeEventId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertTransaction: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listEntitlementsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertEntitlement: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
       },
     };
     return stub;
@@ -891,6 +1041,266 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Rubric version insert failed: ${response.statusText}`) };
         }
         const rows = await response.json() as RubricVersionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listProducts(activeOnly = false) {
+      try {
+        const query = activeOnly
+          ? `${supabaseUrl}/rest/v1/products?active=eq.true&select=*&order=name.asc`
+          : `${supabaseUrl}/rest/v1/products?select=*&order=name.asc`;
+        const response = await fetch(query, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`Products query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as ProductRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertProduct(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/products`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            name: record.name,
+            description: record.description ?? null,
+            stripe_product_id: record.stripe_product_id ?? null,
+            active: record.active ?? true,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Product insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as ProductRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateProduct(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Product update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as ProductRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listPricesByProductId(productId, activeOnly = false) {
+      try {
+        const base = `${supabaseUrl}/rest/v1/prices?product_id=eq.${encodeURIComponent(productId)}&select=*&order=amount_cents.asc`;
+        const response = await fetch(activeOnly ? `${base}&active=eq.true` : base, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`Prices query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as PriceRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertPrice(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/prices`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            product_id: record.product_id,
+            stripe_price_id: record.stripe_price_id ?? null,
+            amount_cents: record.amount_cents,
+            currency: record.currency ?? 'USD',
+            billing_interval: record.billing_interval,
+            active: record.active ?? true,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Price insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as PriceRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updatePrice(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/prices?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Price update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as PriceRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getSubscriptionByStripeId(stripeSubscriptionId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/subscriptions?stripe_subscription_id=eq.${encodeURIComponent(stripeSubscriptionId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Subscription query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SubscriptionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listSubscriptionsByUserId(userId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=*&order=created_at.desc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Subscriptions query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SubscriptionRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async upsertSubscription(record) {
+      try {
+        const payload = {
+          id: record.id ?? undefined,
+          user_id: record.user_id,
+          stripe_subscription_id: record.stripe_subscription_id,
+          stripe_customer_id: record.stripe_customer_id ?? null,
+          price_id: record.price_id ?? null,
+          status: record.status,
+          current_period_start: record.current_period_start ?? null,
+          current_period_end: record.current_period_end ?? null,
+          cancel_at: record.cancel_at ?? null,
+          updated_at: new Date().toISOString(),
+        };
+        const response = await fetch(`${supabaseUrl}/rest/v1/subscriptions?on_conflict=stripe_subscription_id`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            Prefer: 'return=representation,resolution=merge-duplicates',
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Subscription upsert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SubscriptionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getTransactionByStripeEventId(stripeEventId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/transactions?stripe_event_id=eq.${encodeURIComponent(stripeEventId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Transaction query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as TransactionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertTransaction(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/transactions`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            user_id: record.user_id ?? null,
+            subscription_id: record.subscription_id ?? null,
+            stripe_event_id: record.stripe_event_id,
+            event_type: record.event_type,
+            amount_cents: record.amount_cents ?? null,
+            currency: record.currency ?? null,
+            status: record.status,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Transaction insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as TransactionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listEntitlementsByUserId(userId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/entitlements?user_id=eq.${encodeURIComponent(userId)}&select=*&order=granted_at.desc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Entitlements query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EntitlementRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertEntitlement(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/entitlements`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            user_id: record.user_id,
+            product_id: record.product_id,
+            granted_at: record.granted_at ?? new Date().toISOString(),
+            expires_at: record.expires_at ?? null,
+            source: record.source,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Entitlement insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EntitlementRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
