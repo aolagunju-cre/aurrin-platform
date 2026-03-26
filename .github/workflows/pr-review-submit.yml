@@ -378,12 +378,19 @@ jobs:
         if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          PRIMARY_MERGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FALLBACK_MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
         run: |
-          if [ -z "$MERGE_TOKEN" ]; then
-            echo "::error::GH_AW_GITHUB_TOKEN is required for MVP fast-track merge."
+          merge_with_token() {
+            local token=$1
+            [ -z "$token" ] && return 1
+            GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+          }
+
+          if [ -z "$PRIMARY_MERGE_TOKEN" ] && [ -z "$FALLBACK_MERGE_TOKEN" ]; then
+            echo "::error::A merge token is required for MVP fast-track merge."
             exit 1
           fi
 
@@ -405,7 +412,10 @@ jobs:
             gh pr ready "$PR_NUMBER" --repo "$REPO" || echo "::warning::Could not mark PR as ready before MVP fast-track merge"
           fi
 
-          GH_TOKEN="$MERGE_TOKEN" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+          if ! merge_with_token "$PRIMARY_MERGE_TOKEN"; then
+            echo "::warning::Primary merge token failed for PR #${PR_NUMBER}; retrying with fallback token."
+            merge_with_token "$FALLBACK_MERGE_TOKEN"
+          fi
           echo "PR #${PR_NUMBER} merged via MVP fast-track mode."
 
       - name: Close linked issues after merge (APPROVE or MVP mode)
@@ -873,12 +883,19 @@ jobs:
         if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          PRIMARY_MERGE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FALLBACK_MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
           REPO: ${{ github.repository }}
         run: |
-          if [ -z "$MERGE_TOKEN" ]; then
-            echo "::error::GH_AW_GITHUB_TOKEN is required for MVP fast-track merge."
+          merge_with_token() {
+            local token=$1
+            [ -z "$token" ] && return 1
+            GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+          }
+
+          if [ -z "$PRIMARY_MERGE_TOKEN" ] && [ -z "$FALLBACK_MERGE_TOKEN" ]; then
+            echo "::error::A merge token is required for MVP fast-track merge."
             exit 1
           fi
 
@@ -900,7 +917,10 @@ jobs:
             gh pr ready "$PR_NUMBER" --repo "$REPO" || echo "::warning::Could not mark PR as ready before MVP fast-track merge"
           fi
 
-          GH_TOKEN="$MERGE_TOKEN" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+          if ! merge_with_token "$PRIMARY_MERGE_TOKEN"; then
+            echo "::warning::Primary merge token failed for PR #${PR_NUMBER}; retrying with fallback token."
+            merge_with_token "$FALLBACK_MERGE_TOKEN"
+          fi
           echo "PR #${PR_NUMBER} merged via MVP fast-track mode."
 
       - name: Close linked issues after merge (APPROVE or MVP mode)

@@ -317,7 +317,7 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
       continue
     fi
 
-    MERGE_TOKEN="${GH_AW_GITHUB_TOKEN:-${GH_TOKEN:-}}"
+    MERGE_TOKEN="${GH_TOKEN:-${GH_AW_GITHUB_TOKEN:-}}"
     if [ -z "$MERGE_TOKEN" ]; then
       echo "::warning::PR #${PR_NUM}: no token available for MVP merge."
       continue

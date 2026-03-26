@@ -21,6 +21,9 @@ grep -F "MVP fast-track merge (pipeline PRs regardless of verdict)" "$WORKFLOW" 
 grep -F "vars.PIPELINE_MVP_MODE == 'true'" "$WORKFLOW" >/dev/null
 grep -F 'gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft,headRefName,baseRefName,author' "$WORKFLOW" >/dev/null
 grep -F "continue-on-error: \${{ vars.PIPELINE_MVP_MODE == 'true' }}" "$WORKFLOW" >/dev/null
+grep -F "PRIMARY_MERGE_TOKEN" "$WORKFLOW" >/dev/null
+grep -F "FALLBACK_MERGE_TOKEN" "$WORKFLOW" >/dev/null
+grep -F 'Primary merge token failed for PR #${PR_NUMBER}; retrying with fallback token.' "$WORKFLOW" >/dev/null
 grep -F 'gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch' "$WORKFLOW" >/dev/null
 grep -F "merged via MVP fast-track mode" "$WORKFLOW" >/dev/null
 grep -F "bug\" or . == \"docs\" or . == \"test\"" "$WORKFLOW" >/dev/null
