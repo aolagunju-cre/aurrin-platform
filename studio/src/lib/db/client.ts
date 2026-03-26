@@ -120,6 +120,31 @@ export interface RoleAssignmentRecord {
   created_by: string | null;
 }
 
+export interface RoleAssignmentActorRecord {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+export interface RoleAssignmentListRecord extends RoleAssignmentRecord {
+  user: RoleAssignmentActorRecord | null;
+  assigned_by_user: RoleAssignmentActorRecord | null;
+}
+
+export interface RoleAssignmentInsert {
+  user_id: string;
+  role: string;
+  scope: string;
+  scoped_id?: string | null;
+  created_by: string;
+}
+
+export interface UserSearchRecord {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
 export interface UserInsert {
   email: string;
   name?: string | null;
@@ -200,6 +225,10 @@ export interface SupabaseDBClient {
   getFounderByUserId(userId: string): Promise<{ data: FounderRecord | null; error: Error | null }>;
   insertFounder(record: FounderInsert): Promise<{ data: FounderRecord | null; error: Error | null }>;
   getRoleAssignmentsByUserId(userId: string): Promise<{ data: RoleAssignmentRecord[]; error: Error | null }>;
+  listRoleAssignments(): Promise<{ data: RoleAssignmentListRecord[]; error: Error | null }>;
+  insertRoleAssignment(record: RoleAssignmentInsert): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
+  deleteRoleAssignment(id: string): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
+  searchUsersByEmail(query: string, limit?: number): Promise<{ data: UserSearchRecord[]; error: Error | null }>;
   listRubricTemplates(): Promise<{ data: RubricTemplateRecord[]; error: Error | null }>;
   getRubricTemplateById(id: string): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
   insertRubricTemplate(record: RubricTemplateInsert): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
@@ -248,6 +277,10 @@ export function getSupabaseClient(): SupabaseClient {
         getFounderByUserId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertFounder: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getRoleAssignmentsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listRoleAssignments: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        deleteRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        searchUsersByEmail: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listRubricTemplates: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getRubricTemplateById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertRubricTemplate: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -655,6 +688,86 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: [], error: new Error(`Role assignments query failed: ${response.statusText}`) };
         }
         const rows = await response.json() as RoleAssignmentRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listRoleAssignments() {
+      try {
+        const select = 'id,user_id,role,scope,scoped_id,created_at,updated_at,created_by,user:users!role_assignments_user_id_fkey(id,email,name),assigned_by_user:users!role_assignments_created_by_fkey(id,email,name)';
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/role_assignments?select=${encodeURIComponent(select)}&order=created_at.desc&limit=500`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Role assignments list failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RoleAssignmentListRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertRoleAssignment(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/role_assignments`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            user_id: record.user_id,
+            role: record.role,
+            scope: record.scope,
+            scoped_id: record.scoped_id ?? null,
+            created_by: record.created_by,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Role assignment insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RoleAssignmentRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async deleteRoleAssignment(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/role_assignments?id=eq.${encodeURIComponent(id)}`,
+          {
+            method: 'DELETE',
+            headers: { ...headers, Prefer: 'return=representation' },
+          }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Role assignment delete failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RoleAssignmentRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async searchUsersByEmail(query, limit = 10) {
+      const trimmed = query.trim();
+      if (!trimmed) {
+        return { data: [], error: null };
+      }
+
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/users?email=ilike.*${encodeURIComponent(trimmed)}*&select=id,email,name&order=email.asc&limit=${Math.max(1, Math.min(limit, 50))}`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`User search failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as UserSearchRecord[];
         return { data: rows, error: null };
       } catch (err) {
         return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
