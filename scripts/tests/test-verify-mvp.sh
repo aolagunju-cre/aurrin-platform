@@ -50,6 +50,7 @@ printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-agen
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-agent-validation-review.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pr-review-submit-policy-gate.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-prd-decomposer-contract-sections.sh" >/dev/null
+printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-repair-issue-contract-paths.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-repo-assist-validation-gate.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-validate-implementation.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/self-healing-drill.sh audit ff2f18746416dfb8ae8bfe1e414e031983a5fb73" >/dev/null

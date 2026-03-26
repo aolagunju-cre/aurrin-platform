@@ -14,11 +14,15 @@ if grep -F "contains(github.event.issue.labels.*.name, 'feature')" "$WORKFLOW" >
 fi
 
 grep -F "scripts/classify-pipeline-issue.sh" "$WORKFLOW" >/dev/null
+grep -F "scripts/repair-issue-contract-paths.sh" "$WORKFLOW" >/dev/null
 grep -F "steps.classify.outputs.actionable == 'true'" "$WORKFLOW" >/dev/null
 grep -F 'steps.classify.outputs.route == '\''needs_human'\''' "$WORKFLOW" >/dev/null
 grep -F 'steps.classify.outputs.route == '\''retry_with_backoff'\''' "$WORKFLOW" >/dev/null
 grep -F 'steps.classify.outputs.workflow_file' "$WORKFLOW" >/dev/null
 grep -F 'sleep "${{ steps.classify.outputs.backoff_seconds }}"' "$WORKFLOW" >/dev/null
+grep -F 'Repair invalid contract paths before dispatch' "$WORKFLOW" >/dev/null
+grep -F 'gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --body-file "$TMP_BODY"' "$WORKFLOW" >/dev/null
+grep -F 'contract-path-self-heal:v1' "$WORKFLOW" >/dev/null
 grep -F 'blocking_repo_assist_run_id=${BLOCKING_RUN_ID}' "$WORKFLOW" >/dev/null
 grep -F 'repo_assist_run_id=${AGENT_RUN_ID}' "$WORKFLOW" >/dev/null
 grep -F 'if [ "$WORKFLOW_FILE" = "repo-assist.lock.yml" ] || [ "$WORKFLOW_FILE" = "prd-decomposer.lock.yml" ]; then' "$WORKFLOW" >/dev/null

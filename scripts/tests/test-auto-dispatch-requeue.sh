@@ -121,6 +121,21 @@ grep -F 'aborting stale re-dispatch after refresh attempts' "$WORKFLOW" >/dev/nu
   exit 1
 }
 
+grep -F 'scripts/repair-issue-contract-paths.sh' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must repair missing contract paths before re-dispatching an issue" >&2
+  exit 1
+}
+
+grep -F 'gh issue edit "$SELECTED_ISSUE" --repo "$REPO" --body-file "$TMP_BODY"' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must persist repaired issue contract bodies before re-dispatch" >&2
+  exit 1
+}
+
+grep -F 'contract-path-self-heal:v1' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must record contract path self-heal comments" >&2
+  exit 1
+}
+
 grep -F 'SELECTED_REASON="requeue_backlog_fallback"' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must tag backlog fallback redispatches distinctly" >&2
   exit 1

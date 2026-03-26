@@ -65,6 +65,7 @@ CHECKS=(
   "bash scripts/tests/test-repo-assist.sh"
   "bash scripts/tests/test-repo-assist-validation-gate.sh"
   "bash scripts/tests/test-render-ci-repair-command.sh"
+  "bash scripts/tests/test-repair-issue-contract-paths.sh"
   "bash scripts/tests/test-run-copilot-with-retry.sh"
   "bash scripts/tests/test-run-lifecycle-lib.sh"
   "bash scripts/tests/test-self-healing-drill-dispatch-substate.sh"

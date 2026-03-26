@@ -601,6 +601,27 @@ jobs:
             exit 0
           fi
 
+          ISSUE_BODY=$(gh issue view "$SELECTED_ISSUE" --repo "$REPO" --json body --jq '.body // ""')
+          REPAIR_JSON=$(printf '%s' "$ISSUE_BODY" | scripts/repair-issue-contract-paths.sh)
+          REPAIR_CHANGED=$(printf '%s' "$REPAIR_JSON" | jq -r '.changed')
+          if [ "$REPAIR_CHANGED" = "true" ]; then
+            TMP_BODY=$(mktemp)
+            trap 'rm -f "$TMP_BODY"' EXIT
+            printf '%s' "$REPAIR_JSON" | jq -r '.body' > "$TMP_BODY"
+            gh issue edit "$SELECTED_ISSUE" --repo "$REPO" --body-file "$TMP_BODY"
+
+            REMOVED_LIST=$(printf '%s' "$REPAIR_JSON" | jq -r '.removed_paths[] | "- `" + . + "`"')
+            COMMENT_BODY=$(printf '%s\n%s\n%s\n%s\n%s\n%s' \
+              '<!-- contract-path-self-heal:v1 -->' \
+              'Auto-repaired `## Existing Contracts to Read` before re-dispatch by removing nonexistent repo paths:' \
+              '' \
+              "$REMOVED_LIST" \
+              '' \
+              'Re-dispatch will continue using the remaining existing contract files.')
+            gh issue comment "$SELECTED_ISSUE" --repo "$REPO" --body "$COMMENT_BODY" >/dev/null || \
+              echo "::warning::Could not record contract path self-heal comment on issue #${SELECTED_ISSUE}"
+          fi
+
           echo "Re-dispatching issue #${SELECTED_ISSUE} via ${SELECTED_WORKFLOW} (route: ${SELECTED_ROUTE}, reason: ${SELECTED_REASON})."
           DISPATCHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ] || [ "$SELECTED_WORKFLOW" = "prd-decomposer.lock.yml" ]; then

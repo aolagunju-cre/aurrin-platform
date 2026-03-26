@@ -40,6 +40,7 @@ jobs:
           sparse-checkout: |
             scripts/healing-control.sh
             scripts/classify-pipeline-issue.sh
+            scripts/repair-issue-contract-paths.sh
           sparse-checkout-cone-mode: false
 
       - name: Check healing pause switch
@@ -106,6 +107,37 @@ jobs:
         run: |
           echo "Retryable CI issue detected; backing off for ${{ steps.classify.outputs.backoff_seconds }}s before dispatch."
           sleep "${{ steps.classify.outputs.backoff_seconds }}"
+
+      - name: Repair invalid contract paths before dispatch
+        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          ISSUE_BODY=$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json body --jq '.body // ""')
+          REPAIR_JSON=$(printf '%s' "$ISSUE_BODY" | scripts/repair-issue-contract-paths.sh)
+          CHANGED=$(printf '%s' "$REPAIR_JSON" | jq -r '.changed')
+          if [ "$CHANGED" != "true" ]; then
+            echo "Issue #${ISSUE_NUMBER}: Existing Contracts to Read contains only existing repo paths."
+            exit 0
+          fi
+
+          TMP_BODY=$(mktemp)
+          trap 'rm -f "$TMP_BODY"' EXIT
+          printf '%s' "$REPAIR_JSON" | jq -r '.body' > "$TMP_BODY"
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --body-file "$TMP_BODY"
+
+          REMOVED_LIST=$(printf '%s' "$REPAIR_JSON" | jq -r '.removed_paths[] | "- `" + . + "`"')
+          COMMENT_BODY=$(printf '%s\n%s\n%s\n%s\n%s\n%s' \
+            '<!-- contract-path-self-heal:v1 -->' \
+            'Auto-repaired `## Existing Contracts to Read` before dispatch by removing nonexistent repo paths:' \
+            '' \
+            "$REMOVED_LIST" \
+            '' \
+            'Dispatch will continue using the remaining existing contract files.')
+          gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$COMMENT_BODY" >/dev/null || \
+            echo "::warning::Could not record contract path self-heal comment on issue #${ISSUE_NUMBER}"
 
       - name: Skip when owning agent already active
         if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true'
