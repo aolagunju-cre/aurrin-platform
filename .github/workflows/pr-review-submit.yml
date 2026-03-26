@@ -385,8 +385,20 @@ jobs:
         run: |
           merge_with_token() {
             local token=$1
+            local label=$2
+            local attempts=$3
+            local attempt
             [ -z "$token" ] && return 1
-            GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+            for attempt in $(seq 1 "$attempts"); do
+              if GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch; then
+                return 0
+              fi
+              echo "::warning::${label} merge attempt ${attempt}/${attempts} failed for PR #${PR_NUMBER}."
+              if [ "$attempt" -lt "$attempts" ]; then
+                sleep 5
+              fi
+            done
+            return 1
           }
 
           if [ -z "$PRIMARY_MERGE_TOKEN" ] && [ -z "$FALLBACK_MERGE_TOKEN" ]; then
@@ -412,9 +424,9 @@ jobs:
             gh pr ready "$PR_NUMBER" --repo "$REPO" || echo "::warning::Could not mark PR as ready before MVP fast-track merge"
           fi
 
-          if ! merge_with_token "$PRIMARY_MERGE_TOKEN"; then
+          if ! merge_with_token "$PRIMARY_MERGE_TOKEN" "primary" 2; then
             echo "::warning::Primary merge token failed for PR #${PR_NUMBER}; retrying with fallback token."
-            merge_with_token "$FALLBACK_MERGE_TOKEN"
+            merge_with_token "$FALLBACK_MERGE_TOKEN" "fallback" 1
           fi
           echo "PR #${PR_NUMBER} merged via MVP fast-track mode."
 
@@ -890,8 +902,20 @@ jobs:
         run: |
           merge_with_token() {
             local token=$1
+            local label=$2
+            local attempts=$3
+            local attempt
             [ -z "$token" ] && return 1
-            GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+            for attempt in $(seq 1 "$attempts"); do
+              if GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch; then
+                return 0
+              fi
+              echo "::warning::${label} merge attempt ${attempt}/${attempts} failed for PR #${PR_NUMBER}."
+              if [ "$attempt" -lt "$attempts" ]; then
+                sleep 5
+              fi
+            done
+            return 1
           }
 
           if [ -z "$PRIMARY_MERGE_TOKEN" ] && [ -z "$FALLBACK_MERGE_TOKEN" ]; then
@@ -917,9 +941,9 @@ jobs:
             gh pr ready "$PR_NUMBER" --repo "$REPO" || echo "::warning::Could not mark PR as ready before MVP fast-track merge"
           fi
 
-          if ! merge_with_token "$PRIMARY_MERGE_TOKEN"; then
+          if ! merge_with_token "$PRIMARY_MERGE_TOKEN" "primary" 2; then
             echo "::warning::Primary merge token failed for PR #${PR_NUMBER}; retrying with fallback token."
-            merge_with_token "$FALLBACK_MERGE_TOKEN"
+            merge_with_token "$FALLBACK_MERGE_TOKEN" "fallback" 1
           fi
           echo "PR #${PR_NUMBER} merged via MVP fast-track mode."
 
