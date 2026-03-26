@@ -185,8 +185,15 @@ describe('processPendingJobs', () => {
     expect(result).toEqual({ processed: 0, succeeded: 0, failed: 0, dead: 0 });
   });
 
-  it('marks job as completed on success', async () => {
-    const job = makeJob({ job_type: 'email', payload: { to: 'a@b.com', template: 'welcome_founder' } });
+  it('marks send_email job as completed on provider success and stores email_id', async () => {
+    const job = makeJob({
+      job_type: 'send_email',
+      payload: {
+        to: 'a@b.com',
+        template_name: 'welcome_founder',
+        data: { name: 'Founder' },
+      },
+    });
     const client = makeClient({
       fetchPendingJobs: jest.fn().mockResolvedValue({ data: [job], error: null }),
     });
@@ -196,6 +203,12 @@ describe('processPendingJobs', () => {
 
     expect(result.succeeded).toBe(1);
     expect(result.failed).toBe(0);
+    expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockResendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'a@b.com',
+      })
+    );
     expect(client.db.updateJobState).toHaveBeenCalledWith(
       job.id,
       'completed',
@@ -223,9 +236,19 @@ describe('processPendingJobs', () => {
     });
   });
 
-  it('moves job to dead_letter when max_retries exceeded', async () => {
-    // retry_count = 2, max_retries = 3 → next attempt (3) >= max_retries (3) → dead_letter
-    const job = makeJob({ job_type: 'email', payload: {}, retry_count: 2, max_retries: 3 });
+  it('moves job to dead_letter when provider failure reaches max_retries', async () => {
+    mockResendSend.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Provider timeout' },
+    });
+    // retry_count = 2, max_retries = 3 -> next attempt (3) >= max_retries (3) -> dead_letter
+    const job = makeJob({
+      id: 'send-email-dead',
+      job_type: 'send_email',
+      payload: { to: 'a@b.com', template_name: 'welcome_founder' },
+      retry_count: 2,
+      max_retries: 3,
+    });
     const client = makeClient({
       fetchPendingJobs: jest.fn().mockResolvedValue({ data: [job], error: null }),
     });
@@ -237,6 +260,10 @@ describe('processPendingJobs', () => {
     const updateCalls = (client.db.updateJobState as jest.Mock).mock.calls;
     const finalCall = updateCalls[updateCalls.length - 1];
     expect(finalCall[1]).toBe('dead_letter');
+    expect(finalCall[2]).toMatchObject({
+      error_message: 'Provider timeout',
+      retry_count: 3,
+    });
   });
 
   it('returns empty stats when fetchPendingJobs fails', async () => {
