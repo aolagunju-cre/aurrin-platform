@@ -283,6 +283,19 @@ command_for_branch() {
 
 echo "=== Pipeline Watchdog — $(date -u) ==="
 
+echo ""
+echo "=== Reconciling blocked parent pipeline issues ==="
+PARENT_RECONCILE_JSON=$("$SCRIPT_DIR/reconcile-parent-pipeline-issues.sh")
+PARENT_ACTIONS=$(printf '%s' "$PARENT_RECONCILE_JSON" | jq -r '.actions_taken // 0')
+PARENT_CLOSED=$(printf '%s' "$PARENT_RECONCILE_JSON" | jq -r '[.closed_parents[]? | "#" + .] | join(", ")')
+PARENT_UNBLOCKED=$(printf '%s' "$PARENT_RECONCILE_JSON" | jq -r '[.unblocked_issues[]? | "#" + .] | join(", ")')
+if [ "${PARENT_ACTIONS:-0}" -gt 0 ]; then
+  [ -n "$PARENT_CLOSED" ] && echo "Closed umbrella parents: ${PARENT_CLOSED}"
+  [ -n "$PARENT_UNBLOCKED" ] && echo "Unblocked dependency-cleared issues: ${PARENT_UNBLOCKED}"
+else
+  echo "No blocked parent reconciliation actions required."
+fi
+
 PIPELINE_PRS=$(gh pr list --repo "$REPO" --state open --json number,title,updatedAt \
   --jq '[.[] | select(.title | startswith("[Pipeline]"))]')
 PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels)

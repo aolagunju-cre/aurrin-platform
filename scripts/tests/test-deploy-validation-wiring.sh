@@ -73,4 +73,9 @@ grep -F 'Issue closure deferred pending post-deploy validation.' "$CLOSE_ISSUES"
   exit 1
 }
 
+grep -F 'scripts/reconcile-parent-pipeline-issues.sh' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must reconcile blocked umbrella parents after child PR merges" >&2
+  exit 1
+}
+
 echo "deploy-validation wiring tests passed"

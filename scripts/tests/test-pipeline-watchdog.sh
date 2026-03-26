@@ -19,6 +19,8 @@ grep -F "workflow_for_branch()" "$SCRIPT" >/dev/null
 grep -F "command_for_branch()" "$SCRIPT" >/dev/null
 grep -F "find_marker_comments()" "$SCRIPT" >/dev/null
 grep -F "sync_pr_repair_labels()" "$SCRIPT" >/dev/null
+grep -F 'reconcile-parent-pipeline-issues.sh' "$SCRIPT" >/dev/null
+grep -F '=== Reconciling blocked parent pipeline issues ===' "$SCRIPT" >/dev/null
 grep -F 'PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"' "$SCRIPT" >/dev/null
 grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"' "$SCRIPT" >/dev/null

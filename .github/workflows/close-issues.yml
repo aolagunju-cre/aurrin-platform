@@ -31,6 +31,9 @@ jobs:
         with:
           sparse-checkout: |
             scripts/extract-linked-issue-numbers.sh
+            scripts/extract-issue-dependencies.sh
+            scripts/extract-child-issue-numbers.sh
+            scripts/reconcile-parent-pipeline-issues.sh
           sparse-checkout-cone-mode: false
 
       - name: Close linked issues
@@ -69,3 +72,10 @@ jobs:
               echo "Issue #${ISSUE_NUM} is already ${STATE}"
             fi
           done
+
+      - name: Reconcile blocked parent pipeline issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash scripts/reconcile-parent-pipeline-issues.sh
