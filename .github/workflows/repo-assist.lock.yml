@@ -1562,6 +1562,12 @@ jobs:
           GH_HOST="${GITHUB_SERVER_URL#https://}"
           GH_HOST="${GH_HOST#http://}"
           echo "GH_HOST=${GH_HOST}" >> "$GITHUB_OUTPUT"
+      - name: Deduplicate repeated create_pull_request outputs
+        if: (!cancelled()) && needs.agent.result != 'skipped' && contains(needs.agent.outputs.output_types, 'create_pull_request')
+        run: |
+          bash scripts/dedupe-create-pr-safe-outputs.sh \
+            /tmp/gh-aw/agent_output.json \
+            /tmp/gh-aw/safeoutputs.jsonl
       - name: Process Safe Outputs
         id: process_safe_outputs
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8

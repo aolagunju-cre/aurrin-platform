@@ -29,6 +29,9 @@ jobs:
         id: setup-agent-output-env
         run: |
           echo "GH_AW_AGENT_OUTPUT=/tmp/gh-aw/agent_output.json" >> "$GITHUB_OUTPUT"
+      - name: Process Safe Outputs
+        if: (!cancelled()) && needs.agent.result != 'skipped'
+        run: echo "process"
       - name: Update reaction comment with completion status
         id: conclusion
         uses: actions/github-script@v8
@@ -58,8 +61,11 @@ grep -F 'if (!/^\d+$/.test(issue || "")) {' "$WORKFLOW" >/dev/null
 grep -F "Targeted issue #\${issue} ended with noop. Use missing_data or missing_tool with the exact blocker and next step instead of noop." "$WORKFLOW" >/dev/null
 grep -F "Targeted issue dispatch failed closed" "$WORKFLOW" >/dev/null
 grep -F "MESSAGE=\$(node -e '" "$WORKFLOW" >/dev/null
+grep -F "      - name: Deduplicate repeated create_pull_request outputs" "$WORKFLOW" >/dev/null
+grep -F "bash scripts/dedupe-create-pr-safe-outputs.sh" "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Fail targeted issue runs without actionable output$" "$WORKFLOW")" -eq 1 ]
+[ "$(grep -c "^      - name: Deduplicate repeated create_pull_request outputs$" "$WORKFLOW")" -eq 1 ]
 
 python3 - "$WORKFLOW" > "$TMPDIR/targeted-guard.sh" <<'PY'
 import sys
@@ -74,5 +80,27 @@ print(script)
 PY
 
 bash -n "$TMPDIR/targeted-guard.sh"
+
+python3 - "$WORKFLOW" > "$TMPDIR/step-order.txt" <<'PY'
+import sys
+import yaml
+
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    data = yaml.safe_load(fh)
+
+names = [step.get("name", "") for step in data["jobs"]["conclusion"]["steps"]]
+print("\n".join(names))
+PY
+
+python3 - <<'PY' "$TMPDIR/step-order.txt"
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    names = [line.strip() for line in fh if line.strip()]
+
+dedupe = names.index("Deduplicate repeated create_pull_request outputs")
+process = names.index("Process Safe Outputs")
+assert dedupe < process, names
+PY
 
 echo "patch-repo-assist-lock.sh tests passed"

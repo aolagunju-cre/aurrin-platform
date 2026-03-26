@@ -94,6 +94,9 @@ safe-outputs:
   # so dispatch pr-review-agent explicitly with the exact PR number returned by
   # create_pull_request. The review agent's concurrency group keeps duplicates
   # harmless if pull_request also fires normally.
+  # IMPORTANT: create_pull_request is staged during the agent phase and only
+  # executes later in the safe_outputs job. Do not call create_pull_request a
+  # second time just because GitHub does not yet show the PR during the same run.
 
 tools:
   web-fetch:
@@ -299,12 +302,13 @@ If Targeted Issue Dispatch Mode is active for a numeric GitHub issue id, Task 1 
    f. **Build and test (required)**: Run the canonical validator and every issue-specific validation command from `## Required Validation`. Do not create a PR if validation fails due to your changes.
    g. Add or update tests for the in-scope normative contracts, not just basic happy-path scenarios. Cover exact endpoint names, HTTP statuses, payload fields, enum values, counts/thresholds, exact UI text, and any explicit prohibitions when those are part of this issue's scope. **When deleting a feature, delete its tests too** — do not leave tests asserting on 404s or absent markup. Orphaned tests that always fail obscure real regressions and should be removed alongside the feature code.
    h. **Duplicate PR Recheck (required)**: Immediately before creating the PR, re-run the duplicate PR check from step 3b (parse PR bodies for close keywords matching `#N`, filter to `[Pipeline]` prefix, check for `open` or `merged` state). If a `[Pipeline]` PR is now `open` or `merged` for this issue (a concurrent run may have created one while you were coding), abandon your branch and skip this issue. Do not create a duplicate PR.
-   i. Create a PR with:
+   i. **Safe-output staging rule (required)**: `create_pull_request` does **not** open the PR immediately during the agent phase. It only records a staged safe output that will be executed later by the workflow's `safe_outputs` job. After calling `create_pull_request`, do not check GitHub and call it again because the PR is not visible yet.
+   j. Create a PR with:
       - Title matching the issue title
       - Body containing: `Closes #N`, the authoritative PRD source, a short `PRD Fidelity` note describing any corrected issue drift, a description of changes, a `## Validation` section with exact commands and outcomes, and test results
       - AI disclosure: "This PR was created by Pipeline Assistant."
-   j. **Trigger the reviewer**: Immediately after each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do **not** run `gh workflow run`; use the safe-output tool so review targets the correct PR even when bot-authored PRs suppress automatic `pull_request` triggers.
-   k. Label the source issue `in-progress`.
+   k. **Trigger the reviewer**: Immediately after each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do **not** run `gh workflow run`; use the safe-output tool so review targets the correct PR even when bot-authored PRs suppress automatic `pull_request` triggers.
+   l. Label the source issue `in-progress`.
 4. Update memory with attempts and outcomes.
 
 ### Task 2: Maintain Pipeline Pull Requests

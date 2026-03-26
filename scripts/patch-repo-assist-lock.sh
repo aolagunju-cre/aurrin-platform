@@ -13,6 +13,7 @@ original = content.dup
 step_name = "      - name: Fail targeted issue runs without actionable output\n"
 insert_before = "      - name: Invalidate GitHub App token\n"
 fallback_insert_after = "      - name: Update reaction comment with completion status\n"
+dedupe_step_name = "      - name: Deduplicate repeated create_pull_request outputs\n"
 
 fail_step = <<'STEP'.chomp
       - name: Fail targeted issue runs without actionable output
@@ -80,6 +81,15 @@ fail_step = <<'STEP'.chomp
           fi
 STEP
 
+dedupe_step = <<'STEP'.chomp
+      - name: Deduplicate repeated create_pull_request outputs
+        if: (!cancelled()) && needs.agent.result != 'skipped' && contains(needs.agent.outputs.output_types, 'create_pull_request')
+        run: |
+          bash scripts/dedupe-create-pr-safe-outputs.sh \
+            /tmp/gh-aw/agent_output.json \
+            /tmp/gh-aw/safeoutputs.jsonl
+STEP
+
 legacy_step_pattern = /
 ^      -\ name:\ Fail\ targeted\ issue\ runs\ without\ actionable\ output\n
 .*?
@@ -109,6 +119,25 @@ raise "Targeted issue guard missing noop guidance in #{path}" unless content.inc
 raise "Targeted issue guard missing workflow_dispatch issue_number condition in #{path}" unless content.include?("github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''")
 raise "Targeted issue guard missing numeric issue check in #{path}" unless content.match?(/if \(!\/\^\\d\+\$\/\.test\(issue \|\| ""\)\) \{/)
 raise "Legacy heredoc-based targeted issue guard remains in #{path}" if content.include?("node <<'NODE'")
+
+process_safe_outputs_step = "      - name: Process Safe Outputs\n"
+raise "Could not find Process Safe Outputs step in #{path}" unless content.include?(process_safe_outputs_step)
+
+legacy_dedupe_pattern = /
+^      -\ name:\ Deduplicate\ repeated\ create_pull_request\ outputs\n
+.*?
+(?=^      -\ name:\ Process\ Safe\ Outputs\n)
+/mx
+
+content.sub!(legacy_dedupe_pattern, "#{dedupe_step}\n")
+
+unless content.include?(dedupe_step_name)
+  content.sub!(process_safe_outputs_step, "#{dedupe_step}\n#{process_safe_outputs_step}")
+end
+
+raise "Patched duplicate create_pull_request dedupe step missing in #{path}" unless content.include?(dedupe_step_name)
+raise "Duplicate create_pull_request dedupe steps detected in #{path}" unless content.scan(dedupe_step_name).length == 1
+raise "Dedupe step must invoke dedupe-create-pr-safe-outputs.sh in #{path}" unless content.include?("bash scripts/dedupe-create-pr-safe-outputs.sh")
 
 File.write(path, content) if content != original
 RUBY

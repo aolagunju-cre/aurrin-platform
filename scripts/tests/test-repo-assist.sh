@@ -37,6 +37,16 @@ grep -F 'includes any non-digit characters, treat it as an internal or synthetic
   exit 1
 }
 
+grep -F 'create_pull_request is staged during the agent phase and only' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: repo-assist.md must explain staged create_pull_request behavior in safe-outputs notes" >&2
+  exit 1
+}
+
+grep -F 'Safe-output staging rule (required)' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: repo-assist.md must include the safe-output staging rule in Task 1" >&2
+  exit 1
+}
+
 grep -F 'cancel-in-progress: true' "$WORKFLOW" >/dev/null || {
   echo "FAIL: repo-assist.md must continue cancelling superseded runs within the shared concurrency group" >&2
   exit 1
