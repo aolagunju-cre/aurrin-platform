@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '../../../../lib/db/client';
 import { uploadFile, UploadError } from '../../../../lib/storage/upload';
-import { enqueueJob } from '../../../../lib/jobs/enqueue';
+import { sendEmail } from '../../../../lib/email/send';
 
 const MAX_PITCH_SUMMARY_LENGTH = 1000;
 const MIN_PITCH_SUMMARY_LENGTH = 100;
@@ -167,24 +167,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: false, message: 'Could not save application' }, { status: 500 });
     }
 
-    await enqueueJob(
-      'email',
-      {
-        to: email,
-        template: 'welcome_email',
-        data: {
-          subject: 'Thanks for applying to Aurrin Ventures',
-          status_link: `/public/apply/status?email=${encodeURIComponent(email)}`,
-          full_name: fullName,
-          company_name: companyName,
-          application_id: saveResult.data.id,
-        },
-      },
-      {
-        aggregate_id: saveResult.data.id,
-        aggregate_type: 'founder_application',
-      }
-    );
+    await sendEmail(email, 'welcome_founder', {
+      name: fullName,
+      company: companyName,
+      link: `/public/apply/status?email=${encodeURIComponent(email)}`,
+      email,
+      application_id: saveResult.data.id,
+    });
 
     return NextResponse.json({ success: true, message: 'Application submitted' }, { status: 200 });
   } catch (error) {

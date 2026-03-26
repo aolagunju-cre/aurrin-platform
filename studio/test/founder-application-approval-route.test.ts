@@ -3,15 +3,15 @@
 import { NextRequest } from 'next/server';
 import { PATCH } from '../src/app/api/protected/admin/founder-applications/[applicationId]/route';
 import { getSupabaseClient } from '../src/lib/db/client';
-import { enqueueJob } from '../src/lib/jobs/enqueue';
+import { sendEmail } from '../src/lib/email/send';
 import { extractTokenFromHeader, verifyJWT } from '../src/lib/auth/jwt';
 
 jest.mock('../src/lib/db/client', () => ({
   getSupabaseClient: jest.fn(),
 }));
 
-jest.mock('../src/lib/jobs/enqueue', () => ({
-  enqueueJob: jest.fn(),
+jest.mock('../src/lib/email/send', () => ({
+  sendEmail: jest.fn(),
 }));
 
 jest.mock('../src/lib/auth/jwt', () => ({
@@ -20,7 +20,7 @@ jest.mock('../src/lib/auth/jwt', () => ({
 }));
 
 const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof getSupabaseClient>;
-const mockedEnqueueJob = enqueueJob as jest.MockedFunction<typeof enqueueJob>;
+const mockedSendEmail = sendEmail as jest.MockedFunction<typeof sendEmail>;
 const mockedExtractTokenFromHeader = extractTokenFromHeader as jest.MockedFunction<typeof extractTokenFromHeader>;
 const mockedVerifyJWT = verifyJWT as jest.MockedFunction<typeof verifyJWT>;
 
@@ -41,7 +41,7 @@ describe('PATCH /api/protected/admin/founder-applications/[applicationId]', () =
   let mockDb: Record<string, jest.Mock>;
 
   beforeEach(() => {
-    mockedEnqueueJob.mockReset();
+    mockedSendEmail.mockReset();
     mockedExtractTokenFromHeader.mockReset();
     mockedVerifyJWT.mockReset();
     mockedExtractTokenFromHeader.mockImplementation((value) => (value ? 'mock-token' : null));
@@ -207,13 +207,13 @@ describe('PATCH /api/protected/admin/founder-applications/[applicationId]', () =
     expect(mockDb.insertFounder).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'user-1', company_name: 'Acme Inc' })
     );
-    expect(mockedEnqueueJob).toHaveBeenCalledWith(
-      'email',
+    expect(mockedSendEmail).toHaveBeenCalledWith(
+      'jane@example.com',
+      'founder_approved',
       expect.objectContaining({
-        to: 'jane@example.com',
-        template: 'founder_email_confirmation',
-      }),
-      expect.objectContaining({ aggregate_type: 'founder_application' })
+        name: 'Jane Doe',
+        company: 'Acme Inc',
+      })
     );
   });
 

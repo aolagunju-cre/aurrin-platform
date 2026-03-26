@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { POST } from '../src/app/api/public/apply/route';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { uploadFile } from '../src/lib/storage/upload';
-import { enqueueJob } from '../src/lib/jobs/enqueue';
+import { sendEmail } from '../src/lib/email/send';
 
 jest.mock('../src/lib/db/client', () => ({
   getSupabaseClient: jest.fn(),
@@ -26,13 +26,13 @@ jest.mock('../src/lib/storage/upload', () => {
   };
 });
 
-jest.mock('../src/lib/jobs/enqueue', () => ({
-  enqueueJob: jest.fn(),
+jest.mock('../src/lib/email/send', () => ({
+  sendEmail: jest.fn(),
 }));
 
 const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof getSupabaseClient>;
 const mockedUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
-const mockedEnqueueJob = enqueueJob as jest.MockedFunction<typeof enqueueJob>;
+const mockedSendEmail = sendEmail as jest.MockedFunction<typeof sendEmail>;
 
 function buildRequest(overrides: Record<string, string> = {}, file?: File): NextRequest {
   const formData = new FormData();
@@ -66,7 +66,7 @@ describe('POST /api/public/apply', () => {
 
   beforeEach(() => {
     mockedUploadFile.mockReset();
-    mockedEnqueueJob.mockReset();
+    mockedSendEmail.mockReset();
 
     mockDb = {
       getFounderApplicationById: jest.fn(),
@@ -154,9 +154,9 @@ describe('POST /api/public/apply', () => {
     });
 
     mockedUploadFile.mockResolvedValue({ file_id: 'file-1', path: 'pitch-decks/public/deck.pdf' });
-    mockedEnqueueJob.mockResolvedValue({
+    mockedSendEmail.mockResolvedValue({
       id: 'job-1',
-      job_type: 'email',
+      job_type: 'send_email',
       aggregate_id: 'app-1',
       aggregate_type: 'founder_application',
       payload: {},
@@ -216,7 +216,7 @@ describe('POST /api/public/apply', () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({ success: true, message: 'Application submitted' });
     expect(mockedUploadFile).not.toHaveBeenCalled();
-    expect(mockedEnqueueJob).not.toHaveBeenCalled();
+    expect(mockedSendEmail).not.toHaveBeenCalled();
   });
 
   it('updates an existing application if the last submission was over 1 day ago', async () => {
@@ -257,7 +257,7 @@ describe('POST /api/public/apply', () => {
       expect.objectContaining({ status: 'pending', full_name: 'Jane Doe' })
     );
     expect(mockedUploadFile).toHaveBeenCalledTimes(1);
-    expect(mockedEnqueueJob).toHaveBeenCalledTimes(1);
+    expect(mockedSendEmail).toHaveBeenCalledTimes(1);
   });
 
   it('creates application, uploads deck, and enqueues welcome email', async () => {
@@ -273,16 +273,14 @@ describe('POST /api/public/apply', () => {
       expect.stringMatching(/^public-/)
     );
 
-    expect(mockedEnqueueJob).toHaveBeenCalledWith(
-      'email',
+    expect(mockedSendEmail).toHaveBeenCalledWith(
+      'jane@example.com',
+      'welcome_founder',
       expect.objectContaining({
-        to: 'jane@example.com',
-        template: 'welcome_email',
-        data: expect.objectContaining({
-          subject: 'Thanks for applying to Aurrin Ventures',
-        }),
+        name: 'Jane Doe',
+        company: 'Acme Inc',
+        application_id: 'app-1',
       }),
-      expect.objectContaining({ aggregate_type: 'founder_application' })
     );
   });
 

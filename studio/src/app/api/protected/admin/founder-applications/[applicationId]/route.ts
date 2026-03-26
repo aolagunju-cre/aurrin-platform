@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { enqueueJob } from '../../../../../../lib/jobs/enqueue';
+import { sendEmail } from '../../../../../../lib/email/send';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 import { extractTokenFromHeader, verifyJWT } from '../../../../../../lib/auth/jwt';
 
@@ -113,22 +113,13 @@ export async function PATCH(
         }
       }
 
-      await enqueueJob(
-        'email',
-        {
-          to: applicationResult.data.email,
-          template: 'founder_email_confirmation',
-          data: {
-            subject: 'Thanks for applying to Aurrin Ventures',
-            confirmation_link: `/public/apply/status?email=${encodeURIComponent(applicationResult.data.email)}`,
-            next_steps: 'Confirm your email before accessing the founder platform.',
-          },
-        },
-        {
-          aggregate_id: applicationResult.data.id,
-          aggregate_type: 'founder_application',
-        }
-      );
+      await sendEmail(applicationResult.data.email, 'founder_approved', {
+        name: applicationResult.data.full_name || applicationResult.data.name,
+        company: applicationResult.data.company_name,
+        link: `/public/apply/status?email=${encodeURIComponent(applicationResult.data.email)}`,
+        email: applicationResult.data.email,
+        next_steps: 'Confirm your email before accessing the founder platform.',
+      });
     } catch {
       return NextResponse.json({ success: false, message: 'Could not complete acceptance workflow' }, { status: 500 });
     }
