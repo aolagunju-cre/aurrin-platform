@@ -173,6 +173,52 @@ export interface EventUpdate {
   config?: Record<string, unknown>;
 }
 
+export type SponsorTier = 'bronze' | 'silver' | 'gold';
+export type SponsorScope = 'event' | 'site-wide';
+export type SponsorStatus = 'active' | 'inactive';
+
+export interface SponsorRecord {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  website_url: string | null;
+  tier: SponsorTier;
+  placement_scope: SponsorScope;
+  event_id: string | null;
+  end_date: string | null;
+  pricing_cents: number;
+  status: SponsorStatus;
+  display_priority: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SponsorInsert {
+  name: string;
+  logo_url?: string | null;
+  website_url?: string | null;
+  tier: SponsorTier;
+  placement_scope: SponsorScope;
+  event_id?: string | null;
+  end_date?: string | null;
+  pricing_cents: number;
+  status?: SponsorStatus;
+  display_priority?: number;
+}
+
+export interface SponsorUpdate {
+  name?: string;
+  logo_url?: string | null;
+  website_url?: string | null;
+  tier?: SponsorTier;
+  placement_scope?: SponsorScope;
+  event_id?: string | null;
+  end_date?: string | null;
+  pricing_cents?: number;
+  status?: SponsorStatus;
+  display_priority?: number;
+}
+
 export type JudgeScoreState = 'draft' | 'submitted' | 'locked';
 
 export interface JudgeScoreRecord {
@@ -462,6 +508,11 @@ export interface SupabaseDBClient {
   getEventById(id: string): Promise<{ data: EventRecord | null; error: Error | null }>;
   insertEvent(record: EventInsert): Promise<{ data: EventRecord | null; error: Error | null }>;
   updateEvent(id: string, updates: EventUpdate): Promise<{ data: EventRecord | null; error: Error | null }>;
+  listSponsors(): Promise<{ data: SponsorRecord[]; error: Error | null }>;
+  getSponsorById(id: string): Promise<{ data: SponsorRecord | null; error: Error | null }>;
+  insertSponsor(record: SponsorInsert): Promise<{ data: SponsorRecord | null; error: Error | null }>;
+  updateSponsor(id: string, updates: SponsorUpdate): Promise<{ data: SponsorRecord | null; error: Error | null }>;
+  deleteSponsor(id: string): Promise<{ error: Error | null }>;
   searchUsersByEmail(query: string, limit?: number): Promise<{ data: UserSearchRecord[]; error: Error | null }>;
   listRubricTemplates(): Promise<{ data: RubricTemplateRecord[]; error: Error | null }>;
   getRubricTemplateById(id: string): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
@@ -541,6 +592,11 @@ export function getSupabaseClient(): SupabaseClient {
         getEventById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updateEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listSponsors: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getSponsorById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertSponsor: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateSponsor: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        deleteSponsor: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         searchUsersByEmail: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listRubricTemplates: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getRubricTemplateById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1154,6 +1210,98 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listSponsors() {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/sponsors?select=*&order=updated_at.desc&limit=500`, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`Sponsors query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getSponsorById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/sponsors?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Sponsor query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertSponsor(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/sponsors`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            name: record.name,
+            logo_url: record.logo_url ?? null,
+            website_url: record.website_url ?? null,
+            tier: record.tier,
+            placement_scope: record.placement_scope,
+            event_id: record.event_id ?? null,
+            end_date: record.end_date ?? null,
+            pricing_cents: record.pricing_cents,
+            status: record.status ?? 'active',
+            display_priority: record.display_priority ?? 0,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Sponsor insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateSponsor(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/sponsors?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Sponsor update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async deleteSponsor(id) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/sponsors?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!response.ok) {
+          return { error: new Error(`Sponsor delete failed: ${response.statusText}`) };
+        }
+        return { error: null };
+      } catch (err) {
+        return { error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
 

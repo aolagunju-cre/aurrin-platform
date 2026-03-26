@@ -5,6 +5,7 @@ const links = [
   { label: 'Rubrics', href: '/admin/rubrics' },
   { label: 'Founders', href: '/admin/founders' },
   { label: 'Roles', href: '/admin/roles' },
+  { label: 'Sponsors', href: '/admin/sponsors' },
   { label: 'Analytics', href: '/admin/analytics' },
 ];
 
