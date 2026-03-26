@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SponsorPlacementSection } from "@/src/components/public/SponsorPlacementSection";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <footer style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #ddd" }}>
+          <SponsorPlacementSection />
+        </footer>
+      </body>
     </html>
   );
 }
