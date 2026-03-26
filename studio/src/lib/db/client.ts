@@ -333,6 +333,7 @@ export interface SupabaseStorageClient {
 }
 
 export interface SupabaseDBClient {
+  queryTable<T>(table: string, query: string): Promise<{ data: T[]; error: Error | null }>;
   insertFile(record: Omit<FileRecord, 'id' | 'created_at'>): Promise<{ data: FileRecord | null; error: Error | null }>;
   getFile(fileId: string): Promise<{ data: FileRecord | null; error: Error | null }>;
   deleteFile(fileId: string): Promise<{ error: Error | null }>;
@@ -415,6 +416,7 @@ export function getSupabaseClient(): SupabaseClient {
         createSignedUrl: async () => ({ signedUrl: '', error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
       },
       db: {
+        queryTable: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertFile: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFile: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         deleteFile: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -538,6 +540,23 @@ export function getSupabaseClient(): SupabaseClient {
   };
 
   const db: SupabaseDBClient = {
+    async queryTable<T>(table: string, query: string) {
+      try {
+        const normalizedQuery = query ? (query.startsWith('?') ? query.slice(1) : query) : '';
+        const url = normalizedQuery
+          ? `${supabaseUrl}/rest/v1/${encodeURIComponent(table)}?${normalizedQuery}`
+          : `${supabaseUrl}/rest/v1/${encodeURIComponent(table)}`;
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`DB query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as T[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
     async insertFile(record) {
       try {
         const response = await fetch(`${supabaseUrl}/rest/v1/files`, {
