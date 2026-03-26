@@ -12,8 +12,13 @@ WORKFLOW="$TMPDIR/pr-review-agent.lock.yml"
 cat > "$WORKFLOW" <<'YAML'
 name: test
 jobs:
+  activation:
+    needs: pre_activation
+    if: >
+      needs.pre_activation.outputs.activated == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id)
+    runs-on: ubuntu-slim
   pre_activation:
-    if: (github.event_name != 'pull_request') || (github.event.pull_request.head.repo.id == github.repository_id)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id
     runs-on: ubuntu-slim
     outputs:
       activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}
@@ -87,12 +92,15 @@ SECOND_HASH=$(hash_file "$WORKFLOW")
 
 grep -F "      - name: Activate same-repo pull request without membership gate" "$WORKFLOW" >/dev/null
 grep -F "steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true'" "$WORKFLOW" >/dev/null
+grep -F "vars.PIPELINE_MVP_MODE != 'true' || github.event_name != 'pull_request' || !startsWith(github.event.pull_request.title, '[Pipeline]')" "$WORKFLOW" >/dev/null
 grep -F "if: steps.activate_pull_request.outputs.activated != 'true'" "$WORKFLOW" >/dev/null
 grep -F 'github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
 grep -F '      actions: write' "$WORKFLOW" >/dev/null
 grep -F "      - name: Dispatch pr-review-submit for posted verdict" "$WORKFLOW" >/dev/null
 grep -F "if: steps.process_safe_outputs.outputs.comment_id != ''" "$WORKFLOW" >/dev/null
 grep -F 'gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"' "$WORKFLOW" >/dev/null
+grep -F 'PR_STATE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '\''.state'\'' 2>/dev/null || true)' "$WORKFLOW" >/dev/null
+grep -F 'skipping pr-review-submit dispatch for async audit' "$WORKFLOW" >/dev/null
 grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/null
 grep -F 'Detection skipped: PIPELINE_MVP_MODE=true' "$WORKFLOW" >/dev/null
 

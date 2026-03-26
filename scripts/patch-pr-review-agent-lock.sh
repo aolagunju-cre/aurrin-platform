@@ -32,6 +32,32 @@ old_activated_output = "      activated: ${{ steps.check_membership.outputs.is_t
 new_activated_output = "      activated: ${{ steps.activate_pull_request.outputs.activated == 'true' || steps.check_membership.outputs.is_team_member == 'true' }}"
 old_github_token_expr = "github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}"
 new_github_token_expr = "github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}"
+old_activation_if = "      needs.pre_activation.outputs.activated == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id)"
+new_activation_if = "      needs.pre_activation.outputs.activated == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id) && (vars.PIPELINE_MVP_MODE != 'true' || github.event_name != 'pull_request' || !startsWith(github.event.pull_request.title, '[Pipeline]'))"
+old_pre_activation_if = "    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id"
+new_pre_activation_if = "    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id) && (vars.PIPELINE_MVP_MODE != 'true' || github.event_name != 'pull_request' || !startsWith(github.event.pull_request.title, '[Pipeline]'))"
+old_pr_dispatch_guard = <<'STEP'.chomp
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::Unable to resolve PR number for pr-review-submit dispatch."
+            exit 0
+          fi
+
+          COMMENT_BODY=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.body')
+STEP
+new_pr_dispatch_guard = <<'STEP'.chomp
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::Unable to resolve PR number for pr-review-submit dispatch."
+            exit 0
+          fi
+
+          PR_STATE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '.state' 2>/dev/null || true)
+          if [ "$PR_STATE" != "OPEN" ]; then
+            echo "PR #${PR_NUMBER} is ${PR_STATE:-unknown}; skipping pr-review-submit dispatch for async audit."
+            exit 0
+          fi
+
+          COMMENT_BODY=$(gh api "/repos/${REPO}/issues/comments/${COMMENT_ID}" --jq '.body')
+STEP
 dispatch_step = <<'STEP'.chomp
       - name: Dispatch pr-review-submit for posted verdict
         if: steps.process_safe_outputs.outputs.comment_id != ''
@@ -46,6 +72,12 @@ dispatch_step = <<'STEP'.chomp
           fi
           if [ -z "$PR_NUMBER" ]; then
             echo "::warning::Unable to resolve PR number for pr-review-submit dispatch."
+            exit 0
+          fi
+
+          PR_STATE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '.state' 2>/dev/null || true)
+          if [ "$PR_STATE" != "OPEN" ]; then
+            echo "PR #${PR_NUMBER} is ${PR_STATE:-unknown}; skipping pr-review-submit dispatch for async audit."
             exit 0
           fi
 
@@ -108,6 +140,9 @@ unless content.include?(new_activated_output)
   raise "Could not find pre_activation activated output in #{path}" unless content.sub!(old_activated_output, new_activated_output)
 end
 
+content.sub!(old_pre_activation_if, new_pre_activation_if) unless content.include?(new_pre_activation_if)
+content.sub!(old_activation_if, new_activation_if) unless content.include?(new_activation_if)
+
 content.gsub!(malformed_bypass_step, bypass_step)
 
 unless content.include?(bypass_step)
@@ -123,6 +158,8 @@ unless content.include?(membership_guard)
 end
 
 raise "Patched activated output missing in #{path}" unless content.include?(new_activated_output)
+raise "Patched pre_activation MVP skip missing in #{path}" unless content.include?(new_pre_activation_if)
+raise "Patched activation MVP skip missing in #{path}" unless content.include?(new_activation_if)
 raise "Patched bypass step missing in #{path}" unless content.include?(bypass_step)
 raise "Patched membership guard missing in #{path}" unless content.include?(membership_guard)
 raise "Duplicate bypass step detected in #{path}" unless content.scan(bypass_step).length == 1
@@ -163,8 +200,11 @@ unless content.include?(dispatch_step_name)
   end
 end
 
+content.sub!(old_pr_dispatch_guard, new_pr_dispatch_guard) unless content.include?('skipping pr-review-submit dispatch for async audit')
+
 raise "Patched pr-review-submit dispatch step missing in #{path}" unless content.include?(dispatch_step_name)
 raise "Patched pr-review-submit dispatch command missing in #{path}" unless content.include?('gh workflow run pr-review-submit.yml --repo "$REPO" -f pr_number="$PR_NUMBER" -f verdict="$VERDICT" -f summary="$SUMMARY"')
+raise "Patched async-review PR state guard missing in #{path}" unless content.include?("PR_STATE=$(gh pr view \"$PR_NUMBER\" --repo \"$REPO\" --json state --jq '.state' 2>/dev/null || true)")
 raise "Duplicate pr-review-submit dispatch step detected in #{path}" unless content.scan(dispatch_step_name).length == 1
 
 File.write(path, content) if content != original

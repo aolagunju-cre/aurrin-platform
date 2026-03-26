@@ -88,6 +88,26 @@ grep -F 'Dispatch requeue after parent reconciliation' "$CLOSE_ISSUES" >/dev/nul
   exit 1
 }
 
+grep -F 'Dispatch async review audit after MVP merge' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must dispatch pr-review-agent asynchronously after MVP pipeline merges" >&2
+  exit 1
+}
+
+grep -F 'gh workflow run pr-review-agent.lock.yml --repo "$REPO" -f pr_number="$PR_NUMBER"' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must dispatch pr-review-agent with the merged PR number" >&2
+  exit 1
+}
+
+grep -F 'Confirmed pr-review-agent run ${run_id} after ${label} dispatch.' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must verify that async review dispatch actually created a run" >&2
+  exit 1
+}
+
+grep -F 'Dispatched and verified async pr-review-agent audit after MVP merge of PR #${PR_NUMBER}.' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must report successful async review dispatch after MVP merges" >&2
+  exit 1
+}
+
 grep -F 'gh workflow run auto-dispatch-requeue.yml --repo "$REPO"' "$CLOSE_ISSUES" >/dev/null || {
   echo "FAIL: close-issues.yml must dispatch auto-dispatch-requeue after parent reconciliation" >&2
   exit 1
