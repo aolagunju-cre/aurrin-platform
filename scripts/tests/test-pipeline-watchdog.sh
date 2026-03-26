@@ -20,6 +20,7 @@ grep -F "sync_pr_repair_labels()" "$SCRIPT" >/dev/null
 grep -F 'PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"' "$SCRIPT" >/dev/null
 grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"' "$SCRIPT" >/dev/null
+grep -F 'Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping orphaned-issue dispatch to preserve one-PR-at-a-time flow.' "$SCRIPT" >/dev/null
 grep -F 'workflow_name=${workflow_name}' "$SCRIPT" >/dev/null
 grep -F -- '--workflow-name "$FAILURE_WORKFLOW_NAME"' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "$workflow_file" --repo "$REPO" -f issue_number="$issue_number"' "$SCRIPT" >/dev/null

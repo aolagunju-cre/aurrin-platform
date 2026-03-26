@@ -286,6 +286,7 @@ echo "=== Pipeline Watchdog — $(date -u) ==="
 PIPELINE_PRS=$(gh pr list --repo "$REPO" --state open --json number,title,updatedAt \
   --jq '[.[] | select(.title | startswith("[Pipeline]"))]')
 PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels)
+OPEN_PIPELINE_PR_COUNT=$(printf '%s' "$PIPELINE_PRS" | jq 'length')
 
 echo ""
 echo "=== Checking MVP merge candidates ==="
@@ -564,7 +565,6 @@ if [ "$ACTIONS_TAKEN" -eq 0 ]; then
   FRONTEND_ACTIVE=$(workflow_active_runs "frontend-agent.lock.yml")
   PRD_DECOMPOSER_ACTIVE=$(workflow_active_runs "prd-decomposer.lock.yml")
   REQUEUE_ACTIVE=$(workflow_active_runs "auto-dispatch-requeue.yml")
-  ACTIVE_PIPELINE_PRS=$(printf '%s' "$PIPELINE_PRS" | jq 'length')
   ACTIONABLE_PIPELINE_ISSUES=0
 
   while IFS= read -r ISSUE_ROW; do
@@ -578,7 +578,7 @@ if [ "$ACTIONS_TAKEN" -eq 0 ]; then
   done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c '.[]')
 
   ACTIVE_IMPLEMENTATION_LANES=$((REPO_ASSIST_ACTIVE + FRONTEND_ACTIVE + PRD_DECOMPOSER_ACTIVE))
-  if [ "$ACTIVE_IMPLEMENTATION_LANES" -eq 0 ] && [ "$REQUEUE_ACTIVE" -eq 0 ] && [ "$ACTIVE_PIPELINE_PRS" -eq 0 ] && [ "$ACTIONABLE_PIPELINE_ISSUES" -gt 0 ]; then
+  if [ "$ACTIVE_IMPLEMENTATION_LANES" -eq 0 ] && [ "$REQUEUE_ACTIVE" -eq 0 ] && [ "$OPEN_PIPELINE_PR_COUNT" -eq 0 ] && [ "$ACTIONABLE_PIPELINE_ISSUES" -gt 0 ]; then
     echo "No active implementation lanes and ${ACTIONABLE_PIPELINE_ISSUES} actionable pipeline issue(s) remain. Dispatching auto-dispatch-requeue."
     if dispatch_requeue_workflow; then
       ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
@@ -586,12 +586,15 @@ if [ "$ACTIONS_TAKEN" -eq 0 ]; then
       echo "::warning::Could not dispatch auto-dispatch-requeue"
     fi
   else
-    echo "Idle-lane nudge skipped: repo-assist=${REPO_ASSIST_ACTIVE}, frontend-agent=${FRONTEND_ACTIVE}, prd-decomposer=${PRD_DECOMPOSER_ACTIVE}, auto-dispatch-requeue=${REQUEUE_ACTIVE}, open_prs=${ACTIVE_PIPELINE_PRS}, actionable_issues=${ACTIONABLE_PIPELINE_ISSUES}"
+    echo "Idle-lane nudge skipped: repo-assist=${REPO_ASSIST_ACTIVE}, frontend-agent=${FRONTEND_ACTIVE}, prd-decomposer=${PRD_DECOMPOSER_ACTIVE}, auto-dispatch-requeue=${REQUEUE_ACTIVE}, open_prs=${OPEN_PIPELINE_PR_COUNT}, actionable_issues=${ACTIONABLE_PIPELINE_ISSUES}"
   fi
 else
   echo "Action already taken earlier in this cycle. Skipping idle-lane nudge."
 fi
 
+if [ "$OPEN_PIPELINE_PR_COUNT" -gt 0 ]; then
+  echo "Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping orphaned-issue dispatch to preserve one-PR-at-a-time flow."
+else
 while IFS= read -r ISSUE_ROW; do
   [ -z "$ISSUE_ROW" ] && continue
   ISSUE_NUM=$(printf '%s' "$ISSUE_ROW" | jq -r '.number')
@@ -634,6 +637,7 @@ while IFS= read -r ISSUE_ROW; do
   ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
   break
 done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c '.[]')
+fi
 
 echo ""
 echo "=== Checking for superseded PRs ==="
@@ -683,6 +687,9 @@ echo ""
 echo "=== Checking for stale [aw] workflow failure issues ==="
 AW_ISSUES=$(gh issue list --repo "$REPO" --label agentic-workflows --state open --json number,title,updatedAt 2>/dev/null || echo '[]')
 
+if [ "$OPEN_PIPELINE_PR_COUNT" -gt 0 ]; then
+  echo "Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping stale [aw] issue redispatch."
+else
 while IFS= read -r AW_ROW; do
   [ -z "$AW_ROW" ] && continue
   AW_NUM=$(printf '%s' "$AW_ROW" | jq -r '.number')
@@ -723,6 +730,7 @@ while IFS= read -r AW_ROW; do
   ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
   break
 done < <(printf '%s' "$AW_ISSUES" | jq -c '.[]')
+fi
 
 echo ""
 echo "=== Completion check ==="
