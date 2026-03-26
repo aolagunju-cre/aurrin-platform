@@ -371,11 +371,15 @@ export interface SupabaseDBClient {
   getLatestRubricVersionByTemplateId(templateId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
   insertRubricVersion(record: RubricVersionInsert): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
   listProducts(activeOnly?: boolean): Promise<{ data: ProductRecord[]; error: Error | null }>;
+  getProductById(id: string): Promise<{ data: ProductRecord | null; error: Error | null }>;
   insertProduct(record: ProductInsert): Promise<{ data: ProductRecord | null; error: Error | null }>;
   updateProduct(id: string, updates: ProductUpdate): Promise<{ data: ProductRecord | null; error: Error | null }>;
+  deleteProduct(id: string): Promise<{ error: Error | null }>;
   listPricesByProductId(productId: string, activeOnly?: boolean): Promise<{ data: PriceRecord[]; error: Error | null }>;
+  getPriceById(id: string): Promise<{ data: PriceRecord | null; error: Error | null }>;
   insertPrice(record: PriceInsert): Promise<{ data: PriceRecord | null; error: Error | null }>;
   updatePrice(id: string, updates: PriceUpdate): Promise<{ data: PriceRecord | null; error: Error | null }>;
+  deletePrice(id: string): Promise<{ error: Error | null }>;
   getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
   getSubscriptionById(subscriptionId: string): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
   listSubscriptionsByUserId(userId: string): Promise<{ data: SubscriptionRecord[]; error: Error | null }>;
@@ -439,11 +443,15 @@ export function getSupabaseClient(): SupabaseClient {
         getLatestRubricVersionByTemplateId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertRubricVersion: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listProducts: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getProductById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertProduct: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updateProduct: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        deleteProduct: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listPricesByProductId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getPriceById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertPrice: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updatePrice: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        deletePrice: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getSubscriptionByStripeId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getSubscriptionById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listSubscriptionsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1079,6 +1087,22 @@ export function getSupabaseClient(): SupabaseClient {
       }
     },
 
+    async getProductById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Product query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as ProductRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
     async insertProduct(record) {
       try {
         const response = await fetch(`${supabaseUrl}/rest/v1/products`, {
@@ -1121,6 +1145,21 @@ export function getSupabaseClient(): SupabaseClient {
       }
     },
 
+    async deleteProduct(id) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/products?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!response.ok) {
+          return { error: new Error(`Product delete failed: ${response.statusText}`) };
+        }
+        return { error: null };
+      } catch (err) {
+        return { error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
     async listPricesByProductId(productId, activeOnly = false) {
       try {
         const base = `${supabaseUrl}/rest/v1/prices?product_id=eq.${encodeURIComponent(productId)}&select=*&order=amount_cents.asc`;
@@ -1132,6 +1171,22 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows, error: null };
       } catch (err) {
         return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getPriceById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/prices?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Price query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as PriceRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
 
@@ -1176,6 +1231,21 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async deletePrice(id) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/prices?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers,
+        });
+        if (!response.ok) {
+          return { error: new Error(`Price delete failed: ${response.statusText}`) };
+        }
+        return { error: null };
+      } catch (err) {
+        return { error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
 
