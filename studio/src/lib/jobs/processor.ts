@@ -15,7 +15,7 @@ async function dispatchJob(job: OutboxJob): Promise<JobResult> {
   switch (job.job_type) {
     case 'send_email':
     case 'email':
-      return handleEmailJob(job.payload);
+      return handleEmailJob(job.payload, { jobId: job.id });
     case 'pdf_generate':
       return handlePdfJob(job.payload);
     case 'social_asset':

@@ -4,7 +4,7 @@ import type { OutboxJobState } from '../src/lib/jobs/types';
 import { DEFAULT_MAX_RETRIES, RETRY_BACKOFF_SECONDS } from '../src/lib/jobs/types';
 import { enqueueJob } from '../src/lib/jobs/enqueue';
 import { processPendingJobs } from '../src/lib/jobs/processor';
-import { handleEmailJob } from '../src/lib/jobs/handlers/email';
+import { handleEmailJob, resetResendClientFactory, setResendClientFactory } from '../src/lib/jobs/handlers/email';
 import { handlePdfJob } from '../src/lib/jobs/handlers/pdf';
 import { handleAssetJob } from '../src/lib/jobs/handlers/asset';
 import { handleMentorMatchJob } from '../src/lib/jobs/handlers/mentor-match';
@@ -18,7 +18,7 @@ function makeJob(overrides: Partial<OutboxJob> = {}): OutboxJob {
     job_type: 'email',
     aggregate_id: null,
     aggregate_type: null,
-    payload: { to: 'a@b.com', template: 'welcome' },
+    payload: { to: 'a@b.com', template: 'welcome_founder' },
     state: 'pending',
     retry_count: 0,
     max_retries: DEFAULT_MAX_RETRIES,
@@ -154,7 +154,26 @@ describe('enqueueJob', () => {
 // ─── processPendingJobs ───────────────────────────────────────────────────────
 
 describe('processPendingJobs', () => {
-  afterEach(() => resetSupabaseClient());
+  let mockResendSend: jest.Mock;
+
+  beforeEach(() => {
+    process.env.RESEND_API_KEY = 'test-resend-key';
+    mockResendSend = jest.fn().mockResolvedValue({
+      data: { id: 'email_123' },
+      error: null,
+    });
+    setResendClientFactory(() => ({
+      emails: {
+        send: mockResendSend,
+      },
+    }));
+  });
+
+  afterEach(() => {
+    resetSupabaseClient();
+    resetResendClientFactory();
+    delete process.env.RESEND_API_KEY;
+  });
 
   it('returns zero stats when no pending jobs', async () => {
     const client = makeClient({
@@ -167,7 +186,7 @@ describe('processPendingJobs', () => {
   });
 
   it('marks job as completed on success', async () => {
-    const job = makeJob({ job_type: 'email', payload: { to: 'a@b.com', template: 'w' } });
+    const job = makeJob({ job_type: 'email', payload: { to: 'a@b.com', template: 'welcome_founder' } });
     const client = makeClient({
       fetchPendingJobs: jest.fn().mockResolvedValue({ data: [job], error: null }),
     });
@@ -180,7 +199,7 @@ describe('processPendingJobs', () => {
     expect(client.db.updateJobState).toHaveBeenCalledWith(
       job.id,
       'completed',
-      expect.objectContaining({ completed_at: expect.any(String) })
+      expect.objectContaining({ completed_at: expect.any(String), email_id: 'email_123', error_message: null })
     );
   });
 
@@ -232,8 +251,8 @@ describe('processPendingJobs', () => {
 
   it('processes multiple jobs in a batch', async () => {
     const jobs = [
-      makeJob({ id: 'j1', job_type: 'email', payload: { to: 'a@b.com', template: 'w' } }),
-      makeJob({ id: 'j2', job_type: 'email', payload: { to: 'c@d.com', template: 'w' } }),
+      makeJob({ id: 'j1', job_type: 'email', payload: { to: 'a@b.com', template: 'welcome_founder' } }),
+      makeJob({ id: 'j2', job_type: 'email', payload: { to: 'c@d.com', template: 'welcome_founder' } }),
     ];
     const client = makeClient({
       fetchPendingJobs: jest.fn().mockResolvedValue({ data: jobs, error: null }),
@@ -250,12 +269,12 @@ describe('processPendingJobs', () => {
       makeJob({
         id: 'send-email-job',
         job_type: 'send_email',
-        payload: { to: 'a@b.com', template: 'welcome' },
+        payload: { to: 'a@b.com', template: 'welcome_founder' },
       }),
       makeJob({
         id: 'legacy-email-job',
         job_type: 'email',
-        payload: { to: 'c@d.com', template: 'welcome' },
+        payload: { to: 'c@d.com', template: 'welcome_founder' },
       }),
     ];
     const client = makeClient({
@@ -270,12 +289,41 @@ describe('processPendingJobs', () => {
     expect(client.db.updateJobState).toHaveBeenCalledWith(
       'send-email-job',
       'completed',
-      expect.objectContaining({ email_id: null, error_message: null })
+      expect.objectContaining({ email_id: 'email_123', error_message: null })
     );
     expect(client.db.updateJobState).toHaveBeenCalledWith(
       'legacy-email-job',
       'completed',
-      expect.objectContaining({ email_id: null, error_message: null })
+      expect.objectContaining({ email_id: 'email_123', error_message: null })
+    );
+  });
+
+  it('persists error_message when provider send fails', async () => {
+    mockResendSend.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Resend provider unavailable' },
+    });
+    const job = makeJob({
+      id: 'send-email-job',
+      job_type: 'send_email',
+      payload: { to: 'a@b.com', template_name: 'welcome_founder' },
+    });
+    const client = makeClient({
+      fetchPendingJobs: jest.fn().mockResolvedValue({ data: [job], error: null }),
+    });
+    setSupabaseClient(client);
+
+    const result = await processPendingJobs();
+
+    expect(result.failed).toBe(1);
+    expect(client.db.updateJobState).toHaveBeenCalledWith(
+      'send-email-job',
+      'failed',
+      expect.objectContaining({
+        error_message: 'Resend provider unavailable',
+        retry_count: 1,
+        scheduled_at: expect.any(String),
+      })
     );
   });
 });
@@ -283,15 +331,85 @@ describe('processPendingJobs', () => {
 // ─── Job Handlers ─────────────────────────────────────────────────────────────
 
 describe('handleEmailJob', () => {
+  let mockResendSend: jest.Mock;
+
+  beforeEach(() => {
+    process.env.RESEND_API_KEY = 'test-resend-key';
+    mockResendSend = jest.fn().mockResolvedValue({
+      data: { id: 'email_123' },
+      error: null,
+    });
+    setResendClientFactory(() => ({
+      emails: {
+        send: mockResendSend,
+      },
+    }));
+  });
+
+  afterEach(() => {
+    resetResendClientFactory();
+    delete process.env.RESEND_API_KEY;
+    delete process.env.RESEND_FROM_EMAIL;
+    delete process.env.RESEND_REPLY_TO_EMAIL;
+    jest.restoreAllMocks();
+  });
+
   it('returns success with valid payload', async () => {
-    const result = await handleEmailJob({ to: 'a@b.com', template: 'welcome' });
+    const result = await handleEmailJob(
+      { to: 'a@b.com', template: 'welcome_founder', data: { name: 'A' } },
+      { jobId: 'job-123' }
+    );
     expect(result.success).toBe(true);
+    expect(result.email_id).toBe('email_123');
+    expect(mockResendSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: 'noreply@aurrin.ventures',
+        replyTo: 'support@aurrin.ventures',
+        to: 'a@b.com',
+      })
+    );
   });
 
   it('returns failure when required fields missing', async () => {
     const result = await handleEmailJob({});
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/to.*template/i);
+  });
+
+  it('returns deterministic failure when RESEND_API_KEY is missing', async () => {
+    delete process.env.RESEND_API_KEY;
+
+    const result = await handleEmailJob({ to: 'a@b.com', template: 'welcome_founder' });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('RESEND_API_KEY is required for send_email jobs');
+  });
+
+  it('returns provider failure message and does not throw', async () => {
+    mockResendSend.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'Provider denied request' },
+    });
+
+    const result = await handleEmailJob({ to: 'a@b.com', template: 'welcome_founder' });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Provider denied request');
+  });
+
+  it('emits structured log fields for completion', async () => {
+    const writeSpy = jest.spyOn(process.stdout, 'write').mockReturnValue(true);
+
+    await handleEmailJob({ to: 'a@b.com', template: 'welcome_founder' }, { jobId: 'job-42' });
+
+    const logEntry = JSON.parse(String(writeSpy.mock.calls[0][0]));
+    expect(logEntry.context).toMatchObject({
+      to: 'a@b.com',
+      template: 'welcome_founder',
+      job_id: 'job-42',
+      status: 'success',
+      duration: expect.any(Number),
+    });
   });
 });
 
