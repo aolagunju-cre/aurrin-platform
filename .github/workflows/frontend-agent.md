@@ -264,7 +264,7 @@ Artifact: visual-verification-issue-<N>
 | Desktop (1440px) | desktop-1440.png | 0px |
 ```
 
-If `${{ vars.PIPELINE_MVP_MODE }}` is `true`, do not dispatch `pr-review-agent` after PR creation; MVP mode relies on async post-merge review audit instead. Otherwise, after each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do not run `gh workflow run`.
+If the repository is running with `PIPELINE_MVP_MODE=true`, do not dispatch `pr-review-agent` after PR creation; MVP mode relies on async post-merge review audit instead. Otherwise, after each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do not run `gh workflow run`.
 
 ## Memory / Checkpoint Protocol
 

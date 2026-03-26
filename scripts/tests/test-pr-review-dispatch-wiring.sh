@@ -16,12 +16,12 @@ done
 grep -F 'dispatch-workflow:' "$REPO_ASSIST_MD" >/dev/null
 grep -F 'workflows: [pr-review-agent]' "$REPO_ASSIST_MD" >/dev/null
 grep -F 'use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result' "$REPO_ASSIST_MD" >/dev/null
-grep -F "If \`\${{ vars.PIPELINE_MVP_MODE }}\` is \`true\`, do **not** dispatch \`pr-review-agent\` after PR creation." "$REPO_ASSIST_MD" >/dev/null
+grep -F 'If the repository is running with `PIPELINE_MVP_MODE=true`, do **not** dispatch `pr-review-agent` after PR creation.' "$REPO_ASSIST_MD" >/dev/null
 
 grep -F 'dispatch-workflow:' "$FRONTEND_MD" >/dev/null
 grep -F 'workflows: [pr-review-agent]' "$FRONTEND_MD" >/dev/null
 grep -F 'use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result' "$FRONTEND_MD" >/dev/null
-grep -F "If \`\${{ vars.PIPELINE_MVP_MODE }}\` is \`true\`, do not dispatch \`pr-review-agent\` after PR creation" "$FRONTEND_MD" >/dev/null
+grep -F 'If the repository is running with `PIPELINE_MVP_MODE=true`, do not dispatch `pr-review-agent` after PR creation' "$FRONTEND_MD" >/dev/null
 
 if grep -Fq 'gh workflow run pr-review-agent.lock.yml' "$REPO_ASSIST_MD"; then
   echo "FAIL: repo-assist.md still uses gh workflow run for pr-review-agent dispatch" >&2

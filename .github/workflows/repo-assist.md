@@ -308,7 +308,7 @@ If Targeted Issue Dispatch Mode is active for a numeric GitHub issue id, Task 1 
       - Body containing: `Closes #N`, the authoritative PRD source, a short `PRD Fidelity` note describing any corrected issue drift, a description of changes, a `## Validation` section with exact commands and outcomes, and test results
       - AI disclosure: "This PR was created by Pipeline Assistant."
    k. **Trigger the reviewer**:
-      - If `${{ vars.PIPELINE_MVP_MODE }}` is `true`, do **not** dispatch `pr-review-agent` after PR creation. MVP mode relies on async post-merge review audit instead of a pre-merge review pass.
+      - If the repository is running with `PIPELINE_MVP_MODE=true`, do **not** dispatch `pr-review-agent` after PR creation. MVP mode relies on async post-merge review audit instead of a pre-merge review pass.
       - Otherwise, immediately after each successful `create_pull_request` call, use `dispatch_workflow` to dispatch `pr-review-agent` with the exact `pr_number` returned by the PR creation result. Do **not** run `gh workflow run`; use the safe-output tool so review targets the correct PR even when bot-authored PRs suppress automatic `pull_request` triggers.
    l. Label the source issue `in-progress`.
 4. Update memory with attempts and outcomes.
