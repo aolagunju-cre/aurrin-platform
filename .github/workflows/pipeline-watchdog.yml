@@ -13,6 +13,9 @@ name: "Pipeline Watchdog"
 on:
   schedule:
     - cron: "*/20 * * * *"
+  workflow_run:
+    workflows: ["PR Review Submit"]
+    types: [completed]
   workflow_dispatch: {}
 
 permissions:

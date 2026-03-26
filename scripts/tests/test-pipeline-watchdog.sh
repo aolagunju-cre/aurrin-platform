@@ -8,6 +8,8 @@ WORKFLOW="$ROOT_DIR/.github/workflows/pipeline-watchdog.yml"
 bash -n "$SCRIPT"
 
 grep -F 'cron: "*/20 * * * *"' "$WORKFLOW" >/dev/null
+grep -F 'workflows: ["PR Review Submit"]' "$WORKFLOW" >/dev/null
+grep -F 'types: [completed]' "$WORKFLOW" >/dev/null
 grep -F "run: bash scripts/pipeline-watchdog.sh" "$WORKFLOW" >/dev/null
 grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/null
 grep -F "workflow_active_runs()" "$SCRIPT" >/dev/null
