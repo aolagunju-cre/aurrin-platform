@@ -17,6 +17,10 @@ grep -F "steps.policy.outputs.auto_merge_allowed == 'true'" "$WORKFLOW" >/dev/nu
 grep -F "AUTO_FOLLOW_UP_ALLOWED" "$WORKFLOW" >/dev/null
 grep -F "Skipping autonomous merge for PR classification:" "$WORKFLOW" >/dev/null
 grep -F "Autonomous merge blocked by autonomy policy." "$WORKFLOW" >/dev/null
+grep -F "MVP fast-track merge (pipeline PRs regardless of verdict)" "$WORKFLOW" >/dev/null
+grep -F "vars.PIPELINE_MVP_MODE == 'true'" "$WORKFLOW" >/dev/null
+grep -F 'gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch' "$WORKFLOW" >/dev/null
+grep -F "merged via MVP fast-track mode" "$WORKFLOW" >/dev/null
 grep -F "bug\" or . == \"docs\" or . == \"test\"" "$WORKFLOW" >/dev/null
 grep -F "startsWith(github.event.comment.body, '/approve_sensitive')" "$WORKFLOW" >/dev/null
 grep -F 'gh api repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission' "$WORKFLOW" >/dev/null
@@ -69,6 +73,18 @@ ruby -e '
   count = text.scan(/- name: Dispatch owning agent for next cycle\n(?:.*\n){0,8}?\s+GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/).length
   abort("FAIL: expected both follow-up dispatch steps to use GITHUB_TOKEN") unless count >= 2
 ' "$WORKFLOW"
+
+FOLLOW_UP_COUNT=$(grep -c "name: Dispatch owning agent for next cycle" "$WORKFLOW")
+if [ "$FOLLOW_UP_COUNT" -lt 2 ]; then
+  echo "FAIL: expected both follow-up dispatch steps to exist" >&2
+  exit 1
+fi
+
+MVP_SKIP_COUNT=$(grep -c "vars.PIPELINE_MVP_MODE != 'true'" "$WORKFLOW")
+if [ "$MVP_SKIP_COUNT" -lt 2 ]; then
+  echo "FAIL: expected follow-up/merge gates to skip when PIPELINE_MVP_MODE is enabled" >&2
+  exit 1
+fi
 
 POLICY_STEP_COUNT=$(grep -c "id: policy" "$WORKFLOW")
 if [ "$POLICY_STEP_COUNT" -lt 2 ]; then

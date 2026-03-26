@@ -16,7 +16,8 @@
 #   3. Parses APPROVE or REQUEST_CHANGES from the comment body
 #   4. Submits the formal GitHub review as github-actions[bot]
 #   5. On APPROVE: marks draft PRs ready, enables auto-merge for [Pipeline] PRs
-#   6. Dispatches the owning agent for next cycle (APPROVE) or posts the owning agent command (REQUEST_CHANGES)
+#   6. If PIPELINE_MVP_MODE=true, pipeline PRs are admin-merged even on REQUEST_CHANGES
+#   7. Dispatches the owning agent for next cycle (APPROVE) or posts the owning agent command (REQUEST_CHANGES)
 #
 # Break-glass: workflow_dispatch allows manual review submission when the
 # comment-based flow is blocked (e.g., action_required on first-time contributor).
@@ -233,8 +234,8 @@ jobs:
             -f description="Review completed: ${VERDICT}"
           echo "Set 'review' status check to success on ${HEAD_SHA} (verdict: ${VERDICT})"
 
-      - name: Mark draft PR ready (APPROVE only)
-        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE'
+      - name: Mark draft PR ready (APPROVE or MVP mode)
+        if: steps.idempotency.outputs.skip != 'true' && (steps.review.outputs.verdict == 'APPROVE' || vars.PIPELINE_MVP_MODE == 'true')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -341,7 +342,7 @@ jobs:
           echo "Set sensitive-review pending status on ${HEAD_SHA}"
 
       - name: Enable auto-merge (APPROVE only)
-        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true'
+        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
           MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -355,7 +356,7 @@ jobs:
           echo "PR #${PR_NUMBER} approved and auto-merge enabled."
 
       - name: Record auto-merge evidence (APPROVE only)
-        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true'
+        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ steps.idempotency.outputs.head_sha }}
@@ -372,8 +373,42 @@ jobs:
             -f description="Auto-merge enabled by PR Review Submit"
           echo "Recorded auto-merge evidence on ${HEAD_SHA}"
 
-      - name: Close linked issues after merge (APPROVE only)
-        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE'
+      - name: MVP fast-track merge (pipeline PRs regardless of verdict)
+        if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$MERGE_TOKEN" ]; then
+            echo "::error::GH_AW_GITHUB_TOKEN is required for MVP fast-track merge."
+            exit 1
+          fi
+
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft)
+          PIPELINE_PR=$(printf '%s' "$PR_JSON" | bash scripts/classify-pipeline-pr.sh | jq -r '.pipeline_pr')
+          if [ "$PIPELINE_PR" != "true" ]; then
+            echo "PR #${PR_NUMBER} is not a pipeline PR. Skipping MVP fast-track merge."
+            exit 0
+          fi
+
+          PR_STATE=$(printf '%s' "$PR_JSON" | jq -r '.state')
+          if [ "$PR_STATE" = "MERGED" ] || [ "$PR_STATE" = "CLOSED" ]; then
+            echo "PR #${PR_NUMBER} is already ${PR_STATE}. Skipping MVP fast-track merge."
+            exit 0
+          fi
+
+          PR_DRAFT=$(printf '%s' "$PR_JSON" | jq -r '.isDraft')
+          if [ "$PR_DRAFT" = "true" ]; then
+            gh pr ready "$PR_NUMBER" --repo "$REPO" || echo "::warning::Could not mark PR as ready before MVP fast-track merge"
+          fi
+
+          GH_TOKEN="$MERGE_TOKEN" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+          echo "PR #${PR_NUMBER} merged via MVP fast-track mode."
+
+      - name: Close linked issues after merge (APPROVE or MVP mode)
+        if: steps.idempotency.outputs.skip != 'true' && (steps.review.outputs.verdict == 'APPROVE' || vars.PIPELINE_MVP_MODE == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -428,7 +463,7 @@ jobs:
           fi
 
       - name: Close superseded duplicate PRs
-        if: steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict == 'APPROVE'
+        if: steps.idempotency.outputs.skip != 'true' && (steps.review.outputs.verdict == 'APPROVE' || vars.PIPELINE_MVP_MODE == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -485,7 +520,7 @@ jobs:
           done
 
       - name: Dispatch owning agent for next cycle
-        if: always() && steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict != '' && steps.healing.outputs.enabled == 'true'
+        if: always() && steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict != '' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVIEW_VERDICT: ${{ steps.review.outputs.verdict }}
@@ -693,8 +728,8 @@ jobs:
             -f description="Review completed: ${VERDICT}"
           echo "Set 'review' status check to success on ${HEAD_SHA} (verdict: ${VERDICT})"
 
-      - name: Mark draft PR ready (APPROVE only)
-        if: always() && github.event.inputs.verdict == 'APPROVE'
+      - name: Mark draft PR ready (APPROVE or MVP mode)
+        if: steps.idempotency.outputs.skip != 'true' && (github.event.inputs.verdict == 'APPROVE' || vars.PIPELINE_MVP_MODE == 'true')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
@@ -801,7 +836,7 @@ jobs:
           echo "Set sensitive-review pending status on ${HEAD_SHA}"
 
       - name: Enable auto-merge (APPROVE only)
-        if: always() && github.event.inputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true'
+        if: steps.idempotency.outputs.skip != 'true' && github.event.inputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
           MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
@@ -815,7 +850,7 @@ jobs:
           echo "PR #${PR_NUMBER} approved and auto-merge enabled."
 
       - name: Record auto-merge evidence (APPROVE only)
-        if: always() && github.event.inputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true'
+        if: steps.idempotency.outputs.skip != 'true' && github.event.inputs.verdict == 'APPROVE' && steps.healing.outputs.enabled == 'true' && steps.policy.outputs.auto_merge_allowed == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ steps.idempotency.outputs.head_sha }}
@@ -832,8 +867,42 @@ jobs:
             -f description="Auto-merge enabled by PR Review Submit"
           echo "Recorded auto-merge evidence on ${HEAD_SHA}"
 
-      - name: Close linked issues after merge (APPROVE only)
-        if: always() && github.event.inputs.verdict == 'APPROVE'
+      - name: MVP fast-track merge (pipeline PRs regardless of verdict)
+        if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$MERGE_TOKEN" ]; then
+            echo "::error::GH_AW_GITHUB_TOKEN is required for MVP fast-track merge."
+            exit 1
+          fi
+
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,state,isDraft)
+          PIPELINE_PR=$(printf '%s' "$PR_JSON" | bash scripts/classify-pipeline-pr.sh | jq -r '.pipeline_pr')
+          if [ "$PIPELINE_PR" != "true" ]; then
+            echo "PR #${PR_NUMBER} is not a pipeline PR. Skipping MVP fast-track merge."
+            exit 0
+          fi
+
+          PR_STATE=$(printf '%s' "$PR_JSON" | jq -r '.state')
+          if [ "$PR_STATE" = "MERGED" ] || [ "$PR_STATE" = "CLOSED" ]; then
+            echo "PR #${PR_NUMBER} is already ${PR_STATE}. Skipping MVP fast-track merge."
+            exit 0
+          fi
+
+          PR_DRAFT=$(printf '%s' "$PR_JSON" | jq -r '.isDraft')
+          if [ "$PR_DRAFT" = "true" ]; then
+            gh pr ready "$PR_NUMBER" --repo "$REPO" || echo "::warning::Could not mark PR as ready before MVP fast-track merge"
+          fi
+
+          GH_TOKEN="$MERGE_TOKEN" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch
+          echo "PR #${PR_NUMBER} merged via MVP fast-track mode."
+
+      - name: Close linked issues after merge (APPROVE or MVP mode)
+        if: steps.idempotency.outputs.skip != 'true' && (github.event.inputs.verdict == 'APPROVE' || vars.PIPELINE_MVP_MODE == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
@@ -896,7 +965,7 @@ jobs:
           fi
 
       - name: Close superseded duplicate PRs
-        if: always() && github.event.inputs.verdict == 'APPROVE'
+        if: steps.idempotency.outputs.skip != 'true' && (github.event.inputs.verdict == 'APPROVE' || vars.PIPELINE_MVP_MODE == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
@@ -958,7 +1027,7 @@ jobs:
           done
 
       - name: Dispatch owning agent for next cycle
-        if: always() && steps.healing.outputs.enabled == 'true'
+        if: always() && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVIEW_VERDICT: ${{ steps.review.outputs.verdict }}
