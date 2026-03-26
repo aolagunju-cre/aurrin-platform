@@ -349,7 +349,7 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
     fi
 
     PR_DETAILS=$(gh pr view "$PR_NUM" --repo "$REPO" --json number,title,isDraft,headRefName,baseRefName,url)
-    PR_CLASSIFICATION=$(printf '%s' "$PR_DETAILS" | "$SCRIPT_DIR/classify-pipeline-pr.sh")
+    PR_CLASSIFICATION=$(printf '%s' "$PR_DETAILS" | bash "$SCRIPT_DIR/classify-pipeline-pr.sh")
     if [ "$(printf '%s' "$PR_CLASSIFICATION" | jq -r '.pipeline_pr')" != "true" ]; then
       echo "PR #${PR_NUM}: not classified as a pipeline PR. Skipping MVP merge."
       continue

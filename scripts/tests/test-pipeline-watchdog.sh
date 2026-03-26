@@ -30,6 +30,7 @@ grep -F 'PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"' "$SCRIPT" >/dev/null
 grep -F 'MVP_MERGE_THRESHOLD_SECONDS="${MVP_MERGE_THRESHOLD_SECONDS:-1200}"' "$SCRIPT" >/dev/null
 grep -F 'MVP_FAST_MERGE_TARGET_PR="${MVP_FAST_MERGE_TARGET_PR:-}"' "$SCRIPT" >/dev/null
 grep -F 'skipping because fast-track merge is targeting PR #' "$SCRIPT" >/dev/null
+grep -F 'bash "$SCRIPT_DIR/classify-pipeline-pr.sh"' "$SCRIPT" >/dev/null
 grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"' "$SCRIPT" >/dev/null
 grep -F 'Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping orphaned-issue dispatch to preserve one-PR-at-a-time flow.' "$SCRIPT" >/dev/null
