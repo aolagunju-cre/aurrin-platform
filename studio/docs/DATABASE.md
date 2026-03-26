@@ -36,7 +36,7 @@ cp .env.example .env.local
 # Via Supabase CLI
 npx supabase db push
 
-# Or manually: copy 001_initial_schema.sql and 002_rls_policies.sql into Supabase SQL Editor
+# Or manually: apply migration SQL files in order from studio/src/lib/db/migrations/
 ```
 
 ### 4. Enable Point-in-Time Recovery
@@ -77,15 +77,42 @@ npm test
 - **mentor_matches** — Random pairings with repeat prevention
 
 ### Commerce
+- **products** — Commercial catalog entries for subscription and purchase flows
+- **prices** — Billing interval and amount records tied to products
 - **digital_products** — One-time purchase items
 - **subscriptions** — Stripe-managed recurring billing
 - **orders** — Purchase records
 - **transactions** — Append-only Stripe event ledger
+- **entitlements** — Access grants from subscription or purchase
 
 ### Operations
 - **files** — Storage metadata (pitch decks, PDFs, assets)
 - **outbox_jobs** — Durable async workflow state (emails, PDFs, webhooks, exports)
 - **audit_logs** — Immutable compliance trail
+
+---
+
+## Contract Coverage Snapshot
+
+Current contract families include **Users**, **Events**, **Rubrics**, and **JudgeScores**, plus founder, audience, operations, and commerce domains.
+
+### Constraints
+
+- Unique constraints enforce dedup and idempotency for role assignments, pitches, judge submissions, audience responses, and Stripe event ingestion.
+- Foreign-key constraints enforce referential integrity across users, events, rubrics, pitches, files, jobs, and financial records.
+- Enum and check constraints enforce state-machine values for events, applications, jobs, and subscriptions.
+
+### Indexes
+
+- Indexes cover high-frequency lookup columns such as assignment keys (`event_id`, `founder_id`, `judge_id`), state fields (`status`, `state`), and operational history columns (`created_at`, webhook identifiers).
+- Commerce indexes support subscription and transaction reconciliation paths.
+
+### RLS Coverage
+
+- RLS is enabled across sensitive application tables.
+- Admin has global access.
+- Scoped roles (judge/founder/subscriber) are restricted to assigned or owned records.
+- Public access is explicitly constrained to approved/public views only.
 
 ---
 
