@@ -36,6 +36,7 @@ printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-ci-node-layout
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-check-autonomy-policy.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-ci-failure-resolve.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-log-decision.sh" >/dev/null
+printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-open-issue-dependencies.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-dedupe-create-pr-safe-outputs.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-frontend-agent.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pipeline-watchdog.sh" >/dev/null

@@ -250,6 +250,32 @@ workflow_active_runs() {
   echo $((running + queued))
 }
 
+issue_has_label() {
+  local labels_csv=$1
+  local label=$2
+  printf '%s' "$labels_csv" | grep -Eq "(^|,)${label}(,|$)"
+}
+
+open_dependency_numbers() {
+  local issue_body=$1
+  OPEN_ISSUES_JSON="$OPEN_ISSUES_JSON" "$SCRIPT_DIR/open-issue-dependencies.sh" <<<"$issue_body"
+}
+
+ensure_dependency_blocked_label() {
+  local issue_number=$1
+  local labels_csv=$2
+  local blockers=$3
+
+  [ -n "$blockers" ] || return 0
+
+  if issue_has_label "$labels_csv" "blocked"; then
+    return 0
+  fi
+
+  gh issue edit "$issue_number" --repo "$REPO" --add-label blocked >/dev/null 2>&1 || \
+    echo "::warning::Could not add blocked label to issue #${issue_number}"
+}
+
 dispatch_issue_workflow() {
   local workflow_file=$1
   local issue_number=$2
@@ -300,7 +326,8 @@ fi
 
 PIPELINE_PRS=$(gh pr list --repo "$REPO" --state open --json number,title,updatedAt \
   --jq '[.[] | select(.title | startswith("[Pipeline]"))]')
-PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels)
+OPEN_ISSUES_JSON=$(gh issue list --repo "$REPO" --state open --limit 500 --json number 2>/dev/null || echo '[]')
+PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels,body)
 OPEN_PIPELINE_PR_COUNT=$(printf '%s' "$PIPELINE_PRS" | jq 'length')
 
 echo ""
@@ -607,10 +634,19 @@ if [ "$ACTIONS_TAKEN" -eq 0 ]; then
 
   while IFS= read -r ISSUE_ROW; do
     [ -z "$ISSUE_ROW" ] && continue
+    ISSUE_NUM=$(printf '%s' "$ISSUE_ROW" | jq -r '.number')
+    ISSUE_BODY=$(printf '%s' "$ISSUE_ROW" | jq -r '.body // ""')
+    ISSUE_LABELS=$(printf '%s' "$ISSUE_ROW" | jq -r '[.labels[]?.name // empty | ascii_downcase] | join(",")')
     ISSUE_ACTIONABLE=$(
       printf '%s' "$ISSUE_ROW" | "$SCRIPT_DIR/classify-pipeline-issue.sh" | jq -r '.actionable'
     )
     if [ "$ISSUE_ACTIONABLE" = "true" ]; then
+      BLOCKING_DEPENDENCIES=$(open_dependency_numbers "$ISSUE_BODY" || true)
+      if [ -n "$BLOCKING_DEPENDENCIES" ]; then
+        ensure_dependency_blocked_label "$ISSUE_NUM" "$ISSUE_LABELS" "$BLOCKING_DEPENDENCIES"
+        echo "Issue #${ISSUE_NUM}: excluded from actionable count until dependencies close (${BLOCKING_DEPENDENCIES})."
+        continue
+      fi
       ACTIONABLE_PIPELINE_ISSUES=$((ACTIONABLE_PIPELINE_ISSUES + 1))
     fi
   done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c '.[]')
@@ -636,11 +672,19 @@ else
 while IFS= read -r ISSUE_ROW; do
   [ -z "$ISSUE_ROW" ] && continue
   ISSUE_NUM=$(printf '%s' "$ISSUE_ROW" | jq -r '.number')
+  ISSUE_BODY=$(printf '%s' "$ISSUE_ROW" | jq -r '.body // ""')
+  ISSUE_LABELS=$(printf '%s' "$ISSUE_ROW" | jq -r '[.labels[]?.name // empty | ascii_downcase] | join(",")')
   ISSUE_CLASSIFICATION=$(printf '%s' "$ISSUE_ROW" | "$SCRIPT_DIR/classify-pipeline-issue.sh")
   ISSUE_ACTIONABLE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.actionable')
   if [ "$ISSUE_ACTIONABLE" != "true" ]; then
     ISSUE_REASON=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.reason')
     echo "Issue #${ISSUE_NUM}: skipping non-actionable issue (${ISSUE_REASON})."
+    continue
+  fi
+  BLOCKING_DEPENDENCIES=$(open_dependency_numbers "$ISSUE_BODY" || true)
+  if [ -n "$BLOCKING_DEPENDENCIES" ]; then
+    ensure_dependency_blocked_label "$ISSUE_NUM" "$ISSUE_LABELS" "$BLOCKING_DEPENDENCIES"
+    echo "Issue #${ISSUE_NUM}: waiting on open dependencies ${BLOCKING_DEPENDENCIES}. Skipping orphaned dispatch."
     continue
   fi
   ISSUE_UPDATED=$(printf '%s' "$ISSUE_ROW" | jq -r '.updatedAt')

@@ -40,6 +40,8 @@ jobs:
           sparse-checkout: |
             scripts/healing-control.sh
             scripts/classify-pipeline-issue.sh
+            scripts/extract-issue-dependencies.sh
+            scripts/open-issue-dependencies.sh
             scripts/repair-issue-contract-paths.sh
           sparse-checkout-cone-mode: false
 
@@ -139,8 +141,28 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$COMMENT_BODY" >/dev/null || \
             echo "::warning::Could not record contract path self-heal comment on issue #${ISSUE_NUMBER}"
 
-      - name: Skip when owning agent already active
+      - name: Skip issue with open dependencies
         if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true'
+        id: dependency_gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          ISSUE_BODY=$(gh issue view "$ISSUE_NUMBER" --repo "$REPO" --json body --jq '.body // ""')
+          BLOCKING_DEPENDENCIES=$(printf '%s' "$ISSUE_BODY" | scripts/open-issue-dependencies.sh)
+          if [ -n "$BLOCKING_DEPENDENCIES" ]; then
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label blocked >/dev/null 2>&1 || \
+              echo "::warning::Could not add blocked label to issue #${ISSUE_NUMBER}"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "blocking_dependencies=${BLOCKING_DEPENDENCIES}" >> "$GITHUB_OUTPUT"
+            echo "Issue #${ISSUE_NUMBER}: waiting on open dependencies ${BLOCKING_DEPENDENCIES}; marking blocked and skipping dispatch."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip when owning agent already active
+        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.dependency_gate.outputs.skip != 'true'
         id: guard
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -165,7 +187,7 @@ jobs:
           fi
 
       - name: Record deferred dispatch marker
-        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.guard.outputs.skip == 'true'
+        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.dependency_gate.outputs.skip != 'true' && steps.guard.outputs.skip == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -196,7 +218,7 @@ jobs:
             echo "::warning::Could not record deferred dispatch marker on issue #${ISSUE_NUMBER}"
 
       - name: Dispatch owning agent
-        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.guard.outputs.skip != 'true'
+        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.dependency_gate.outputs.skip != 'true' && steps.guard.outputs.skip != 'true'
         id: dispatch_agent
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -236,7 +258,7 @@ jobs:
           echo "agent_run_url=${AGENT_RUN_URL}" >> "$GITHUB_OUTPUT"
 
       - name: Record dispatch marker
-        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.guard.outputs.skip != 'true'
+        if: steps.healing.outputs.skip != 'true' && steps.classify.outputs.actionable == 'true' && steps.dependency_gate.outputs.skip != 'true' && steps.guard.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

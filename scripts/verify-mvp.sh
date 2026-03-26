@@ -54,6 +54,7 @@ CHECKS=(
   "bash scripts/tests/test-extract-linked-issue-numbers.sh"
   "bash scripts/tests/test-frontend-agent.sh"
   "bash scripts/tests/test-log-decision.sh"
+  "bash scripts/tests/test-open-issue-dependencies.sh"
   "bash scripts/tests/test-patch-codex-openrouter-http-locks.sh"
   "bash scripts/tests/test-patch-github-mcp-token-precedence.sh"
   "bash scripts/tests/test-pipeline-watchdog.sh"
