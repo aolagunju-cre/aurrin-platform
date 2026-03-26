@@ -381,6 +381,11 @@ jobs:
               | jq '[.[] | select(.status == "in_progress" or .status == "queued")] | length'
           }
 
+          live_issue_state() {
+            local issue_number=$1
+            gh issue view "$issue_number" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN"
+          }
+
           open_dependency_numbers() {
             local issue_body=$1
             local blocked=()
@@ -418,152 +423,181 @@ jobs:
             done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c '.[]')
           }
 
-          OPEN_PRS=$(gh pr list --repo "$REPO" --state open --limit 100 --json body 2>/dev/null || echo '[]')
-          LINKED_ISSUES=$(printf '%s' "$OPEN_PRS" | jq -r '.[].body // empty' 2>/dev/null \
-            | bash scripts/extract-linked-issue-numbers.sh "$REPO" || true)
-          OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --limit 500 --json number 2>/dev/null || echo '[]')
-          PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --limit 200 \
-            --json number,title,createdAt,labels,body 2>/dev/null || echo '[]')
-          TRIGGER_ISSUE=$(find_issue_for_run "${TRIGGER_RUN_ID:-}")
+          refresh_issue_snapshots() {
+            OPEN_PRS=$(gh pr list --repo "$REPO" --state open --limit 100 --json body 2>/dev/null || echo '[]')
+            LINKED_ISSUES=$(printf '%s' "$OPEN_PRS" | jq -r '.[].body // empty' 2>/dev/null \
+              | bash scripts/extract-linked-issue-numbers.sh "$REPO" || true)
+            OPEN_ISSUES=$(gh issue list --repo "$REPO" --state open --limit 500 --json number 2>/dev/null || echo '[]')
+            PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --limit 200 \
+              --json number,title,createdAt,labels,body 2>/dev/null || echo '[]')
+            TRIGGER_ISSUE=$(find_issue_for_run "${TRIGGER_RUN_ID:-}")
+          }
 
-          SELECTED_ISSUE=""
-          SELECTED_WORKFLOW=""
-          SELECTED_ROUTE=""
-          SELECTED_REASON=""
-          FALLBACK_ISSUE=""
-          FALLBACK_WORKFLOW=""
-          FALLBACK_ROUTE=""
+          select_candidate_issue() {
+            SELECTED_ISSUE=""
+            SELECTED_WORKFLOW=""
+            SELECTED_ROUTE=""
+            SELECTED_REASON=""
+            FALLBACK_ISSUE=""
+            FALLBACK_WORKFLOW=""
+            FALLBACK_ROUTE=""
 
-          while IFS= read -r ISSUE_ROW; do
-            [ -z "$ISSUE_ROW" ] && continue
-            ISSUE_NUM=$(printf '%s' "$ISSUE_ROW" | jq -r '.number')
-            ISSUE_BODY=$(printf '%s' "$ISSUE_ROW" | jq -r '.body // ""')
+            while IFS= read -r ISSUE_ROW; do
+              [ -z "$ISSUE_ROW" ] && continue
+              ISSUE_NUM=$(printf '%s' "$ISSUE_ROW" | jq -r '.number')
+              ISSUE_BODY=$(printf '%s' "$ISSUE_ROW" | jq -r '.body // ""')
 
-            ISSUE_CLASSIFICATION=$(printf '%s' "$ISSUE_ROW" | scripts/classify-pipeline-issue.sh)
-            ISSUE_ACTIONABLE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.actionable')
-            ISSUE_WORKFLOW=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.workflow_file')
-            ISSUE_ROUTE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.route')
-            if [ "$ISSUE_ACTIONABLE" != "true" ]; then
-              ISSUE_REASON=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.reason')
-              echo "Issue #${ISSUE_NUM}: skipping non-actionable issue (${ISSUE_REASON})."
-              continue
-            fi
-
-            if printf '%s\n' "$LINKED_ISSUES" | grep -q "^${ISSUE_NUM}$"; then
-              echo "Issue #${ISSUE_NUM}: already has an open linked PR."
-              continue
-            fi
-
-            BLOCKING_DEPENDENCIES=$(open_dependency_numbers "$ISSUE_BODY" || true)
-            if [ -n "$BLOCKING_DEPENDENCIES" ]; then
-              echo "Issue #${ISSUE_NUM}: waiting on open dependencies ${BLOCKING_DEPENDENCIES}."
-              continue
-            fi
-
-            ISSUE_ACTIVE=$(workflow_active_count "$ISSUE_WORKFLOW")
-            if [ "${ISSUE_ACTIVE:-0}" -gt 0 ]; then
-              echo "Issue #${ISSUE_NUM}: ${ISSUE_WORKFLOW} already active (${ISSUE_ACTIVE} run(s)); checking next queued issue."
-              continue
-            fi
-
-            DEFERRED_JSON=$(find_marker_comment "$ISSUE_NUM" "$DEFERRED_MARKER")
-            DEFERRED_ID=$(printf '%s' "$DEFERRED_JSON" | jq -r '.id // empty')
-            if [ -z "$DEFERRED_ID" ]; then
-              if [ -n "$TRIGGER_ISSUE" ] && [ "$ISSUE_NUM" = "$TRIGGER_ISSUE" ]; then
-                echo "Issue #${ISSUE_NUM}: skipping immediate re-dispatch of the just-completed issue."
+              ISSUE_CLASSIFICATION=$(printf '%s' "$ISSUE_ROW" | scripts/classify-pipeline-issue.sh)
+              ISSUE_ACTIONABLE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.actionable')
+              ISSUE_WORKFLOW=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.workflow_file')
+              ISSUE_ROUTE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.route')
+              if [ "$ISSUE_ACTIONABLE" != "true" ]; then
+                ISSUE_REASON=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.reason')
+                echo "Issue #${ISSUE_NUM}: skipping non-actionable issue (${ISSUE_REASON})."
                 continue
               fi
 
-              if [ -z "$FALLBACK_ISSUE" ]; then
-                FALLBACK_ISSUE="$ISSUE_NUM"
-                FALLBACK_WORKFLOW="$ISSUE_WORKFLOW"
-                FALLBACK_ROUTE="$ISSUE_ROUTE"
-              fi
-              continue
-            fi
-
-            DEFERRED_AT=$(printf '%s' "$DEFERRED_JSON" | jq -r '.created_at // empty')
-            if [ -z "$DEFERRED_AT" ]; then
-              DEFERRED_BODY=$(printf '%s' "$DEFERRED_JSON" | jq -r '.body // ""')
-              DEFERRED_AT=$(read_marker_field "$DEFERRED_BODY" "deferred_at")
-            fi
-
-            DISPATCH_COMMENTS=$(find_marker_comments "$ISSUE_NUM" "$DISPATCH_MARKER")
-            DISPATCH_JSON=$(find_marker_comment "$ISSUE_NUM" "$DISPATCH_MARKER")
-            DISPATCH_BODY=$(printf '%s' "$DISPATCH_JSON" | jq -r '.body // ""')
-            DISPATCHED_AT=$(read_marker_field "$DISPATCH_BODY" "dispatched_at")
-            if [ -z "$DISPATCHED_AT" ]; then
-              DISPATCHED_AT=$(printf '%s' "$DISPATCH_JSON" | jq -r '.created_at // empty')
-            fi
-
-            if [ -n "$DISPATCHED_AT" ] && [ "$(to_epoch "$DISPATCHED_AT")" -ge "$(to_epoch "$DEFERRED_AT")" ]; then
-              DISPATCH_COUNT_AFTER_DEFERRED=$(dispatch_count_after "$DISPATCH_COMMENTS" "$DEFERRED_AT")
-              AGENT_RUN_ID=$(read_marker_field "$DISPATCH_BODY" "agent_run_id")
-              if [ -z "$AGENT_RUN_ID" ]; then
-                AGENT_RUN_ID=$(read_marker_field "$DISPATCH_BODY" "repo_assist_run_id")
+              if printf '%s\n' "$LINKED_ISSUES" | grep -q "^${ISSUE_NUM}$"; then
+                echo "Issue #${ISSUE_NUM}: already has an open linked PR."
+                continue
               fi
 
-              OUTCOME_JSON=$(find_matching_outcome_comment "$ISSUE_NUM" "$AGENT_RUN_ID")
-              OUTCOME_BODY=$(printf '%s' "$OUTCOME_JSON" | jq -r '.body // ""')
-              OUTCOME_VALUE=$(read_marker_field "$OUTCOME_BODY" "outcome")
-              OUTCOME_RECORDED_AT=$(read_marker_field "$OUTCOME_BODY" "recorded_at")
-              if [ -z "$OUTCOME_RECORDED_AT" ]; then
-                OUTCOME_RECORDED_AT=$(printf '%s' "$OUTCOME_JSON" | jq -r '.created_at // empty')
+              BLOCKING_DEPENDENCIES=$(open_dependency_numbers "$ISSUE_BODY" || true)
+              if [ -n "$BLOCKING_DEPENDENCIES" ]; then
+                echo "Issue #${ISSUE_NUM}: waiting on open dependencies ${BLOCKING_DEPENDENCIES}."
+                continue
               fi
 
-              if [ -n "$OUTCOME_VALUE" ] && { [ -z "$OUTCOME_RECORDED_AT" ] || [ "$(to_epoch "$OUTCOME_RECORDED_AT")" -ge "$(to_epoch "$DISPATCHED_AT")" ]; }; then
-                case "$OUTCOME_VALUE" in
-                  already_covered|non_actionable)
-                    echo "Issue #${ISSUE_NUM}: latest targeted dispatch reported terminal outcome '${OUTCOME_VALUE}'."
-                    continue
-                    ;;
-                  *)
-                    if [ "${DISPATCH_COUNT_AFTER_DEFERRED:-0}" -ge "$MAX_STALE_REDISPATCHES" ]; then
-                      echo "Issue #${ISSUE_NUM}: latest targeted dispatch outcome is '${OUTCOME_VALUE}', but stale re-dispatch retry cap (${MAX_STALE_REDISPATCHES}) is already exhausted."
+              ISSUE_ACTIVE=$(workflow_active_count "$ISSUE_WORKFLOW")
+              if [ "${ISSUE_ACTIVE:-0}" -gt 0 ]; then
+                echo "Issue #${ISSUE_NUM}: ${ISSUE_WORKFLOW} already active (${ISSUE_ACTIVE} run(s)); checking next queued issue."
+                continue
+              fi
+
+              DEFERRED_JSON=$(find_marker_comment "$ISSUE_NUM" "$DEFERRED_MARKER")
+              DEFERRED_ID=$(printf '%s' "$DEFERRED_JSON" | jq -r '.id // empty')
+              if [ -z "$DEFERRED_ID" ]; then
+                if [ -n "$TRIGGER_ISSUE" ] && [ "$ISSUE_NUM" = "$TRIGGER_ISSUE" ]; then
+                  echo "Issue #${ISSUE_NUM}: skipping immediate re-dispatch of the just-completed issue."
+                  continue
+                fi
+
+                if [ -z "$FALLBACK_ISSUE" ]; then
+                  FALLBACK_ISSUE="$ISSUE_NUM"
+                  FALLBACK_WORKFLOW="$ISSUE_WORKFLOW"
+                  FALLBACK_ROUTE="$ISSUE_ROUTE"
+                fi
+                continue
+              fi
+
+              DEFERRED_AT=$(printf '%s' "$DEFERRED_JSON" | jq -r '.created_at // empty')
+              if [ -z "$DEFERRED_AT" ]; then
+                DEFERRED_BODY=$(printf '%s' "$DEFERRED_JSON" | jq -r '.body // ""')
+                DEFERRED_AT=$(read_marker_field "$DEFERRED_BODY" "deferred_at")
+              fi
+
+              DISPATCH_COMMENTS=$(find_marker_comments "$ISSUE_NUM" "$DISPATCH_MARKER")
+              DISPATCH_JSON=$(find_marker_comment "$ISSUE_NUM" "$DISPATCH_MARKER")
+              DISPATCH_BODY=$(printf '%s' "$DISPATCH_JSON" | jq -r '.body // ""')
+              DISPATCHED_AT=$(read_marker_field "$DISPATCH_BODY" "dispatched_at")
+              if [ -z "$DISPATCHED_AT" ]; then
+                DISPATCHED_AT=$(printf '%s' "$DISPATCH_JSON" | jq -r '.created_at // empty')
+              fi
+
+              if [ -n "$DISPATCHED_AT" ] && [ "$(to_epoch "$DISPATCHED_AT")" -ge "$(to_epoch "$DEFERRED_AT")" ]; then
+                DISPATCH_COUNT_AFTER_DEFERRED=$(dispatch_count_after "$DISPATCH_COMMENTS" "$DEFERRED_AT")
+                AGENT_RUN_ID=$(read_marker_field "$DISPATCH_BODY" "agent_run_id")
+                if [ -z "$AGENT_RUN_ID" ]; then
+                  AGENT_RUN_ID=$(read_marker_field "$DISPATCH_BODY" "repo_assist_run_id")
+                fi
+
+                OUTCOME_JSON=$(find_matching_outcome_comment "$ISSUE_NUM" "$AGENT_RUN_ID")
+                OUTCOME_BODY=$(printf '%s' "$OUTCOME_JSON" | jq -r '.body // ""')
+                OUTCOME_VALUE=$(read_marker_field "$OUTCOME_BODY" "outcome")
+                OUTCOME_RECORDED_AT=$(read_marker_field "$OUTCOME_BODY" "recorded_at")
+                if [ -z "$OUTCOME_RECORDED_AT" ]; then
+                  OUTCOME_RECORDED_AT=$(printf '%s' "$OUTCOME_JSON" | jq -r '.created_at // empty')
+                fi
+
+                if [ -n "$OUTCOME_VALUE" ] && { [ -z "$OUTCOME_RECORDED_AT" ] || [ "$(to_epoch "$OUTCOME_RECORDED_AT")" -ge "$(to_epoch "$DISPATCHED_AT")" ]; }; then
+                  case "$OUTCOME_VALUE" in
+                    already_covered|non_actionable)
+                      echo "Issue #${ISSUE_NUM}: latest targeted dispatch reported terminal outcome '${OUTCOME_VALUE}'."
                       continue
-                    fi
-                    echo "Issue #${ISSUE_NUM}: latest targeted dispatch outcome is '${OUTCOME_VALUE}'; allowing bounded re-dispatch."
-                    ;;
-                esac
-              else
-                RUN_STATE=$(run_state_json "$AGENT_RUN_ID")
-                RUN_STATUS=$(printf '%s' "$RUN_STATE" | jq -r '.status // ""')
-                RUN_CONCLUSION=$(printf '%s' "$RUN_STATE" | jq -r '.conclusion // ""')
-
-                if [ "$RUN_STATUS" = "queued" ] || [ "$RUN_STATUS" = "in_progress" ]; then
-                  echo "Issue #${ISSUE_NUM}: latest dispatched run ${AGENT_RUN_ID} is still ${RUN_STATUS}."
-                  continue
-                fi
-
-                if [ "${DISPATCH_COUNT_AFTER_DEFERRED:-0}" -ge "$MAX_STALE_REDISPATCHES" ]; then
-                  echo "Issue #${ISSUE_NUM}: dispatch marker is stale, but bounded re-dispatch retry cap (${MAX_STALE_REDISPATCHES}) is exhausted."
-                  continue
-                fi
-
-                if [ -n "$AGENT_RUN_ID" ]; then
-                  echo "Issue #${ISSUE_NUM}: dispatched run ${AGENT_RUN_ID} completed (${RUN_CONCLUSION:-unknown}) without a terminal outcome marker; allowing re-dispatch."
+                      ;;
+                    *)
+                      if [ "${DISPATCH_COUNT_AFTER_DEFERRED:-0}" -ge "$MAX_STALE_REDISPATCHES" ]; then
+                        echo "Issue #${ISSUE_NUM}: latest targeted dispatch outcome is '${OUTCOME_VALUE}', but stale re-dispatch retry cap (${MAX_STALE_REDISPATCHES}) is already exhausted."
+                        continue
+                      fi
+                      echo "Issue #${ISSUE_NUM}: latest targeted dispatch outcome is '${OUTCOME_VALUE}'; allowing bounded re-dispatch."
+                      ;;
+                  esac
                 else
-                  echo "Issue #${ISSUE_NUM}: dispatch marker lacks a linked agent run; allowing re-dispatch."
+                  RUN_STATE=$(run_state_json "$AGENT_RUN_ID")
+                  RUN_STATUS=$(printf '%s' "$RUN_STATE" | jq -r '.status // ""')
+                  RUN_CONCLUSION=$(printf '%s' "$RUN_STATE" | jq -r '.conclusion // ""')
+
+                  if [ "$RUN_STATUS" = "queued" ] || [ "$RUN_STATUS" = "in_progress" ]; then
+                    echo "Issue #${ISSUE_NUM}: latest dispatched run ${AGENT_RUN_ID} is still ${RUN_STATUS}."
+                    continue
+                  fi
+
+                  if [ "${DISPATCH_COUNT_AFTER_DEFERRED:-0}" -ge "$MAX_STALE_REDISPATCHES" ]; then
+                    echo "Issue #${ISSUE_NUM}: dispatch marker is stale, but bounded re-dispatch retry cap (${MAX_STALE_REDISPATCHES}) is exhausted."
+                    continue
+                  fi
+
+                  if [ -n "$AGENT_RUN_ID" ]; then
+                    echo "Issue #${ISSUE_NUM}: dispatched run ${AGENT_RUN_ID} completed (${RUN_CONCLUSION:-unknown}) without a terminal outcome marker; allowing re-dispatch."
+                  else
+                    echo "Issue #${ISSUE_NUM}: dispatch marker lacks a linked agent run; allowing re-dispatch."
+                  fi
                 fi
               fi
+
+              SELECTED_ISSUE="$ISSUE_NUM"
+              SELECTED_WORKFLOW="$ISSUE_WORKFLOW"
+              SELECTED_ROUTE="$ISSUE_ROUTE"
+              SELECTED_REASON="requeue_after_guard_skip"
+              break
+            done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c 'sort_by(.createdAt)[]')
+
+            if [ -z "$SELECTED_ISSUE" ]; then
+              SELECTED_ISSUE="$FALLBACK_ISSUE"
+              SELECTED_WORKFLOW="$FALLBACK_WORKFLOW"
+              SELECTED_ROUTE="$FALLBACK_ROUTE"
+              SELECTED_REASON="requeue_backlog_fallback"
             fi
+          }
 
-            SELECTED_ISSUE="$ISSUE_NUM"
-            SELECTED_WORKFLOW="$ISSUE_WORKFLOW"
-            SELECTED_ROUTE="$ISSUE_ROUTE"
-            SELECTED_REASON="requeue_after_guard_skip"
-            break
-          done < <(printf '%s' "$PIPELINE_ISSUES" | jq -c 'sort_by(.createdAt)[]')
-
-          if [ -z "$SELECTED_ISSUE" ]; then
-            SELECTED_ISSUE="$FALLBACK_ISSUE"
-            SELECTED_WORKFLOW="$FALLBACK_WORKFLOW"
-            SELECTED_ROUTE="$FALLBACK_ROUTE"
-            SELECTED_REASON="requeue_backlog_fallback"
-          fi
+          refresh_issue_snapshots
+          select_candidate_issue
 
           if [ -z "$SELECTED_ISSUE" ]; then
             echo "No deferred actionable issues require re-dispatch and no backlog fallback candidate is ready."
+            exit 0
+          fi
+
+          for refresh_attempt in 1 2 3; do
+            LIVE_STATE=$(live_issue_state "$SELECTED_ISSUE")
+            if [ "$LIVE_STATE" = "OPEN" ]; then
+              break
+            fi
+
+            echo "Issue #${SELECTED_ISSUE}: selected from a stale snapshot but current state is ${LIVE_STATE}; refreshing queue selection (attempt ${refresh_attempt}/3)."
+            refresh_issue_snapshots
+            select_candidate_issue
+
+            if [ -z "$SELECTED_ISSUE" ]; then
+              echo "No deferred actionable issues require re-dispatch and no backlog fallback candidate is ready after refreshing the queue."
+              exit 0
+            fi
+          done
+
+          LIVE_STATE=$(live_issue_state "$SELECTED_ISSUE")
+          if [ "$LIVE_STATE" != "OPEN" ]; then
+            echo "Issue #${SELECTED_ISSUE}: current state is ${LIVE_STATE}; aborting stale re-dispatch after refresh attempts."
             exit 0
           fi
 

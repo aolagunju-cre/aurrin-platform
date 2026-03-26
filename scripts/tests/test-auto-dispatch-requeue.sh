@@ -106,6 +106,21 @@ grep -F 'Issue #${ISSUE_NUM}: skipping immediate re-dispatch of the just-complet
   exit 1
 }
 
+grep -F 'gh issue view "$issue_number" --repo "$REPO" --json state --jq '\''.state'\''' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must re-check live issue state before dispatching a selected issue" >&2
+  exit 1
+}
+
+grep -F 'selected from a stale snapshot but current state is ${LIVE_STATE}; refreshing queue selection' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must refresh selection when a previously selected issue is now closed" >&2
+  exit 1
+}
+
+grep -F 'aborting stale re-dispatch after refresh attempts' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must stop rather than dispatch a closed issue after repeated refreshes" >&2
+  exit 1
+}
+
 grep -F 'SELECTED_REASON="requeue_backlog_fallback"' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must tag backlog fallback redispatches distinctly" >&2
   exit 1
