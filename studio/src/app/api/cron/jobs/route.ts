@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { processPendingJobs } from '../../../../lib/jobs/processor';
+import { enqueueHourlySubscriptionReconciliation } from '../../../../lib/jobs/reconciliation-scheduler';
 
 /**
  * Cron route: GET /api/cron/jobs
@@ -17,6 +18,12 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   try {
+    try {
+      await enqueueHourlySubscriptionReconciliation();
+    } catch (error) {
+      console.error('[cron/jobs] Failed to enqueue subscription reconciliation job:', error);
+    }
+
     const result = await processPendingJobs();
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {

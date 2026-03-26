@@ -6,6 +6,7 @@ import { handlePdfJob } from './handlers/pdf';
 import { handleAssetJob } from './handlers/asset';
 import { handleMentorMatchJob } from './handlers/mentor-match';
 import { handleWebhookJob } from './handlers/webhook';
+import { handleSubscriptionReconcileJob } from './handlers/subscription-reconcile';
 
 const BATCH_SIZE = 10;
 
@@ -23,6 +24,8 @@ async function dispatchJob(job: OutboxJob): Promise<JobResult> {
       return handleMentorMatchJob(job.payload);
     case 'webhook':
       return handleWebhookJob(job.payload);
+    case 'subscription_reconcile':
+      return handleSubscriptionReconcileJob();
     default:
       return { success: false, error: `Unknown job type: ${job.job_type}` };
   }

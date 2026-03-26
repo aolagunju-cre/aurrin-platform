@@ -14,7 +14,8 @@ export type JobType =
   | 'social_asset'
   | 'export'
   | 'mentor_match'
-  | 'webhook';
+  | 'webhook'
+  | 'subscription_reconcile';
 
 /** Matches the `outbox_jobs` table in migration 001_initial_schema.sql. */
 export interface OutboxJob {

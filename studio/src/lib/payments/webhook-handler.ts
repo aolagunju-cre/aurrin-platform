@@ -3,6 +3,12 @@ import { auditLog } from '../audit/log';
 import { getSupabaseClient, type CommerceSubscriptionStatus, type CommerceTransactionStatus, type SubscriptionRecord } from '../db/client';
 import { enqueueJob } from '../jobs/enqueue';
 import { logger } from '../logging/logger';
+import {
+  formatCancellationMessage,
+  PAYMENT_FAILED_MESSAGE,
+  SUBSCRIPTION_CREATED_MESSAGE,
+  SUBSCRIPTION_UPDATED_MESSAGE,
+} from './reconciliation';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -70,10 +76,36 @@ async function tryAudit(
   });
 }
 
+async function enqueueSubscriptionNotification(userId: string, message: string): Promise<void> {
+  const db = getSupabaseClient().db;
+  const userResult = await db.getUserById(userId);
+  if (userResult.error) {
+    throw userResult.error;
+  }
+  const email = userResult.data?.email;
+  if (!email) {
+    return;
+  }
+
+  await enqueueJob(
+    'send_email',
+    {
+      to: email,
+      template_name: 'subscription_notification',
+      data: { message },
+    },
+    {
+      aggregate_id: userId,
+      aggregate_type: 'user',
+    }
+  );
+}
+
 async function processSubscriptionEvent(event: Stripe.Event, existingSubscription: SubscriptionRecord | null): Promise<void> {
   const db = getSupabaseClient().db;
   const subscription = event.data.object as Stripe.Subscription;
   const userId = pickUserId(subscription.metadata?.user_id, existingSubscription?.user_id ?? null);
+  const mappedStatus = mapSubscriptionStatus(subscription.status);
 
   const firstItem = subscription.items.data[0];
   const priceMetadata = firstItem?.price?.metadata ?? {};
@@ -90,7 +122,7 @@ async function processSubscriptionEvent(event: Stripe.Event, existingSubscriptio
     stripe_subscription_id: subscription.id,
     stripe_customer_id: typeof subscription.customer === 'string' ? subscription.customer : null,
     price_id: priceId,
-    status: mapSubscriptionStatus(subscription.status),
+    status: mappedStatus,
     current_period_start: readUnixTimestampField(subscriptionRecord, 'current_period_start'),
     current_period_end: readUnixTimestampField(subscriptionRecord, 'current_period_end'),
     cancel_at: readUnixTimestampField(subscriptionRecord, 'cancel_at'),
@@ -138,10 +170,26 @@ async function processSubscriptionEvent(event: Stripe.Event, existingSubscriptio
     upsert.data?.id ?? existingSubscription?.id ?? null,
     {
       stripe_subscription_id: subscription.id,
-      status: mapSubscriptionStatus(subscription.status),
+      status: mappedStatus,
       event_type: event.type,
     }
   );
+
+  if (event.type === 'customer.subscription.created') {
+    await enqueueSubscriptionNotification(userId, SUBSCRIPTION_CREATED_MESSAGE);
+    return;
+  }
+
+  if (event.type === 'customer.subscription.updated') {
+    if (mappedStatus === 'cancelled') {
+      await enqueueSubscriptionNotification(
+        userId,
+        formatCancellationMessage(upsert.data?.current_period_end ?? readUnixTimestampField(subscriptionRecord, 'current_period_end'))
+      );
+      return;
+    }
+    await enqueueSubscriptionNotification(userId, SUBSCRIPTION_UPDATED_MESSAGE);
+  }
 }
 
 async function processRefundEvent(event: Stripe.Event): Promise<void> {
@@ -198,6 +246,65 @@ async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<
   }
 }
 
+async function processInvoicePaymentFailedEvent(event: Stripe.Event): Promise<void> {
+  const db = getSupabaseClient().db;
+  const invoice = event.data.object as Stripe.Invoice;
+  const invoiceRecord = invoice as unknown as Record<string, unknown>;
+
+  const stripeSubscriptionId =
+    typeof invoiceRecord.subscription === 'string' ? invoiceRecord.subscription : null;
+  let existingSubscription: SubscriptionRecord | null = null;
+  if (stripeSubscriptionId) {
+    const existing = await db.getSubscriptionByStripeId(stripeSubscriptionId);
+    if (existing.error) {
+      throw existing.error;
+    }
+    existingSubscription = existing.data;
+  }
+
+  if (existingSubscription?.stripe_subscription_id) {
+    const upsertResult = await db.upsertSubscription({
+      id: existingSubscription.id,
+      user_id: existingSubscription.user_id,
+      stripe_subscription_id: existingSubscription.stripe_subscription_id,
+      stripe_customer_id:
+        typeof invoiceRecord.customer === 'string' ? invoiceRecord.customer : existingSubscription.stripe_customer_id,
+      price_id: existingSubscription.price_id,
+      status: 'past_due',
+      current_period_start: existingSubscription.current_period_start,
+      current_period_end: existingSubscription.current_period_end,
+      cancel_at: existingSubscription.cancel_at,
+    });
+    if (upsertResult.error) {
+      throw upsertResult.error;
+    }
+  }
+
+  const invoiceMetadata =
+    (typeof invoiceRecord.metadata === 'object' && invoiceRecord.metadata !== null
+      ? invoiceRecord.metadata
+      : {}) as Record<string, unknown>;
+  const userId = existingSubscription?.user_id ?? (isUuid(invoiceMetadata.user_id) ? invoiceMetadata.user_id : null);
+  const amountDue = typeof invoiceRecord.amount_due === 'number' ? invoiceRecord.amount_due : null;
+  const insertedTx = await db.insertTransaction({
+    user_id: userId,
+    subscription_id: existingSubscription?.id ?? null,
+    stripe_event_id: event.id,
+    event_type: event.type,
+    amount_cents: amountDue,
+    currency: currencyToUpper(typeof invoiceRecord.currency === 'string' ? invoiceRecord.currency : null),
+    status: 'failed' as CommerceTransactionStatus,
+  });
+
+  if (insertedTx.error) {
+    throw insertedTx.error;
+  }
+
+  if (userId) {
+    await enqueueSubscriptionNotification(userId, PAYMENT_FAILED_MESSAGE);
+  }
+}
+
 export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<WebhookProcessResult> {
   const db = getSupabaseClient().db;
 
@@ -227,6 +334,9 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<Web
         break;
       case 'payment_intent.succeeded':
         await processPaymentIntentSucceededEvent(event);
+        break;
+      case 'invoice.payment_failed':
+        await processInvoicePaymentFailedEvent(event);
         break;
       default:
         logger.info('Ignoring unsupported Stripe webhook event', {

@@ -352,6 +352,7 @@ export interface SupabaseDBClient {
   ): Promise<{ error: Error | null }>;
   getFounderApplicationById(id: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   getFounderApplicationByEmail(email: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  getUserById(id: string): Promise<{ data: UserRecord | null; error: Error | null }>;
   insertFounderApplication(record: FounderApplicationInsert): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   updateFounderApplication(id: string, updates: FounderApplicationUpdate): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   getUserByEmail(email: string): Promise<{ data: UserRecord | null; error: Error | null }>;
@@ -424,6 +425,7 @@ export function getSupabaseClient(): SupabaseClient {
         updateJobState: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFounderApplicationById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFounderApplicationByEmail: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getUserById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertFounderApplication: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updateFounderApplication: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getUserByEmail: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -720,6 +722,22 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Founder application query failed: ${response.statusText}`) };
         }
         const rows = await response.json() as FounderApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getUserById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/users?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`User query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as UserRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };

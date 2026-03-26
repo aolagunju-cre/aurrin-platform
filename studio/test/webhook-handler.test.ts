@@ -31,6 +31,7 @@ describe('handleStripeWebhookEvent', () => {
   const db = {
     getTransactionByStripeEventId: jest.fn(),
     getSubscriptionByStripeId: jest.fn(),
+    getUserById: jest.fn(),
     upsertSubscription: jest.fn(),
     insertTransaction: jest.fn(),
     insertEntitlement: jest.fn(),
@@ -50,10 +51,18 @@ describe('handleStripeWebhookEvent', () => {
 
     db.getTransactionByStripeEventId.mockResolvedValue({ data: null, error: null });
     db.getSubscriptionByStripeId.mockResolvedValue({ data: null, error: null });
+    db.getUserById.mockResolvedValue({
+      data: {
+        id: userId,
+        email: 'subscriber@example.com',
+      },
+      error: null,
+    });
     db.upsertSubscription.mockResolvedValue({
       data: {
         id: subscriptionId,
         user_id: userId,
+        current_period_end: '2026-04-30T00:00:00.000Z',
       },
       error: null,
     });
@@ -155,6 +164,16 @@ describe('handleStripeWebhookEvent', () => {
         source: 'subscription',
       })
     );
+    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+      'send_email',
+      expect.objectContaining({
+        to: 'subscriber@example.com',
+        data: { message: 'Welcome! Your subscription is active' },
+      }),
+      expect.objectContaining({
+        aggregate_id: userId,
+      })
+    );
     expect(mockedAuditLog).toHaveBeenCalled();
   });
 
@@ -185,6 +204,52 @@ describe('handleStripeWebhookEvent', () => {
     expect(db.upsertSubscription).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'cancelled',
+      })
+    );
+    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+      'send_email',
+      expect.objectContaining({
+        to: 'subscriber@example.com',
+        data: { message: 'Your subscription was cancelled; you have access until 2026-04-30' },
+      }),
+      expect.objectContaining({
+        aggregate_id: userId,
+      })
+    );
+  });
+
+  it('maps customer.subscription.updated non-cancelled to billing updated notification', async () => {
+    const event = {
+      id: 'evt_sub_updated_active',
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_123',
+          customer: 'cus_123',
+          status: 'active',
+          current_period_start: 1700000000,
+          current_period_end: 1702592000,
+          cancel_at: null,
+          metadata: {
+            user_id: userId,
+          },
+          items: {
+            data: [{ price: { metadata: {} } }],
+          },
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await handleStripeWebhookEvent(event);
+
+    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+      'send_email',
+      expect.objectContaining({
+        to: 'subscriber@example.com',
+        data: { message: 'Your billing information has been updated' },
+      }),
+      expect.objectContaining({
+        aggregate_id: userId,
       })
     );
   });
@@ -249,6 +314,59 @@ describe('handleStripeWebhookEvent', () => {
         amount_cents: 1200,
         currency: 'USD',
         status: 'succeeded',
+      })
+    );
+  });
+
+  it('maps invoice.payment_failed to failed transaction + notification', async () => {
+    db.getSubscriptionByStripeId.mockResolvedValueOnce({
+      data: {
+        id: subscriptionId,
+        user_id: userId,
+        stripe_subscription_id: 'sub_123',
+        stripe_customer_id: 'cus_123',
+        price_id: priceId,
+        status: 'active',
+        current_period_start: null,
+        current_period_end: null,
+        cancel_at: null,
+      },
+      error: null,
+    });
+
+    const event = {
+      id: 'evt_failed',
+      type: 'invoice.payment_failed',
+      data: {
+        object: {
+          id: 'in_123',
+          subscription: 'sub_123',
+          customer: 'cus_123',
+          amount_due: 5000,
+          currency: 'usd',
+          metadata: {},
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    const result = await handleStripeWebhookEvent(event);
+    expect(result).toEqual({ duplicate: false, deadLettered: false });
+
+    expect(db.insertTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stripe_event_id: 'evt_failed',
+        event_type: 'invoice.payment_failed',
+        status: 'failed',
+      })
+    );
+    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+      'send_email',
+      expect.objectContaining({
+        to: 'subscriber@example.com',
+        data: { message: 'Payment failed; update payment method to avoid interruption' },
+      }),
+      expect.objectContaining({
+        aggregate_id: userId,
       })
     );
   });
