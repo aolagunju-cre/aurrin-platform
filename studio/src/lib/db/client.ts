@@ -316,6 +316,16 @@ export interface EntitlementInsert {
   source: EntitlementSource;
 }
 
+export interface ContentRecord {
+  id: string;
+  title: string | null;
+  body: string | null;
+  product_id: string | null;
+  requires_subscription: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SupabaseStorageClient {
   upload(bucket: string, path: string, file: Buffer | Blob, options?: { contentType?: string }): Promise<StorageUploadResult>;
   remove(bucket: string, paths: string[]): Promise<{ error: Error | null }>;
@@ -367,12 +377,15 @@ export interface SupabaseDBClient {
   insertPrice(record: PriceInsert): Promise<{ data: PriceRecord | null; error: Error | null }>;
   updatePrice(id: string, updates: PriceUpdate): Promise<{ data: PriceRecord | null; error: Error | null }>;
   getSubscriptionByStripeId(stripeSubscriptionId: string): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
+  getSubscriptionById(subscriptionId: string): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
   listSubscriptionsByUserId(userId: string): Promise<{ data: SubscriptionRecord[]; error: Error | null }>;
+  requestSubscriptionCancellation(subscriptionId: string): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
   upsertSubscription(record: SubscriptionUpsert): Promise<{ data: SubscriptionRecord | null; error: Error | null }>;
   getTransactionByStripeEventId(stripeEventId: string): Promise<{ data: TransactionRecord | null; error: Error | null }>;
   insertTransaction(record: TransactionInsert): Promise<{ data: TransactionRecord | null; error: Error | null }>;
   listEntitlementsByUserId(userId: string): Promise<{ data: EntitlementRecord[]; error: Error | null }>;
   insertEntitlement(record: EntitlementInsert): Promise<{ data: EntitlementRecord | null; error: Error | null }>;
+  getContentById(contentId: string): Promise<{ data: ContentRecord | null; error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -432,12 +445,15 @@ export function getSupabaseClient(): SupabaseClient {
         insertPrice: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updatePrice: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getSubscriptionByStripeId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getSubscriptionById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listSubscriptionsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        requestSubscriptionCancellation: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         upsertSubscription: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getTransactionByStripeEventId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertTransaction: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listEntitlementsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertEntitlement: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getContentById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
       },
     };
     return stub;
@@ -1195,6 +1211,43 @@ export function getSupabaseClient(): SupabaseClient {
       }
     },
 
+    async getSubscriptionById(subscriptionId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/subscriptions?id=eq.${encodeURIComponent(subscriptionId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Subscription query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SubscriptionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async requestSubscriptionCancellation(subscriptionId) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/subscriptions?id=eq.${encodeURIComponent(subscriptionId)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            status: 'cancelled',
+            cancel_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Subscription cancellation failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SubscriptionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
     async upsertSubscription(record) {
       try {
         const payload = {
@@ -1301,6 +1354,22 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Entitlement insert failed: ${response.statusText}`) };
         }
         const rows = await response.json() as EntitlementRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getContentById(contentId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/content?id=eq.${encodeURIComponent(contentId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Content query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as ContentRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
