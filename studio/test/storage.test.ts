@@ -457,8 +457,12 @@ describe('File type and size limit contracts', () => {
     expect(ALLOWED_MIME_TYPES['pitch-decks']).toEqual(['application/pdf']);
   });
 
-  it('generated-reports allows only application/pdf', () => {
-    expect(ALLOWED_MIME_TYPES['generated-reports']).toEqual(['application/pdf']);
+  it('generated-reports allows application/pdf and zip formats', () => {
+    expect(ALLOWED_MIME_TYPES['generated-reports']).toEqual([
+      'application/pdf',
+      'application/zip',
+      'application/x-zip-compressed',
+    ]);
   });
 
   it('social-assets allows image/jpeg and image/png', () => {

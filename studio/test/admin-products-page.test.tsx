@@ -1,9 +1,9 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import AdminProductsPage from '../src/app/(protected)/admin/products/page';
+import AdminDigitalProductsPage from '../src/app/(protected)/admin/products/digital/page';
 
-describe('AdminProductsPage', () => {
+describe('AdminDigitalProductsPage', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     jest.spyOn(window, 'confirm').mockReturnValue(true);
@@ -18,46 +18,41 @@ describe('AdminProductsPage', () => {
       const url = String(input);
       const method = init?.method ?? 'GET';
 
-      if (url.endsWith('/api/commerce/products') && method === 'GET') {
-        return mockResponse(200, {
-          success: true,
-          data: [{ id: 'prod_1', name: 'Gold Plan', description: 'Priority support', stripe_product_id: 'sp_1', active: true }],
-        });
-      }
-      if (url.includes('/api/commerce/prices?product_id=prod_1') && method === 'GET') {
+      if (url.endsWith('/api/commerce/products/digital') && method === 'GET') {
         return mockResponse(200, {
           success: true,
           data: [{
-            id: 'price_1',
-            product_id: 'prod_1',
-            stripe_price_id: 'spr_1',
-            amount_cents: 9900,
-            currency: 'USD',
-            billing_interval: 'monthly',
-            active: true,
+            id: 'prod_digital_1',
+            name: 'Market Map',
+            description: 'Downloadable report',
+            stripe_price_link: 'price_123',
+            access_type: 'perpetual',
+            file_id: null,
+            file_path: null,
+            sales_count: 12,
+            revenue_cents: 120000,
+            status: 'active',
           }],
         });
       }
-      if (url.endsWith('/api/commerce/products') && method === 'POST') {
-        return mockResponse(201, { success: true, data: { id: 'prod_2' } });
+
+      if (url.endsWith('/api/commerce/products/digital') && method === 'POST') {
+        return mockResponse(201, { success: true, data: { id: 'prod_digital_2' } });
       }
-      if (url.includes('/api/commerce/products/prod_1') && method === 'PATCH') {
-        return mockResponse(200, { success: true, data: { id: 'prod_1' } });
+
+      if (url.endsWith('/api/commerce/products/digital/prod_digital_1') && method === 'PATCH') {
+        return mockResponse(200, { success: true, data: { id: 'prod_digital_1' } });
       }
-      if (url.includes('/api/commerce/products/prod_1') && method === 'DELETE') {
+
+      if (url.endsWith('/api/commerce/products/digital/prod_digital_1') && method === 'DELETE') {
         return mockResponse(200, { success: true });
       }
-      if (url.endsWith('/api/commerce/prices') && method === 'POST') {
-        return mockResponse(201, { success: true, data: { id: 'price_2' } });
-      }
-      if (url.includes('/api/commerce/prices/price_1') && method === 'PATCH') {
-        return mockResponse(200, { success: true, data: { id: 'price_1' } });
-      }
-      if (url.includes('/api/commerce/prices/price_1') && method === 'DELETE') {
-        return mockResponse(200, { success: true });
-      }
-      if (url.endsWith('/api/commerce/products/sync') && method === 'POST') {
-        return mockResponse(200, { success: true, data: { createdProducts: 1 } });
+
+      if (url.endsWith('/api/commerce/products/digital/upload') && method === 'POST') {
+        return mockResponse(200, {
+          success: true,
+          data: { file_id: 'file_1', file_path: 'generated-reports/admin/asset.zip' },
+        });
       }
 
       return mockResponse(500, { success: false, message: `Unhandled ${method} ${url}` });
@@ -67,48 +62,38 @@ describe('AdminProductsPage', () => {
     (global as any).fetch = fetchMock;
   });
 
-  it('supports create/edit/delete product and price plus sync action', async () => {
-    render(<AdminProductsPage />);
+  it('supports create/edit/delete and upload flows for digital products', async () => {
+    render(<AdminDigitalProductsPage />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Gold Plan')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Market Map')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Product name'), { target: { value: 'Starter' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
+    fireEvent.change(screen.getByLabelText('name'), { target: { value: 'Founder Playbook' } });
+    fireEvent.change(screen.getByLabelText('description'), { target: { value: 'A paid founder guide.' } });
+    fireEvent.change(screen.getByLabelText('Stripe price link'), { target: { value: 'price_456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Digital Product' }));
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products', expect.objectContaining({ method: 'POST' }));
+      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/digital', expect.objectContaining({ method: 'POST' }));
     });
 
-    fireEvent.click(screen.getByText('Save Product'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/prod_1', expect.objectContaining({ method: 'PATCH' }));
+      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/digital/prod_digital_1', expect.objectContaining({ method: 'PATCH' }));
     });
 
-    fireEvent.click(screen.getByText('Delete Product'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/prod_1', expect.objectContaining({ method: 'DELETE' }));
+      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/digital/prod_digital_1', expect.objectContaining({ method: 'DELETE' }));
     });
 
-    fireEvent.change(screen.getByLabelText('New price amount prod_1'), { target: { value: '12900' } });
-    fireEvent.click(screen.getByText('Create Price'));
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/prices', expect.objectContaining({ method: 'POST' }));
-    });
+    const fileInput = screen.getByLabelText('file upload prod_digital_1') as HTMLInputElement;
+    const uploadFile = new File(['dummy'], 'asset.zip', { type: 'application/zip' });
+    fireEvent.change(fileInput, { target: { files: [uploadFile] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Upload File' }));
 
-    fireEvent.click(screen.getByText('Save Price'));
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/prices/price_1', expect.objectContaining({ method: 'PATCH' }));
-    });
-
-    fireEvent.click(screen.getByText('Delete Price'));
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/prices/price_1', expect.objectContaining({ method: 'DELETE' }));
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Sync from Stripe' }));
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/sync', { method: 'POST' });
+      expect(global.fetch).toHaveBeenCalledWith('/api/commerce/products/digital/upload', expect.objectContaining({ method: 'POST' }));
     });
   });
 });

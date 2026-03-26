@@ -274,6 +274,13 @@ export interface ProductRecord {
   name: string;
   description: string | null;
   stripe_product_id: string | null;
+  product_type: 'subscription' | 'digital';
+  access_type: 'perpetual' | 'time-limited' | null;
+  file_id: string | null;
+  file_path: string | null;
+  sales_count: number;
+  revenue_cents: number;
+  status: 'draft' | 'active' | 'archived';
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -283,6 +290,13 @@ export interface ProductInsert {
   name: string;
   description?: string | null;
   stripe_product_id?: string | null;
+  product_type?: 'subscription' | 'digital';
+  access_type?: 'perpetual' | 'time-limited' | null;
+  file_id?: string | null;
+  file_path?: string | null;
+  sales_count?: number;
+  revenue_cents?: number;
+  status?: 'draft' | 'active' | 'archived';
   active?: boolean;
 }
 
@@ -290,6 +304,13 @@ export interface ProductUpdate {
   name?: string;
   description?: string | null;
   stripe_product_id?: string | null;
+  product_type?: 'subscription' | 'digital';
+  access_type?: 'perpetual' | 'time-limited' | null;
+  file_id?: string | null;
+  file_path?: string | null;
+  sales_count?: number;
+  revenue_cents?: number;
+  status?: 'draft' | 'active' | 'archived';
   active?: boolean;
 }
 
@@ -1321,6 +1342,13 @@ export function getSupabaseClient(): SupabaseClient {
             name: record.name,
             description: record.description ?? null,
             stripe_product_id: record.stripe_product_id ?? null,
+            product_type: record.product_type ?? 'subscription',
+            access_type: record.access_type ?? null,
+            file_id: record.file_id ?? null,
+            file_path: record.file_path ?? null,
+            sales_count: record.sales_count ?? 0,
+            revenue_cents: record.revenue_cents ?? 0,
+            status: record.status ?? 'active',
             active: record.active ?? true,
           }),
         });

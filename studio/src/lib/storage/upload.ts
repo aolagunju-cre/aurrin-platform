@@ -11,7 +11,7 @@ export type SupportedBucket = 'pitch-decks' | 'generated-reports' | 'social-asse
 
 export const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   'pitch-decks': ['application/pdf'],
-  'generated-reports': ['application/pdf'],
+  'generated-reports': ['application/pdf', 'application/zip', 'application/x-zip-compressed'],
   'social-assets': ['image/jpeg', 'image/png'],
   'exports': ['application/json', 'text/csv'],
 };
