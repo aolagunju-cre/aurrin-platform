@@ -33,6 +33,9 @@ grep -F 'GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}' "$WORKFLOW" >/dev/null
 grep -F 'Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch.' "$WORKFLOW" >/dev/null
 grep -F 'Primary dispatch token did not produce a verified requeue run for PR #${PR_NUMBER}; retrying with fallback token.' "$WORKFLOW" >/dev/null
 grep -F 'Dispatch requeue after MVP merge reported success path but no auto-dispatch-requeue run was created for PR #${PR_NUMBER}.' "$WORKFLOW" >/dev/null
+grep -F 'EFFECTIVE_PIPELINE_PR="${PIPELINE_PR:-}"' "$WORKFLOW" >/dev/null
+grep -F 'PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,headRefName,baseRefName,author)' "$WORKFLOW" >/dev/null
+grep -F "bash scripts/classify-pipeline-pr.sh" "$WORKFLOW" >/dev/null
 grep -F 'gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch' "$WORKFLOW" >/dev/null
 grep -F "merged via MVP fast-track mode" "$WORKFLOW" >/dev/null
 grep -F "bug\" or . == \"docs\" or . == \"test\"" "$WORKFLOW" >/dev/null
@@ -125,6 +128,12 @@ DISPATCH_GH_TOKEN_COUNT=$(ruby -e '
 ' "$WORKFLOW")
 if [ "$DISPATCH_GH_TOKEN_COUNT" -lt 2 ]; then
   echo "FAIL: expected both MVP requeue steps to keep GH_TOKEN for GitHub CLI read operations" >&2
+  exit 1
+fi
+
+FALLBACK_CLASSIFY_COUNT=$(grep -c 'EFFECTIVE_PIPELINE_PR="${PIPELINE_PR:-}"' "$WORKFLOW")
+if [ "$FALLBACK_CLASSIFY_COUNT" -lt 2 ]; then
+  echo "FAIL: expected both MVP requeue steps to re-classify the PR when pipeline_pr output is unavailable" >&2
   exit 1
 fi
 
