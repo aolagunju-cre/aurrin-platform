@@ -5,6 +5,11 @@
  */
 
 import type { OutboxJob, OutboxJobInsert, OutboxJobState } from '../jobs/types';
+import type {
+  RubricDefinition,
+  RubricTemplateRecord,
+  RubricVersionRecord,
+} from '../rubrics/types';
 
 export type { OutboxJob, OutboxJobInsert, OutboxJobState };
 
@@ -145,6 +150,23 @@ export interface AuditLogInsert {
   reason?: string | null;
 }
 
+export interface RubricTemplateInsert {
+  name: string;
+  description?: string | null;
+}
+
+export interface RubricTemplateUpdate {
+  name?: string;
+  description?: string | null;
+}
+
+export interface RubricVersionInsert {
+  rubric_template_id: string;
+  version: number;
+  definition: RubricDefinition;
+  event_id?: string | null;
+}
+
 export interface SupabaseStorageClient {
   upload(bucket: string, path: string, file: Buffer | Blob, options?: { contentType?: string }): Promise<StorageUploadResult>;
   remove(bucket: string, paths: string[]): Promise<{ error: Error | null }>;
@@ -169,6 +191,13 @@ export interface SupabaseDBClient {
   getFounderByUserId(userId: string): Promise<{ data: FounderRecord | null; error: Error | null }>;
   insertFounder(record: FounderInsert): Promise<{ data: FounderRecord | null; error: Error | null }>;
   getRoleAssignmentsByUserId(userId: string): Promise<{ data: RoleAssignmentRecord[]; error: Error | null }>;
+  listRubricTemplates(): Promise<{ data: RubricTemplateRecord[]; error: Error | null }>;
+  getRubricTemplateById(id: string): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
+  insertRubricTemplate(record: RubricTemplateInsert): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
+  updateRubricTemplate(id: string, updates: RubricTemplateUpdate): Promise<{ data: RubricTemplateRecord | null; error: Error | null }>;
+  listRubricVersionsByTemplateId(templateId: string): Promise<{ data: RubricVersionRecord[]; error: Error | null }>;
+  getLatestRubricVersionByTemplateId(templateId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
+  insertRubricVersion(record: RubricVersionInsert): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -210,6 +239,13 @@ export function getSupabaseClient(): SupabaseClient {
         getFounderByUserId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertFounder: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getRoleAssignmentsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listRubricTemplates: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getRubricTemplateById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertRubricTemplate: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateRubricTemplate: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listRubricVersionsByTemplateId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getLatestRubricVersionByTemplateId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertRubricVersion: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
       },
     };
     return stub;
@@ -611,6 +647,129 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows, error: null };
       } catch (err) {
         return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listRubricTemplates() {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/rubric_templates?select=*&order=updated_at.desc`, { headers });
+        if (!response.ok) {
+          return { data: [], error: new Error(`Rubric templates query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricTemplateRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getRubricTemplateById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/rubric_templates?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Rubric template query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricTemplateRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertRubricTemplate(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/rubric_templates`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            name: record.name,
+            description: record.description ?? null,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Rubric template insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricTemplateRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateRubricTemplate(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/rubric_templates?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Rubric template update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricTemplateRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listRubricVersionsByTemplateId(templateId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/rubric_versions?rubric_template_id=eq.${encodeURIComponent(templateId)}&select=*&order=version.desc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Rubric versions query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricVersionRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getLatestRubricVersionByTemplateId(templateId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/rubric_versions?rubric_template_id=eq.${encodeURIComponent(templateId)}&select=*&order=version.desc&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Rubric version query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricVersionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertRubricVersion(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/rubric_versions`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            rubric_template_id: record.rubric_template_id,
+            version: record.version,
+            event_id: record.event_id ?? null,
+            definition: record.definition,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Rubric version insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricVersionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
   };
