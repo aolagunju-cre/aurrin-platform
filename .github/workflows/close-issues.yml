@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
   issues: write
   pull-requests: read
 
@@ -74,8 +75,105 @@ jobs:
           done
 
       - name: Reconcile blocked parent pipeline issues
+        id: reconcile
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
-          bash scripts/reconcile-parent-pipeline-issues.sh
+          RESULT=$(bash scripts/reconcile-parent-pipeline-issues.sh)
+          printf '%s\n' "$RESULT"
+          ACTIONS_TAKEN=$(printf '%s' "$RESULT" | jq -r '.actions_taken // 0')
+          echo "actions_taken=${ACTIONS_TAKEN}" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch requeue after parent reconciliation
+        if: steps.reconcile.outputs.actions_taken != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRIMARY_DISPATCH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FALLBACK_DISPATCH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          dispatch_and_confirm() {
+            local token=$1
+            local label=$2
+            local attempts=$3
+            local attempt
+            local poll
+            local before
+            local dispatch_output
+            local run_url
+            local run_id
+
+            [ -z "$token" ] && return 1
+
+            for attempt in $(seq 1 "$attempts"); do
+              before=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+              if ! dispatch_output=$(GH_TOKEN="$token" gh workflow run auto-dispatch-requeue.yml --repo "$REPO" 2>&1); then
+                echo "::warning::${label} dispatch attempt ${attempt}/${attempts} failed for auto-dispatch-requeue."
+                printf '%s\n' "$dispatch_output"
+                continue
+              fi
+
+              printf '%s\n' "$dispatch_output"
+              run_url=$(printf '%s\n' "$dispatch_output" | grep -Eo 'https://github\.com/[^[:space:]]+/actions/runs/[0-9]+' | tail -1 || true)
+              run_id=""
+              if [ -n "$run_url" ]; then
+                run_id="${run_url##*/}"
+              fi
+
+              for poll in $(seq 1 12); do
+                sleep 5
+                if [ -n "$run_id" ]; then
+                  if GH_TOKEN="$token" gh run view "$run_id" --repo "$REPO" --json databaseId --jq '.databaseId' >/dev/null 2>&1; then
+                    echo "Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch."
+                    return 0
+                  fi
+                else
+                  run_id=$(
+                    GH_TOKEN="$token" gh api "/repos/${REPO}/actions/workflows/auto-dispatch-requeue.yml/runs?event=workflow_dispatch&per_page=20" \
+                      --jq --arg since "$before" '
+                        .workflow_runs
+                        | map(select(.created_at >= $since))
+                        | sort_by(.created_at)
+                        | reverse
+                        | .[0].id // empty
+                      ' 2>/dev/null || true
+                  )
+                fi
+
+                if [ -n "$run_id" ] && GH_TOKEN="$token" gh run view "$run_id" --repo "$REPO" --json databaseId --jq '.databaseId' >/dev/null 2>&1; then
+                  echo "Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch."
+                  return 0
+                fi
+              done
+
+              echo "::warning::${label} dispatch attempt ${attempt}/${attempts} did not create a detectable auto-dispatch-requeue run."
+            done
+
+            return 1
+          }
+
+          OPEN_PIPELINE_PRS=$(
+            gh pr list --repo "$REPO" --state open --json title \
+              --jq '[.[] | select(.title | startswith("[Pipeline]"))] | length'
+          )
+          if [ "${OPEN_PIPELINE_PRS}" -gt 0 ]; then
+            echo "Open pipeline PRs remain (${OPEN_PIPELINE_PRS}). Skipping reconciliation-driven requeue dispatch."
+            exit 0
+          fi
+
+          if [ -z "$PRIMARY_DISPATCH_TOKEN" ] && [ -z "$FALLBACK_DISPATCH_TOKEN" ]; then
+            echo "::error::A dispatch token is required to trigger auto-dispatch-requeue after parent reconciliation."
+            exit 1
+          fi
+
+          if ! dispatch_and_confirm "$PRIMARY_DISPATCH_TOKEN" "primary" 2; then
+            echo "::warning::Primary dispatch token did not produce a verified requeue run after parent reconciliation; retrying with fallback token."
+            if ! dispatch_and_confirm "$FALLBACK_DISPATCH_TOKEN" "fallback" 1; then
+              echo "::error::Dispatch requeue after parent reconciliation reported success path but no auto-dispatch-requeue run was created."
+              exit 1
+            fi
+          fi
+
+          echo "Dispatched and verified auto-dispatch-requeue after parent reconciliation."

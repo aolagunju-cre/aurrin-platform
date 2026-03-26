@@ -73,8 +73,33 @@ grep -F 'Issue closure deferred pending post-deploy validation.' "$CLOSE_ISSUES"
   exit 1
 }
 
+grep -F 'actions: write' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must be allowed to dispatch auto-dispatch-requeue after reconciliation" >&2
+  exit 1
+}
+
 grep -F 'scripts/reconcile-parent-pipeline-issues.sh' "$CLOSE_ISSUES" >/dev/null || {
   echo "FAIL: close-issues.yml must reconcile blocked umbrella parents after child PR merges" >&2
+  exit 1
+}
+
+grep -F 'Dispatch requeue after parent reconciliation' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must trigger requeue after parent reconciliation changes the backlog" >&2
+  exit 1
+}
+
+grep -F 'gh workflow run auto-dispatch-requeue.yml --repo "$REPO"' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must dispatch auto-dispatch-requeue after parent reconciliation" >&2
+  exit 1
+}
+
+grep -F 'Confirmed auto-dispatch-requeue run ${run_id} after ${label} dispatch.' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must verify that reconciliation-driven requeue dispatch actually created a run" >&2
+  exit 1
+}
+
+grep -F 'Dispatched and verified auto-dispatch-requeue after parent reconciliation.' "$CLOSE_ISSUES" >/dev/null || {
+  echo "FAIL: close-issues.yml must report successful reconciliation-driven requeue dispatch" >&2
   exit 1
 }
 
