@@ -3,6 +3,14 @@
  * Verifies all 15+ entities exist with correct structure
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+
+const judgeScoresContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/010_judge_scores_state_contract.sql'),
+  'utf8'
+);
+
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
   // They validate that migration files would create the expected schema
@@ -135,6 +143,10 @@ describe('Database Schema Validation', () => {
       expect(true).toBe(true);
     });
 
+    test('judge_scores contract migration enforces state enum-like values', () => {
+      expect(judgeScoresContractSql).toContain("CHECK (state IN ('draft', 'submitted', 'locked'))");
+    });
+
     test('audience_responses has dedup constraint', () => {
       // Verified in migration: UNIQUE(audience_session_id, founder_pitch_id, question_id)
       expect(true).toBe(true);
@@ -168,6 +180,15 @@ describe('Database Schema Validation', () => {
     test('judge_scores references frozen rubric_version (not template)', () => {
       // Critical: judge_scores.rubric_version_id prevents dynamic rubric changes
       expect(true).toBe(true);
+    });
+
+    test('judge_scores includes PRD scoring contract columns', () => {
+      expect(judgeScoresContractSql).toContain('ADD COLUMN IF NOT EXISTS comments TEXT');
+      expect(judgeScoresContractSql).toContain('ADD COLUMN IF NOT EXISTS total_score NUMERIC(6, 2)');
+      expect(judgeScoresContractSql).toContain("ADD COLUMN IF NOT EXISTS category_scores JSONB NOT NULL DEFAULT '{}'::jsonb");
+      expect(judgeScoresContractSql).toContain("ADD COLUMN IF NOT EXISTS state TEXT NOT NULL DEFAULT 'draft'");
+      expect(judgeScoresContractSql).toContain('ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ');
+      expect(judgeScoresContractSql).toContain('ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ');
     });
 
     test('audience_responses references session and pitch', () => {
@@ -217,6 +238,13 @@ describe('Database Schema Validation', () => {
 
     test('judge policies restrict to own scores and assigned events', () => {
       expect(true).toBe(true);
+    });
+
+    test('judge_scores policies enforce own-select and draft-only updates', () => {
+      expect(judgeScoresContractSql).toContain('CREATE POLICY judge_scores_select_judge_own ON judge_scores');
+      expect(judgeScoresContractSql).toContain('CREATE POLICY judge_scores_select_admin_all ON judge_scores');
+      expect(judgeScoresContractSql).toContain('CREATE POLICY judge_scores_update_judge_draft_only ON judge_scores');
+      expect(judgeScoresContractSql).toContain("USING (judge_id = auth.uid() AND state = 'draft')");
     });
 
     test('founder policies restrict to own data and after publish', () => {
@@ -322,6 +350,12 @@ describe('Database Schema Validation', () => {
 
     test('005 founder application contract migration exists', () => {
       expect(true).toBe(true);
+    });
+
+    test('010 judge score contract migration exists and drops legacy columns', () => {
+      expect(judgeScoresContractSql).toContain('DROP COLUMN IF EXISTS comment');
+      expect(judgeScoresContractSql).toContain('DROP COLUMN IF EXISTS is_submitted');
+      expect(judgeScoresContractSql).toContain('CREATE INDEX IF NOT EXISTS judge_scores_state_idx ON judge_scores(state);');
     });
   });
 

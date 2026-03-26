@@ -173,6 +173,37 @@ export interface EventUpdate {
   config?: Record<string, unknown>;
 }
 
+export type JudgeScoreState = 'draft' | 'submitted' | 'locked';
+
+export interface JudgeScoreRecord {
+  id: string;
+  judge_id: string;
+  founder_pitch_id: string;
+  rubric_version_id: string;
+  responses: Record<string, unknown>;
+  comments: string | null;
+  total_score: number | null;
+  category_scores: Record<string, unknown>;
+  state: JudgeScoreState;
+  submitted_at: string | null;
+  locked_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JudgeScoreUpsert {
+  judge_id: string;
+  founder_pitch_id: string;
+  rubric_version_id: string;
+  responses: Record<string, unknown>;
+  comments?: string | null;
+  total_score?: number | null;
+  category_scores?: Record<string, unknown>;
+  state?: JudgeScoreState;
+  submitted_at?: string | null;
+  locked_at?: string | null;
+}
+
 export interface UserSearchRecord {
   id: string;
   email: string;
