@@ -542,6 +542,28 @@ jobs:
               echo "::warning::Could not close PR #${DUP}"
           done
 
+      - name: Dispatch requeue after MVP merge
+        if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PIPELINE_PR: ${{ steps.policy.outputs.pipeline_pr }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$PIPELINE_PR" != "true" ]; then
+            echo "PR #${PR_NUMBER} is not a pipeline PR. Skipping requeue dispatch."
+            exit 0
+          fi
+
+          STATE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '.state')
+          if [ "$STATE" != "MERGED" ]; then
+            echo "PR #${PR_NUMBER} not merged — skipping requeue dispatch."
+            exit 0
+          fi
+
+          gh workflow run auto-dispatch-requeue.yml --repo "$REPO"
+          echo "Dispatched auto-dispatch-requeue after MVP merge of PR #${PR_NUMBER}."
+
       - name: Dispatch owning agent for next cycle
         if: always() && steps.idempotency.outputs.skip != 'true' && steps.review.outputs.verdict != '' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE != 'true'
         env:
@@ -1071,6 +1093,28 @@ jobs:
               -c "Superseded by PR #${PR_NUMBER} which merged and closed issue #${TARGET}." || \
               echo "::warning::Could not close PR #${DUP}"
           done
+
+      - name: Dispatch requeue after MVP merge
+        if: steps.idempotency.outputs.skip != 'true' && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          PIPELINE_PR: ${{ steps.policy.outputs.pipeline_pr }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$PIPELINE_PR" != "true" ]; then
+            echo "PR #${PR_NUMBER} is not a pipeline PR. Skipping requeue dispatch."
+            exit 0
+          fi
+
+          STATE=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '.state')
+          if [ "$STATE" != "MERGED" ]; then
+            echo "PR #${PR_NUMBER} not merged — skipping requeue dispatch."
+            exit 0
+          fi
+
+          gh workflow run auto-dispatch-requeue.yml --repo "$REPO"
+          echo "Dispatched auto-dispatch-requeue after MVP merge of PR #${PR_NUMBER}."
 
       - name: Dispatch owning agent for next cycle
         if: always() && steps.healing.outputs.enabled == 'true' && vars.PIPELINE_MVP_MODE != 'true'
