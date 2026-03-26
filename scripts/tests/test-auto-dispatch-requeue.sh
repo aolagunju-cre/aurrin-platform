@@ -46,6 +46,21 @@ grep -F "Auto-retrying issue #\${ISSUE_NUMBER} after a transient provider failur
   exit 1
 }
 
+grep -F "<!-- code-push-retry:v1" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must record patch-apply retry markers" >&2
+  exit 1
+}
+
+grep -F "Auto-retrying issue #\${ISSUE_NUMBER} after a patch-apply failure" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must explain automatic patch-apply retries" >&2
+  exit 1
+}
+
+grep -F "failed to apply patch|could not build fake ancestor|sha1 information is lacking or useless" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must detect patch-apply failure signatures before retrying" >&2
+  exit 1
+}
+
 grep -F 'bash scripts/extract-issue-dependencies.sh' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must consult explicit issue dependencies before choosing backlog fallback" >&2
   exit 1
