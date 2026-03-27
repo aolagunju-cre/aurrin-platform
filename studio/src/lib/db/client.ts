@@ -374,6 +374,15 @@ export interface FounderInsert {
   website?: string | null;
 }
 
+export interface FounderUpdate {
+  company_name?: string | null;
+  tagline?: string | null;
+  bio?: string | null;
+  website?: string | null;
+  pitch_deck_url?: string | null;
+  social_proof?: Record<string, unknown> | null;
+}
+
 export interface StorageUploadResult {
   path: string;
   error: Error | null;
@@ -622,6 +631,7 @@ export interface SupabaseDBClient {
   updateUser(id: string, updates: UserUpdate): Promise<{ data: UserRecord | null; error: Error | null }>;
   getFounderByUserId(userId: string): Promise<{ data: FounderRecord | null; error: Error | null }>;
   insertFounder(record: FounderInsert): Promise<{ data: FounderRecord | null; error: Error | null }>;
+  updateFounder(id: string, updates: FounderUpdate): Promise<{ data: FounderRecord | null; error: Error | null }>;
   getRoleAssignmentsByUserId(userId: string): Promise<{ data: RoleAssignmentRecord[]; error: Error | null }>;
   listRoleAssignments(): Promise<{ data: RoleAssignmentListRecord[]; error: Error | null }>;
   insertRoleAssignment(record: RoleAssignmentInsert): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
@@ -727,6 +737,7 @@ export function getSupabaseClient(): SupabaseClient {
         updateUser: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFounderByUserId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertFounder: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateFounder: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getRoleAssignmentsByUserId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listRoleAssignments: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1364,6 +1375,23 @@ export function getSupabaseClient(): SupabaseClient {
         });
         if (!response.ok) {
           return { data: null, error: new Error(`Founder insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateFounder(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/founders?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify(updates),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder update failed: ${response.statusText}`) };
         }
         const rows = await response.json() as FounderRecord[];
         return { data: rows[0] ?? null, error: null };
