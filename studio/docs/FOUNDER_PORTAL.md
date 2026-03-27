@@ -1,32 +1,52 @@
 # Founder Portal Guide
 
-This guide focuses on founder portal behavior after application submission.
+This guide documents the implemented founder portal contract in `studio/src/app/(protected)/founder/*`.
 
-## How-to: Move from applicant to founder access
+## Access and authentication
 
-1. Submit an application through `/public/apply`.
-2. Wait for admin review.
-3. On acceptance, your founder profile is provisioned and approval email is queued.
-4. Follow verification/onboarding steps from email communication.
+- Founder pages and APIs require authenticated founder context.
+- Founder-scoped APIs enforce ownership: founders can only access their own event, score, validation, and report resources.
+- Admin role may use override access paths where route contracts explicitly allow it.
 
-## How-to: Understand current founder lifecycle
+## View scores and validation
 
-1. Initial application status starts at `pending`.
-2. Admin can move status to `accepted`, `assigned`, or `declined` using protected workflow.
-3. `assigned` indicates routing to an event context.
+Founders can review assigned events at `/founder/events` and open pitch detail at `/founder/events/[eventId]/pitch`.
 
-## Planned / partial areas
+- Before `publishing_start`, score and validation endpoints are gated and return `403` to founder users.
+- On or after `publishing_start`, founders can view:
+  - aggregate score and per-category breakdown,
+  - per-judge score rows (respecting visibility rules),
+  - validation summary with totals, percentages, numeric averages, and text snippets.
+- Scoring status messaging is:
+  - `Judges are scoring`
+  - `Scores will be published on {date}`
+  - `Scores published`
 
-- A full self-service founder portal UI (status history, score viewing, downloadable artifacts) is still planned.
-- Current repository has implemented founder intake and admin transition APIs; portal experience is being expanded in follow-up issues.
+## Report generation and download
 
-## FAQ
+Founders manage reports at `/founder/reports`.
 
-### Where do I apply?
-Use `/public/apply`.
+- Generate: `POST /api/founder/reports/generate` with `{ event_id, pitch_id, report_type: 'full'|'summary' }`
+  - Returns `202` with `{ job_id, status_url }`
+  - Shows async message: `Your report is being generated. You'll receive an email when ready.`
+- Status: `GET /api/founder/reports/[reportId]/status`
+  - Maps to UI statuses:
+    - `Generating...`
+    - `Ready (download)`
+    - `Failed (try again)`
+- Download: `GET /api/founder/reports/[reportId]/download`
+  - Returns a signed URL to the generated PDF when ready.
 
-### When do I hear back?
-Current intake confirmation message targets review feedback within 5 business days.
+## Privacy and data retention
 
-### Can I directly change my application after submission?
-Not through a dedicated founder portal yet. Contact operators for changes while portal self-service is planned.
+- Generated report files are stored in the `generated-reports` bucket.
+- Founder report files are private (`is_public: false`) and tied to founder ownership.
+- Generated report metadata uses a 7-day retention fallback (`retention_days: 7`).
+- Signed URL expiry for report downloads follows report route defaults and fallback policy.
+
+## Notification behavior
+
+- Founders receive score-publish notification email content containing:
+  - the exact phrase `Your scores are now available`,
+  - a founder-portal call-to-action link,
+  - an events summary describing newly available scores.
