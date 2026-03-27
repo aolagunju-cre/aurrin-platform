@@ -8,6 +8,7 @@ REPO="${REPO:?REPO environment variable is required}"
 PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"
 STATE_MARKER='<!-- ci-repair-state:v1'
 DEPENDENCY_CYCLE_MARKER='<!-- dependency-cycle:v1'
+DEPENDENCY_CYCLE_AUTOFIX_MARKER='<!-- dependency-cycle-autofix:v1'
 STALE_THRESHOLD=1200
 ESCALATE_THRESHOLD=7200
 MAX_REPAIR_ATTEMPTS=2
@@ -187,6 +188,29 @@ render_dependency_cycle_body() {
     "This issue is part of a circular dependency. The queue will stay blocked until one dependency edge in the cycle is removed."
 }
 
+render_dependency_cycle_autofix_body() {
+  local issue_number=$1
+  local cycle_chain=$2
+  local remove_from=$3
+  local remove_to=$4
+  local rationale=$5
+  printf '%s\n' \
+    "${DEPENDENCY_CYCLE_AUTOFIX_MARKER}" \
+    "status=applied" \
+    "issue_number=${issue_number}" \
+    "cycle=${cycle_chain}" \
+    "remove_dependency_from=${remove_from}" \
+    "remove_dependency_to=${remove_to}" \
+    "updated_at=${NOW_ISO}" \
+    "-->" \
+    "## Dependency Cycle Auto-Fix Applied" \
+    "" \
+    "- **Cycle**: ${cycle_chain}" \
+    "- **Removed Edge**: issue #${remove_from} no longer depends on #${remove_to}" \
+    "- **Rationale**: ${rationale}" \
+    "- **Updated At**: ${NOW_ISO}"
+}
+
 create_or_update_incident_issue() {
   local title=$1
   local body=$2
@@ -277,6 +301,15 @@ issue_has_label() {
   printf '%s' "$labels_csv" | grep -Eq "(^|,)${label}(,|$)"
 }
 
+remove_issue_label() {
+  local issue_number=$1
+  local labels_csv=$2
+  local label=$3
+  if issue_has_label "$labels_csv" "$label"; then
+    gh issue edit "$issue_number" --repo "$REPO" --remove-label "$label" >/dev/null 2>&1 || true
+  fi
+}
+
 open_dependency_numbers() {
   local issue_body=$1
   OPEN_ISSUES_JSON="$OPEN_ISSUES_JSON" "$SCRIPT_DIR/open-issue-dependencies.sh" <<<"$issue_body"
@@ -295,6 +328,11 @@ ensure_dependency_blocked_label() {
 
   gh issue edit "$issue_number" --repo "$REPO" --add-label blocked >/dev/null 2>&1 || \
     echo "::warning::Could not add blocked label to issue #${issue_number}"
+}
+
+refresh_issue_snapshots() {
+  OPEN_ISSUES_JSON=$(gh issue list --repo "$REPO" --state open --limit 500 --json number 2>/dev/null || echo '[]')
+  PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels,body)
 }
 
 dispatch_issue_workflow() {
@@ -355,6 +393,53 @@ echo ""
 echo "=== Checking for dependency cycles ==="
 DEPENDENCY_CYCLE_JSON=$(printf '%s' "$PIPELINE_ISSUES" | bash "$SCRIPT_DIR/detect-dependency-cycles.sh")
 DEPENDENCY_CYCLE_COUNT=$(printf '%s' "$DEPENDENCY_CYCLE_JSON" | jq '.cycles | length')
+DEPENDENCY_CYCLE_FIX_JSON=$(printf '%s' "$PIPELINE_ISSUES" | bash "$SCRIPT_DIR/resolve-dependency-cycles.sh")
+DEPENDENCY_CYCLE_FIX_COUNT=$(printf '%s' "$DEPENDENCY_CYCLE_FIX_JSON" | jq '.fixes | length')
+if [ "$DEPENDENCY_CYCLE_FIX_COUNT" -gt 0 ]; then
+  FIX_ROW=$(printf '%s' "$DEPENDENCY_CYCLE_FIX_JSON" | jq -c '.fixes[0]')
+  REMOVE_FROM=$(printf '%s' "$FIX_ROW" | jq -r '.remove_dependency_from')
+  REMOVE_TO=$(printf '%s' "$FIX_ROW" | jq -r '.remove_dependency_to')
+  CYCLE_CHAIN=$(printf '%s' "$FIX_ROW" | jq -r '[.issues[] | "#" + tostring] | join(" -> ")')
+  RATIONALE=$(printf '%s' "$FIX_ROW" | jq -r '.rationale')
+  ISSUE_JSON=$(gh issue view "$REMOVE_FROM" --repo "$REPO" --json body,labels)
+  ISSUE_BODY=$(printf '%s' "$ISSUE_JSON" | jq -r '.body // ""')
+  ISSUE_LABELS=$(printf '%s' "$ISSUE_JSON" | jq -r '[.labels[]?.name // empty | ascii_downcase] | join(",")')
+  UPDATED_JSON=$(printf '%s' "$ISSUE_BODY" | bash "$SCRIPT_DIR/remove-issue-dependency.sh" "$REMOVE_TO")
+  UPDATED_CHANGED=$(printf '%s' "$UPDATED_JSON" | jq -r '.changed')
+  if [ "$UPDATED_CHANGED" = "true" ]; then
+    TMP_BODY=$(mktemp)
+    trap 'rm -f "$TMP_BODY"' EXIT
+    printf '%s' "$UPDATED_JSON" | jq -r '.body' > "$TMP_BODY"
+    gh issue edit "$REMOVE_FROM" --repo "$REPO" --body-file "$TMP_BODY" >/dev/null
+
+    while IFS= read -r CYCLE_ISSUE; do
+      [ -z "$CYCLE_ISSUE" ] && continue
+      EXISTING_AUTOFIX_COMMENT=$(find_marker_comment "$CYCLE_ISSUE" "$DEPENDENCY_CYCLE_AUTOFIX_MARKER")
+      EXISTING_AUTOFIX_COMMENT_ID=$(printf '%s' "$EXISTING_AUTOFIX_COMMENT" | jq -r '.id // empty')
+      AUTOFIX_BODY=$(render_dependency_cycle_autofix_body "$CYCLE_ISSUE" "$CYCLE_CHAIN" "$REMOVE_FROM" "$REMOVE_TO" "$RATIONALE")
+      upsert_comment "$CYCLE_ISSUE" "$EXISTING_AUTOFIX_COMMENT_ID" "$AUTOFIX_BODY"
+    done < <(printf '%s' "$FIX_ROW" | jq -r '.issues[]')
+
+    UPDATED_REMOVE_FROM_BODY=$(gh issue view "$REMOVE_FROM" --repo "$REPO" --json body --jq '.body // ""')
+    UPDATED_REMOVE_FROM_BLOCKERS=$(open_dependency_numbers "$UPDATED_REMOVE_FROM_BODY" || true)
+    if [ -z "$UPDATED_REMOVE_FROM_BLOCKERS" ]; then
+      remove_issue_label "$REMOVE_FROM" "$ISSUE_LABELS" "blocked"
+    fi
+
+    OTHER_ISSUE_JSON=$(gh issue view "$REMOVE_TO" --repo "$REPO" --json body,labels)
+    OTHER_ISSUE_BODY=$(printf '%s' "$OTHER_ISSUE_JSON" | jq -r '.body // ""')
+    OTHER_ISSUE_LABELS=$(printf '%s' "$OTHER_ISSUE_JSON" | jq -r '[.labels[]?.name // empty | ascii_downcase] | join(",")')
+    OTHER_ISSUE_BLOCKERS=$(open_dependency_numbers "$OTHER_ISSUE_BODY" || true)
+    if [ -z "$OTHER_ISSUE_BLOCKERS" ]; then
+      remove_issue_label "$REMOVE_TO" "$OTHER_ISSUE_LABELS" "blocked"
+    fi
+
+    echo "Applied guarded dependency-cycle auto-fix: removed #${REMOVE_TO} from issue #${REMOVE_FROM} dependencies (${CYCLE_CHAIN})."
+    refresh_issue_snapshots
+    DEPENDENCY_CYCLE_JSON=$(printf '%s' "$PIPELINE_ISSUES" | bash "$SCRIPT_DIR/detect-dependency-cycles.sh")
+    DEPENDENCY_CYCLE_COUNT=$(printf '%s' "$DEPENDENCY_CYCLE_JSON" | jq '.cycles | length')
+  fi
+fi
 if [ "$DEPENDENCY_CYCLE_COUNT" -gt 0 ]; then
   while IFS= read -r CYCLE_ROW; do
     [ -z "$CYCLE_ROW" ] && continue

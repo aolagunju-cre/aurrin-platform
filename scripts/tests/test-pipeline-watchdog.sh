@@ -28,10 +28,15 @@ grep -F "command_for_branch()" "$SCRIPT" >/dev/null
 grep -F "find_marker_comments()" "$SCRIPT" >/dev/null
 grep -F "sync_pr_repair_labels()" "$SCRIPT" >/dev/null
 grep -F 'DEPENDENCY_CYCLE_MARKER=' "$SCRIPT" >/dev/null
+grep -F 'DEPENDENCY_CYCLE_AUTOFIX_MARKER=' "$SCRIPT" >/dev/null
 grep -F 'render_dependency_cycle_body()' "$SCRIPT" >/dev/null
+grep -F 'render_dependency_cycle_autofix_body()' "$SCRIPT" >/dev/null
 grep -F 'detect-dependency-cycles.sh' "$SCRIPT" >/dev/null
+grep -F 'resolve-dependency-cycles.sh' "$SCRIPT" >/dev/null
+grep -F 'remove-issue-dependency.sh' "$SCRIPT" >/dev/null
 grep -F '=== Checking for dependency cycles ===' "$SCRIPT" >/dev/null
 grep -F 'Dependency cycle detected:' "$SCRIPT" >/dev/null
+grep -F 'Applied guarded dependency-cycle auto-fix:' "$SCRIPT" >/dev/null
 grep -F 'reconcile-parent-pipeline-issues.sh' "$SCRIPT" >/dev/null
 grep -F 'open-issue-dependencies.sh' "$SCRIPT" >/dev/null
 grep -F '=== Reconciling blocked parent pipeline issues ===' "$SCRIPT" >/dev/null

@@ -46,6 +46,10 @@ jobs:
         run: bash scripts/tests/test-extract-issue-dependencies.sh
       - name: Test dependency cycle detection
         run: bash scripts/tests/test-detect-dependency-cycles.sh
+      - name: Test dependency cycle resolution heuristics
+        run: bash scripts/tests/test-resolve-dependency-cycles.sh
+      - name: Test issue dependency removal helper
+        run: bash scripts/tests/test-remove-issue-dependency.sh
       - name: Test dependency-blocked issue reroute helper
         run: bash scripts/tests/test-handle-dependency-blocked-issue.sh
       - name: Test auto-dispatch requeue token wiring
