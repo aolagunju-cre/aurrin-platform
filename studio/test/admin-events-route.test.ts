@@ -380,6 +380,134 @@ describe('admin events routes', () => {
     expect(payload.idempotent).toBe(true);
   });
 
+  it('archives a live event and returns idempotent success on repeated archive requests', async () => {
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'April Demo Day',
+        description: 'Pitch event',
+        status: 'live',
+        start_date: '2026-04-01T10:00:00.000Z',
+        end_date: '2026-04-01T12:00:00.000Z',
+        scoring_start: '2026-04-01T10:15:00.000Z',
+        scoring_end: '2026-04-01T11:45:00.000Z',
+        publishing_start: '2026-04-01T12:30:00.000Z',
+        publishing_end: '2026-04-02T12:30:00.000Z',
+        archived_at: null,
+        starts_at: '2026-04-01T10:00:00.000Z',
+        ends_at: '2026-04-01T12:00:00.000Z',
+        config: {},
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-03-25T00:00:00.000Z',
+      },
+      error: null,
+    });
+    mockDb.updateEvent.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'April Demo Day',
+        description: 'Pitch event',
+        status: 'archived',
+        start_date: '2026-04-01T10:00:00.000Z',
+        end_date: '2026-04-01T12:00:00.000Z',
+        scoring_start: '2026-04-01T10:15:00.000Z',
+        scoring_end: '2026-04-01T11:45:00.000Z',
+        publishing_start: '2026-04-01T12:30:00.000Z',
+        publishing_end: '2026-04-02T12:30:00.000Z',
+        archived_at: '2026-04-01T12:05:00.000Z',
+        starts_at: '2026-04-01T10:00:00.000Z',
+        ends_at: '2026-04-01T12:00:00.000Z',
+        config: {},
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-04-01T12:05:00.000Z',
+      },
+      error: null,
+    });
+
+    const archiveResponse = await patchEventStatus(
+      buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', {
+        new_status: 'Archived',
+        notes: 'Scoring completed',
+      }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+    expect(archiveResponse.status).toBe(200);
+    expect(mockedAuditLog).toHaveBeenCalledWith(
+      'event_status_changed',
+      'admin-1',
+      expect.objectContaining({ resource_type: 'event' }),
+      expect.any(Object)
+    );
+
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'April Demo Day',
+        description: 'Pitch event',
+        status: 'archived',
+        start_date: '2026-04-01T10:00:00.000Z',
+        end_date: '2026-04-01T12:00:00.000Z',
+        scoring_start: '2026-04-01T10:15:00.000Z',
+        scoring_end: '2026-04-01T11:45:00.000Z',
+        publishing_start: '2026-04-01T12:30:00.000Z',
+        publishing_end: '2026-04-02T12:30:00.000Z',
+        archived_at: '2026-04-01T12:05:00.000Z',
+        starts_at: '2026-04-01T10:00:00.000Z',
+        ends_at: '2026-04-01T12:00:00.000Z',
+        config: {},
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-04-01T12:05:00.000Z',
+      },
+      error: null,
+    });
+
+    const repeatedArchiveResponse = await patchEventStatus(
+      buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', { new_status: 'Archived' }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+    expect(repeatedArchiveResponse.status).toBe(200);
+    await expect(repeatedArchiveResponse.json()).resolves.toEqual(
+      expect.objectContaining({ success: true, idempotent: true })
+    );
+  });
+
+  it('rejects attempts to revert archived events back to live', async () => {
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'April Demo Day',
+        description: 'Pitch event',
+        status: 'archived',
+        start_date: '2026-04-01T10:00:00.000Z',
+        end_date: '2026-04-01T12:00:00.000Z',
+        scoring_start: '2026-04-01T10:15:00.000Z',
+        scoring_end: '2026-04-01T11:45:00.000Z',
+        publishing_start: '2026-04-01T12:30:00.000Z',
+        publishing_end: '2026-04-02T12:30:00.000Z',
+        archived_at: '2026-04-01T12:05:00.000Z',
+        starts_at: '2026-04-01T10:00:00.000Z',
+        ends_at: '2026-04-01T12:00:00.000Z',
+        config: {},
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-04-01T12:05:00.000Z',
+      },
+      error: null,
+    });
+
+    const response = await patchEventStatus(
+      buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', { new_status: 'Live' }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        success: false,
+        message: 'Invalid transition. Archived events cannot transition to Live.',
+      })
+    );
+  });
+
   it('updates scoring window with event-boundary validation and auditing', async () => {
     const response = await patchScoringWindow(
       buildRequest('http://localhost/api/admin/events/event-1/scoring-window', 'PATCH', {
