@@ -12,16 +12,41 @@ describe('founder portal pages', () => {
 
   it('renders founder dashboard navigation and quick stats', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).fetch = jest.fn(async () => ({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: [
-          { id: 'event-1', status: 'live' },
-          { id: 'event-2', status: 'archived' },
-        ],
-      }),
-    }));
+    (global as any).fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.endsWith('/api/founder/events')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [
+              { id: 'event-1', status: 'live' },
+              { id: 'event-2', status: 'archived' },
+            ],
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            matches: [
+              {
+                id: 'match-1',
+                created_at: '2026-03-27T00:00:00.000Z',
+                mentor: {
+                  name: 'Mentor One',
+                  title: null,
+                  contact: { email: 'mentor1@example.com' },
+                },
+              },
+            ],
+          },
+        }),
+      };
+    });
 
     render(<FounderDashboardPage />);
 
@@ -34,6 +59,8 @@ describe('founder portal pages', () => {
     expect(screen.getByRole('link', { name: 'Reports' })).toHaveAttribute('href', '/founder/reports');
     expect(screen.getByText('Active events: 1')).toBeInTheDocument();
     expect(screen.getByText('Completed events: 1')).toBeInTheDocument();
+    expect(screen.getByText('Accepted mentor matches: 1')).toBeInTheDocument();
+    expect(screen.getByText(/Mentor One/)).toBeInTheDocument();
   });
 
   it('renders profile page and submits profile updates', async () => {

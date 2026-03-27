@@ -5,6 +5,8 @@ import { GET as getFounderProfile, PATCH as patchFounderProfile } from '../src/a
 import { GET as getFounderPitch } from '../src/app/api/founder/events/[eventId]/pitch/route';
 import { GET as getFounderScores } from '../src/app/api/founder/events/[eventId]/scores/route';
 import { GET as getFounderValidation } from '../src/app/api/founder/events/[eventId]/validation/route';
+import { GET as listFounderMatches } from '../src/app/api/founder/matches/route';
+import { GET as getFounderMatch } from '../src/app/api/founder/matches/[matchId]/route';
 import { requireFounderOrAdmin } from '../src/lib/auth/founder';
 import { getSupabaseClient } from '../src/lib/db/client';
 
@@ -87,6 +89,7 @@ describe('founder portal API routes', () => {
       updateFounder: jest.fn(),
       getFounderByUserId: jest.fn(),
       getEventById: jest.fn(),
+      getMentorMatchById: jest.fn(),
       queryTable: jest.fn(),
     };
 
@@ -317,6 +320,161 @@ describe('founder portal API routes', () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it('returns only mutual accepted founder matches after publishing start', async () => {
+    mockedRequireFounderOrAdmin.mockResolvedValueOnce(founderContext);
+    mockDb.queryTable.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'match-1',
+          founder_id: 'founder-1',
+          mentor_id: 'mentor-1',
+          event_id: 'event-1',
+          mentor_status: 'accepted',
+          founder_status: 'accepted',
+          mentor_accepted_at: '2026-03-27T00:05:00.000Z',
+          founder_accepted_at: '2026-03-27T00:06:00.000Z',
+          created_at: '2026-03-27T00:00:00.000Z',
+          mentor: { id: 'mentor-1', name: 'Mentor One', email: 'mentor@example.com' },
+          event: { id: 'event-1', name: 'Demo Day', publishing_start: '2000-01-01T00:00:00.000Z' },
+        },
+        {
+          id: 'match-2',
+          founder_id: 'founder-1',
+          mentor_id: 'mentor-2',
+          event_id: 'event-1',
+          mentor_status: 'accepted',
+          founder_status: 'accepted',
+          mentor_accepted_at: '2026-03-27T00:07:00.000Z',
+          founder_accepted_at: '2026-03-27T00:08:00.000Z',
+          created_at: '2026-03-27T00:01:00.000Z',
+          mentor: { id: 'mentor-2', name: 'Mentor Two', email: 'mentor2@example.com' },
+          event: { id: 'event-1', name: 'Demo Day', publishing_start: '2999-01-01T00:00:00.000Z' },
+        },
+      ],
+      error: null,
+    });
+
+    const response = await listFounderMatches(buildRequest('http://localhost/api/founder/matches', 'GET'));
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.data.matches).toHaveLength(1);
+    expect(payload.data.matches[0]).toEqual(
+      expect.objectContaining({
+        id: 'match-1',
+        mentor: expect.objectContaining({
+          name: 'Mentor One',
+          contact: { email: 'mentor@example.com' },
+        }),
+      })
+    );
+  });
+
+  it('returns 403 for founder match detail before publishing start', async () => {
+    mockedRequireFounderOrAdmin.mockResolvedValueOnce(founderContext);
+    mockDb.getMentorMatchById.mockResolvedValueOnce({
+      data: {
+        id: 'match-1',
+        mentor_id: 'mentor-1',
+        founder_id: 'founder-1',
+        event_id: 'event-1',
+        mentor_status: 'accepted',
+        founder_status: 'accepted',
+        mentor_accepted_at: '2026-03-27T00:05:00.000Z',
+        founder_accepted_at: '2026-03-27T00:06:00.000Z',
+        declined_by: null,
+        notes: null,
+        created_at: '2026-03-27T00:00:00.000Z',
+        updated_at: '2026-03-27T00:00:00.000Z',
+      },
+      error: null,
+    });
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: { id: 'event-1', name: 'Demo Day', publishing_start: '2999-01-01T00:00:00.000Z' },
+      error: null,
+    });
+
+    const response = await getFounderMatch(
+      buildRequest('http://localhost/api/founder/matches/match-1', 'GET'),
+      { params: Promise.resolve({ matchId: 'match-1' }) }
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it('returns 404 for founder match detail when ownership does not match', async () => {
+    mockedRequireFounderOrAdmin.mockResolvedValueOnce(founderContext);
+    mockDb.getMentorMatchById.mockResolvedValueOnce({
+      data: {
+        id: 'match-2',
+        mentor_id: 'mentor-1',
+        founder_id: 'founder-other',
+        event_id: 'event-1',
+        mentor_status: 'accepted',
+        founder_status: 'accepted',
+        mentor_accepted_at: '2026-03-27T00:05:00.000Z',
+        founder_accepted_at: '2026-03-27T00:06:00.000Z',
+        declined_by: null,
+        notes: null,
+        created_at: '2026-03-27T00:00:00.000Z',
+        updated_at: '2026-03-27T00:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const response = await getFounderMatch(
+      buildRequest('http://localhost/api/founder/matches/match-2', 'GET'),
+      { params: Promise.resolve({ matchId: 'match-2' }) }
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it('returns mentor contact and acceptance timestamps for eligible founder match detail', async () => {
+    mockedRequireFounderOrAdmin.mockResolvedValueOnce(founderContext);
+    mockDb.getMentorMatchById.mockResolvedValueOnce({
+      data: {
+        id: 'match-1',
+        mentor_id: 'mentor-1',
+        founder_id: 'founder-1',
+        event_id: 'event-1',
+        mentor_status: 'accepted',
+        founder_status: 'accepted',
+        mentor_accepted_at: '2026-03-27T00:05:00.000Z',
+        founder_accepted_at: '2026-03-27T00:06:00.000Z',
+        declined_by: null,
+        notes: null,
+        created_at: '2026-03-27T00:00:00.000Z',
+        updated_at: '2026-03-27T00:00:00.000Z',
+      },
+      error: null,
+    });
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: { id: 'event-1', name: 'Demo Day', publishing_start: '2000-01-01T00:00:00.000Z' },
+      error: null,
+    });
+    mockDb.getUserById.mockResolvedValueOnce({
+      data: { id: 'mentor-1', email: 'mentor@example.com', name: 'Mentor One' },
+      error: null,
+    });
+
+    const response = await getFounderMatch(
+      buildRequest('http://localhost/api/founder/matches/match-1', 'GET'),
+      { params: Promise.resolve({ matchId: 'match-1' }) }
+    );
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.data).toEqual(
+      expect.objectContaining({
+        id: 'match-1',
+        created_at: '2026-03-27T00:00:00.000Z',
+        mentor_accepted_at: '2026-03-27T00:05:00.000Z',
+        founder_accepted_at: '2026-03-27T00:06:00.000Z',
+        mentor: expect.objectContaining({
+          name: 'Mentor One',
+          contact: { email: 'mentor@example.com' },
+        }),
+      })
+    );
   });
 
   it('returns founder profile data on GET', async () => {
