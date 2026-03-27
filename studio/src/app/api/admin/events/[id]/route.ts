@@ -13,6 +13,8 @@ interface EventPatchPayload {
   status?: string;
   start_date?: string;
   end_date?: string;
+  logo_url?: string | null;
+  image_url?: string | null;
   max_judges?: number;
   max_founders?: number;
   rubric_id?: string | null;
@@ -60,8 +62,14 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
         description: eventResult.data.description,
         status: toUiStatus(eventResult.data.status),
         status_value: eventResult.data.status,
-        start_date: eventResult.data.starts_at,
-        end_date: eventResult.data.ends_at,
+        start_date: eventResult.data.start_date,
+        end_date: eventResult.data.end_date,
+        scoring_start: eventResult.data.scoring_start,
+        scoring_end: eventResult.data.scoring_end,
+        publishing_start: eventResult.data.publishing_start,
+        publishing_end: eventResult.data.publishing_end,
+        logo_url: typeof config.logo_url === 'string' ? config.logo_url : null,
+        image_url: typeof config.image_url === 'string' ? config.image_url : null,
         max_judges: typeof config.max_judges === 'number' ? config.max_judges : null,
         max_founders: typeof config.max_founders === 'number' ? config.max_founders : null,
         rubric_id: typeof config.rubric_id === 'string' ? config.rubric_id : null,
@@ -140,11 +148,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
   if (body.rubric_id !== undefined) {
     nextConfig.rubric_id = body.rubric_id;
   }
+  if (body.logo_url !== undefined) {
+    nextConfig.logo_url = body.logo_url;
+  }
+  if (body.image_url !== undefined) {
+    nextConfig.image_url = body.image_url;
+  }
 
   const updateResult = await client.db.updateEvent(id, {
     name: body.name?.trim() || existingResult.data.name,
     description: body.description !== undefined ? body.description : existingResult.data.description,
     status: (body.status as EventStatus | undefined) ?? existingResult.data.status,
+    start_date: body.start_date ? new Date(body.start_date).toISOString() : existingResult.data.start_date,
+    end_date: body.end_date ? new Date(body.end_date).toISOString() : existingResult.data.end_date,
     starts_at: body.start_date ? new Date(body.start_date).toISOString() : existingResult.data.starts_at,
     ends_at: body.end_date ? new Date(body.end_date).toISOString() : existingResult.data.ends_at,
     config: nextConfig,

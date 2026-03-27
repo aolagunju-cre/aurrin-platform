@@ -1,38 +1,58 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { EventForm, EventFormValues } from '../../../../../components/admin/EventForm';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+
+type EventStatus = 'Upcoming' | 'Live' | 'Archived';
+
+type PendingStatus = 'Live' | 'Archived';
 
 interface EventDetail {
   id: string;
   name: string;
   description: string | null;
-  status: 'Upcoming' | 'Live' | 'Archived';
+  status: EventStatus;
   start_date: string;
   end_date: string;
-  max_judges: number | null;
-  max_founders: number | null;
-  rubric_id: string | null;
-  config: Record<string, unknown>;
+  scoring_start: string | null;
+  scoring_end: string | null;
+  publishing_start: string | null;
+  publishing_end: string | null;
+  logo_url: string | null;
+  image_url: string | null;
 }
 
-interface JudgeCandidate {
-  id: string;
-  email: string;
-  name: string | null;
+interface EventResponse {
+  success: boolean;
+  data?: EventDetail;
+  message?: string;
 }
 
-interface FounderCandidate {
-  id: string;
-  email: string;
+interface ApiResponse {
+  success: boolean;
+  message?: string;
+}
+
+interface EventDraft {
   name: string;
-  company_name: string | null;
-  status: string;
-  assigned_event_id: string | null;
+  description: string;
+  start_date: string;
+  end_date: string;
+  logo_url: string;
+  image_url: string;
 }
 
-function toDateInputValue(value: string): string {
+interface WindowDraft {
+  scoring_start: string;
+  scoring_end: string;
+  publishing_start: string;
+  publishing_end: string;
+}
+
+function toDateInputValue(value: string | null): string {
+  if (!value) {
+    return '';
+  }
   const date = new Date(value);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -42,319 +62,366 @@ function toDateInputValue(value: string): string {
   return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
-function toStatusValue(status: EventFormValues['status']): 'upcoming' | 'live' | 'archived' {
-  if (status === 'Live') return 'live';
-  if (status === 'Archived') return 'archived';
-  return 'upcoming';
+function toIso(value: string): string {
+  return new Date(value).toISOString();
+}
+
+function getNextStatus(status: EventStatus): PendingStatus | null {
+  if (status === 'Upcoming') return 'Live';
+  if (status === 'Live') return 'Archived';
+  return null;
+}
+
+function getStatusActionLabel(status: EventStatus): 'Go Live' | 'Archive' | null {
+  if (status === 'Upcoming') return 'Go Live';
+  if (status === 'Live') return 'Archive';
+  return null;
 }
 
 export default function AdminEventDetailPage(): React.ReactElement {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const [eventDetail, setEventDetail] = useState<EventDetail | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [judgeCandidates, setJudgeCandidates] = useState<JudgeCandidate[]>([]);
-  const [assignedJudgeIds, setAssignedJudgeIds] = useState<string[]>([]);
-  const [founderCandidates, setFounderCandidates] = useState<FounderCandidate[]>([]);
-  const [assignedFounderIds, setAssignedFounderIds] = useState<string[]>([]);
-  const [showJudgeAssign, setShowJudgeAssign] = useState(false);
-  const [showFounderAssign, setShowFounderAssign] = useState(false);
-  const [showConfigEditor, setShowConfigEditor] = useState(false);
-  const [showSponsorEditor, setShowSponsorEditor] = useState(false);
-  const [isSavingAux, setIsSavingAux] = useState(false);
-  const [validationRules, setValidationRules] = useState('');
-  const [sponsors, setSponsors] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
+  const [eventDraft, setEventDraft] = useState<EventDraft>({
+    name: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+    logo_url: '',
+    image_url: '',
+  });
+  const [windowDraft, setWindowDraft] = useState<WindowDraft>({
+    scoring_start: '',
+    scoring_end: '',
+    publishing_start: '',
+    publishing_end: '',
+  });
 
-  async function loadEventData(): Promise<void> {
-    setIsLoading(true);
+  async function loadEvent(): Promise<void> {
+    setLoading(true);
     setError(null);
 
     try {
-      const [eventResponse, judgesResponse, foundersResponse] = await Promise.all([
-        fetch(`/api/admin/events/${params.id}`),
-        fetch(`/api/admin/events/${params.id}/assign-judges`),
-        fetch(`/api/admin/events/${params.id}/assign-founders`),
-      ]);
-
-      const eventPayload = await eventResponse.json() as { success: boolean; data?: EventDetail; message?: string };
-      const judgesPayload = await judgesResponse.json() as {
-        success: boolean;
-        data?: { candidates: JudgeCandidate[]; assigned_user_ids: string[] };
-      };
-      const foundersPayload = await foundersResponse.json() as {
-        success: boolean;
-        data?: { candidates: FounderCandidate[]; assigned_founder_application_ids: string[] };
-      };
-
-      if (!eventResponse.ok || !eventPayload.success || !eventPayload.data) {
-        throw new Error(eventPayload.message || 'Failed to load event.');
+      const response = await fetch(`/api/admin/events/${params.id}`);
+      const payload = await response.json() as EventResponse;
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.message ?? 'Failed to load event.');
       }
 
-      setEventDetail(eventPayload.data);
-      setJudgeCandidates(judgesPayload.data?.candidates ?? []);
-      setAssignedJudgeIds(judgesPayload.data?.assigned_user_ids ?? []);
-      setFounderCandidates(foundersPayload.data?.candidates ?? []);
-      setAssignedFounderIds(foundersPayload.data?.assigned_founder_application_ids ?? []);
-
-      const eventConfig = eventPayload.data.config ?? {};
-      setValidationRules(JSON.stringify(eventConfig.validation ?? {}, null, 2));
-      setSponsors(JSON.stringify(eventConfig.sponsors ?? [], null, 2));
+      setEventDetail(payload.data);
+      setEventDraft({
+        name: payload.data.name,
+        description: payload.data.description ?? '',
+        start_date: toDateInputValue(payload.data.start_date),
+        end_date: toDateInputValue(payload.data.end_date),
+        logo_url: payload.data.logo_url ?? '',
+        image_url: payload.data.image_url ?? '',
+      });
+      setWindowDraft({
+        scoring_start: toDateInputValue(payload.data.scoring_start),
+        scoring_end: toDateInputValue(payload.data.scoring_end),
+        publishing_start: toDateInputValue(payload.data.publishing_start),
+        publishing_end: toDateInputValue(payload.data.publishing_end),
+      });
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load event detail.');
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load event.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     if (params.id) {
-      void loadEventData();
+      void loadEvent();
     }
   }, [params.id]);
 
-  const initialFormValues = useMemo<EventFormValues>(() => {
-    if (!eventDetail) {
-      return {
-        name: '',
-        start_date: '',
-        end_date: '',
-        description: '',
-        max_judges: 0,
-        max_founders: 0,
-        rubric_id: '',
-        status: 'Upcoming',
-        config: '{}',
-      };
+  const statusActionLabel = eventDetail ? getStatusActionLabel(eventDetail.status) : null;
+
+  async function handleStatusChange(): Promise<void> {
+    if (!eventDetail || !pendingStatus) {
+      return;
     }
 
-    return {
-      name: eventDetail.name,
-      start_date: toDateInputValue(eventDetail.start_date),
-      end_date: toDateInputValue(eventDetail.end_date),
-      description: eventDetail.description ?? '',
-      max_judges: eventDetail.max_judges ?? 0,
-      max_founders: eventDetail.max_founders ?? 0,
-      rubric_id: eventDetail.rubric_id ?? '',
-      status: eventDetail.status,
-      config: JSON.stringify(eventDetail.config ?? {}, null, 2),
-    };
-  }, [eventDetail]);
-
-  async function saveEvent(values: EventFormValues): Promise<void> {
-    const parsedConfig = values.config.trim() ? JSON.parse(values.config) as Record<string, unknown> : {};
-
-    const response = await fetch(`/api/admin/events/${params.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: values.name,
-        start_date: new Date(values.start_date).toISOString(),
-        end_date: new Date(values.end_date).toISOString(),
-        description: values.description || null,
-        max_judges: values.max_judges,
-        max_founders: values.max_founders,
-        rubric_id: values.rubric_id || null,
-        status: toStatusValue(values.status),
-        config: parsedConfig,
-      }),
-    });
-
-    const payload = await response.json() as { success: boolean; message?: string };
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.message || 'Failed to save event.');
-    }
-
-    await loadEventData();
-  }
-
-  async function saveJudgeAssignments(): Promise<void> {
-    setIsSavingAux(true);
+    setStatusError(null);
+    setIsUpdatingStatus(true);
     try {
-      const response = await fetch(`/api/admin/events/${params.id}/assign-judges`, {
-        method: 'POST',
+      const response = await fetch(`/api/admin/events/${params.id}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ judge_user_ids: assignedJudgeIds }),
+        body: JSON.stringify({ new_status: pendingStatus }),
       });
-      const payload = await response.json() as { success: boolean; message?: string };
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.message || 'Failed to assign judges.');
+      const payload = await response.json() as EventResponse;
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.message ?? 'Failed to update status.');
       }
-      setShowJudgeAssign(false);
+
+      setEventDetail(payload.data);
+      setPendingStatus(null);
+    } catch (statusUpdateError) {
+      setStatusError(statusUpdateError instanceof Error ? statusUpdateError.message : 'Failed to update status.');
     } finally {
-      setIsSavingAux(false);
+      setIsUpdatingStatus(false);
     }
   }
 
-  async function saveFounderAssignments(): Promise<void> {
-    setIsSavingAux(true);
-    try {
-      const response = await fetch(`/api/admin/events/${params.id}/assign-founders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ founder_application_ids: assignedFounderIds }),
-      });
-      const payload = await response.json() as { success: boolean; message?: string };
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.message || 'Failed to assign founders.');
-      }
-      setShowFounderAssign(false);
-    } finally {
-      setIsSavingAux(false);
+  function validateDates(startDate: string, endDate: string, label: string): string | null {
+    if (!startDate || !endDate) {
+      return `${label} start_date and end_date are required.`;
     }
+    if (new Date(endDate) < new Date(startDate)) {
+      return `${label} end_date must be on or after start_date.`;
+    }
+    return null;
   }
 
-  async function saveConfigOrSponsors(): Promise<void> {
+  async function saveEdits(): Promise<void> {
     if (!eventDetail) {
       return;
     }
 
-    setIsSavingAux(true);
-    try {
-      const mergedConfig = {
-        ...(eventDetail.config ?? {}),
-        validation: JSON.parse(validationRules || '{}'),
-        sponsors: JSON.parse(sponsors || '[]'),
-      };
+    const eventDateValidation = validateDates(eventDraft.start_date, eventDraft.end_date, 'Event');
+    if (eventDateValidation) {
+      setSaveError(eventDateValidation);
+      return;
+    }
 
-      const response = await fetch(`/api/admin/events/${params.id}`, {
+    const scoringValidation = validateDates(windowDraft.scoring_start, windowDraft.scoring_end, 'Scoring window');
+    if (scoringValidation) {
+      setSaveError(scoringValidation);
+      return;
+    }
+
+    const publishingValidation = validateDates(windowDraft.publishing_start, windowDraft.publishing_end, 'Publishing window');
+    if (publishingValidation) {
+      setSaveError(publishingValidation);
+      return;
+    }
+
+    setSaveError(null);
+    setIsSaving(true);
+
+    try {
+      const eventResponse = await fetch(`/api/admin/events/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: mergedConfig }),
+        body: JSON.stringify({
+          name: eventDraft.name,
+          description: eventDraft.description || null,
+          start_date: toIso(eventDraft.start_date),
+          end_date: toIso(eventDraft.end_date),
+          logo_url: eventDraft.logo_url || null,
+          image_url: eventDraft.image_url || null,
+        }),
       });
-      const payload = await response.json() as { success: boolean; message?: string };
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.message || 'Failed to update event config.');
+      const eventPayload = await eventResponse.json() as ApiResponse;
+      if (!eventResponse.ok || !eventPayload.success) {
+        throw new Error(eventPayload.message ?? 'Failed to update event details.');
       }
-      setShowConfigEditor(false);
-      setShowSponsorEditor(false);
-      await loadEventData();
+
+      const scoringResponse = await fetch(`/api/admin/events/${params.id}/scoring-window`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scoring_start: toIso(windowDraft.scoring_start),
+          scoring_end: toIso(windowDraft.scoring_end),
+        }),
+      });
+      const scoringPayload = await scoringResponse.json() as ApiResponse;
+      if (!scoringResponse.ok || !scoringPayload.success) {
+        throw new Error(scoringPayload.message ?? 'Failed to update scoring window.');
+      }
+
+      const publishingResponse = await fetch(`/api/admin/events/${params.id}/publishing-window`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publishing_start: toIso(windowDraft.publishing_start),
+          publishing_end: toIso(windowDraft.publishing_end),
+        }),
+      });
+      const publishingPayload = await publishingResponse.json() as ApiResponse;
+      if (!publishingResponse.ok || !publishingPayload.success) {
+        throw new Error(publishingPayload.message ?? 'Failed to update publishing window.');
+      }
+
+      setIsEditing(false);
+      await loadEvent();
+    } catch (saveEditError) {
+      setSaveError(saveEditError instanceof Error ? saveEditError.message : 'Failed to save updates.');
     } finally {
-      setIsSavingAux(false);
+      setIsSaving(false);
     }
   }
 
-  if (isLoading) {
+  if (loading) {
     return <p>Loading event detail...</p>;
   }
 
   if (error) {
-    return (
-      <main>
-        <h1>Event Detail</h1>
-        <p role="alert" style={{ color: '#b00' }}>{error}</p>
-      </main>
-    );
+    return <p role="alert" style={{ color: '#b00020' }}>{error}</p>;
   }
 
   if (!eventDetail) {
-    return (
-      <main>
-        <h1>Event Detail</h1>
-        <p role="alert" style={{ color: '#b00' }}>Event not found.</p>
-      </main>
-    );
+    return <p role="alert" style={{ color: '#b00020' }}>Event not found.</p>;
   }
 
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>{eventDetail.name}</h1>
+      <header>
+        <h1 style={{ marginBottom: '0.5rem' }}>{eventDetail.name}</h1>
+        <p style={{ margin: 0 }}>{eventDetail.description || 'No description provided.'}</p>
+      </header>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => setShowJudgeAssign((current) => !current)}>Assign Judges</button>
-        <button type="button" onClick={() => setShowFounderAssign((current) => !current)}>Assign Founders</button>
-        <button type="button" onClick={() => setShowConfigEditor((current) => !current)}>Configure Validation</button>
-        <button type="button" onClick={() => setShowSponsorEditor((current) => !current)}>Add Sponsor</button>
+      <div style={{ display: 'grid', gap: '0.25rem' }}>
+        <p style={{ margin: 0 }}><strong>Status:</strong> {eventDetail.status}</p>
+        <p style={{ margin: 0 }}><strong>Event Window:</strong> {new Date(eventDetail.start_date).toLocaleString()} - {new Date(eventDetail.end_date).toLocaleString()}</p>
+        <p style={{ margin: 0 }}><strong>Scoring Window:</strong> {eventDetail.scoring_start ? new Date(eventDetail.scoring_start).toLocaleString() : 'Not set'} - {eventDetail.scoring_end ? new Date(eventDetail.scoring_end).toLocaleString() : 'Not set'}</p>
+        <p style={{ margin: 0 }}><strong>Publishing Window:</strong> {eventDetail.publishing_start ? new Date(eventDetail.publishing_start).toLocaleString() : 'Not set'} - {eventDetail.publishing_end ? new Date(eventDetail.publishing_end).toLocaleString() : 'Not set'}</p>
+        <p style={{ margin: 0 }}><strong>Logo/Image:</strong> {eventDetail.logo_url || eventDetail.image_url || 'Not set'}</p>
       </div>
 
-      {showJudgeAssign ? (
-        <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
-          <h2 style={{ marginTop: 0 }}>Assign Judges</h2>
-          {judgeCandidates.map((judge) => (
-            <label key={judge.id} style={{ display: 'block' }}>
-              <input
-                type="checkbox"
-                checked={assignedJudgeIds.includes(judge.id)}
-                onChange={(event) => {
-                  if (event.target.checked) {
-                    setAssignedJudgeIds((current) => Array.from(new Set([...current, judge.id])));
-                  } else {
-                    setAssignedJudgeIds((current) => current.filter((id) => id !== judge.id));
-                  }
-                }}
-              />
-              {judge.name ?? 'Unknown'} ({judge.email})
-            </label>
-          ))}
-          <button type="button" onClick={() => void saveJudgeAssignments()} disabled={isSavingAux}>
-            {isSavingAux ? 'Saving...' : 'Save'}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <button type="button" onClick={() => setIsEditing((current) => !current)}>
+          {isEditing ? 'Cancel Edit' : 'Edit'}
+        </button>
+        {statusActionLabel ? (
+          <button type="button" onClick={() => setPendingStatus(getNextStatus(eventDetail.status))}>
+            {statusActionLabel}
           </button>
+        ) : null}
+        <a href={`/admin/events/${eventDetail.id}/sponsors`}>Manage Sponsors</a>
+      </div>
+
+      {statusError ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{statusError}</p> : null}
+
+      {pendingStatus ? (
+        <div role="dialog" aria-modal="true" style={{ border: '1px solid #999', padding: '0.75rem', maxWidth: 420 }}>
+          <p style={{ marginTop: 0 }}>Are you sure?</p>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="button" onClick={() => void handleStatusChange()} disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? 'Updating...' : 'Confirm'}
+            </button>
+            <button type="button" onClick={() => setPendingStatus(null)} disabled={isUpdatingStatus}>Cancel</button>
+          </div>
         </div>
       ) : null}
 
-      {showFounderAssign ? (
-        <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
-          <h2 style={{ marginTop: 0 }}>Assign Founders</h2>
-          {founderCandidates.map((founder) => (
-            <label key={founder.id} style={{ display: 'block' }}>
-              <input
-                type="checkbox"
-                checked={assignedFounderIds.includes(founder.id)}
-                onChange={(event) => {
-                  if (event.target.checked) {
-                    setAssignedFounderIds((current) => Array.from(new Set([...current, founder.id])));
-                  } else {
-                    setAssignedFounderIds((current) => current.filter((id) => id !== founder.id));
-                  }
-                }}
-              />
-              {founder.name} ({founder.email}) {founder.company_name ? `- ${founder.company_name}` : ''}
-            </label>
-          ))}
-          <button type="button" onClick={() => void saveFounderAssignments()} disabled={isSavingAux}>
-            {isSavingAux ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      ) : null}
+      {isEditing ? (
+        <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.75rem' }}>
+          <h2 style={{ margin: 0 }}>Edit Event</h2>
 
-      {showConfigEditor ? (
-        <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
-          <h2 style={{ marginTop: 0 }}>Configure Validation</h2>
-          <textarea
-            aria-label="Validation Config"
-            rows={8}
-            value={validationRules}
-            onChange={(event) => setValidationRules(event.target.value)}
-            style={{ width: '100%' }}
-          />
-          <button type="button" onClick={() => void saveConfigOrSponsors()} disabled={isSavingAux}>
-            {isSavingAux ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      ) : null}
+          <label>
+            name
+            <input
+              aria-label="name"
+              value={eventDraft.name}
+              onChange={(event) => setEventDraft((current) => ({ ...current, name: event.target.value }))}
+            />
+          </label>
 
-      {showSponsorEditor ? (
-        <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
-          <h2 style={{ marginTop: 0 }}>Add Sponsor</h2>
-          <textarea
-            aria-label="Sponsor Config"
-            rows={8}
-            value={sponsors}
-            onChange={(event) => setSponsors(event.target.value)}
-            style={{ width: '100%' }}
-          />
-          <button type="button" onClick={() => void saveConfigOrSponsors()} disabled={isSavingAux}>
-            {isSavingAux ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      ) : null}
+          <label>
+            description
+            <textarea
+              aria-label="description"
+              rows={3}
+              value={eventDraft.description}
+              onChange={(event) => setEventDraft((current) => ({ ...current, description: event.target.value }))}
+            />
+          </label>
 
-      <EventForm
-        initialValues={initialFormValues}
-        onSubmit={saveEvent}
-        onCancel={() => router.push('/admin/events')}
-        submitLabel="Save"
-      />
+          <label>
+            start_date
+            <input
+              aria-label="start_date"
+              type="datetime-local"
+              value={eventDraft.start_date}
+              onChange={(event) => setEventDraft((current) => ({ ...current, start_date: event.target.value }))}
+            />
+          </label>
+
+          <label>
+            end_date
+            <input
+              aria-label="end_date"
+              type="datetime-local"
+              value={eventDraft.end_date}
+              onChange={(event) => setEventDraft((current) => ({ ...current, end_date: event.target.value }))}
+            />
+          </label>
+
+          <label>
+            logo_url
+            <input
+              aria-label="logo_url"
+              value={eventDraft.logo_url}
+              onChange={(event) => setEventDraft((current) => ({ ...current, logo_url: event.target.value }))}
+            />
+          </label>
+
+          <label>
+            image_url
+            <input
+              aria-label="image_url"
+              value={eventDraft.image_url}
+              onChange={(event) => setEventDraft((current) => ({ ...current, image_url: event.target.value }))}
+            />
+          </label>
+
+          <h3 style={{ marginBottom: 0 }}>Scoring Window</h3>
+          <label>
+            scoring_start
+            <input
+              aria-label="scoring_start"
+              type="datetime-local"
+              value={windowDraft.scoring_start}
+              onChange={(event) => setWindowDraft((current) => ({ ...current, scoring_start: event.target.value }))}
+            />
+          </label>
+          <label>
+            scoring_end
+            <input
+              aria-label="scoring_end"
+              type="datetime-local"
+              value={windowDraft.scoring_end}
+              onChange={(event) => setWindowDraft((current) => ({ ...current, scoring_end: event.target.value }))}
+            />
+          </label>
+
+          <h3 style={{ marginBottom: 0 }}>Publishing Window</h3>
+          <label>
+            publishing_start
+            <input
+              aria-label="publishing_start"
+              type="datetime-local"
+              value={windowDraft.publishing_start}
+              onChange={(event) => setWindowDraft((current) => ({ ...current, publishing_start: event.target.value }))}
+            />
+          </label>
+          <label>
+            publishing_end
+            <input
+              aria-label="publishing_end"
+              type="datetime-local"
+              value={windowDraft.publishing_end}
+              onChange={(event) => setWindowDraft((current) => ({ ...current, publishing_end: event.target.value }))}
+            />
+          </label>
+
+          {saveError ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{saveError}</p> : null}
+
+          <button type="button" onClick={() => void saveEdits()} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </section>
+      ) : null}
     </section>
   );
 }

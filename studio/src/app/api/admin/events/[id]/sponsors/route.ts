@@ -13,6 +13,7 @@ interface CreateEventSponsorPayload {
   logo?: string | null;
   website?: string | null;
   tier?: string;
+  scope?: string;
   end_date?: string;
   pricing?: number;
   status?: string;
@@ -24,6 +25,10 @@ function isSponsorTier(value: unknown): value is SponsorTier {
 
 function isSponsorStatus(value: unknown): value is 'active' | 'inactive' {
   return value === 'active' || value === 'inactive';
+}
+
+function isSponsorScope(value: unknown): value is 'event' | 'site-wide' {
+  return value === 'event' || value === 'site-wide';
 }
 
 function toResponseRecord(record: {
@@ -113,6 +118,9 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   if (!isSponsorTier(body.tier)) {
     return NextResponse.json({ success: false, message: 'tier must be one of: bronze, silver, gold.' }, { status: 400 });
   }
+  if (body.scope !== undefined && !isSponsorScope(body.scope)) {
+    return NextResponse.json({ success: false, message: 'scope must be one of: event, site-wide.' }, { status: 400 });
+  }
   if (!body.end_date || Number.isNaN(Date.parse(body.end_date))) {
     return NextResponse.json({ success: false, message: 'end_date must be a valid ISO date string.' }, { status: 400 });
   }
@@ -137,8 +145,8 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     logo_url: body.logo ?? null,
     website_url: body.website ?? null,
     tier: body.tier,
-    placement_scope: 'event',
-    event_id: id,
+    placement_scope: body.scope ?? 'event',
+    event_id: body.scope === 'site-wide' ? null : id,
     end_date: new Date(body.end_date).toISOString(),
     pricing_cents: body.pricing ?? getDefaultPricingForTier(body.tier),
     status: body.status ?? 'active',
