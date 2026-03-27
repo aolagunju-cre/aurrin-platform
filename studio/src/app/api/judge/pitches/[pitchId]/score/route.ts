@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { canAccessEvent, requireJudge } from '../../../../../../lib/auth/judge';
 import { getSupabaseClient, type JudgeScoreRecord, type JudgeScoreState } from '../../../../../../lib/db/client';
+import { ensureScoringWindowOpen } from '../../../../../../lib/events/lifecycle';
 import { calculateTotals } from '../../../../../../lib/scoring/calculate';
 
 interface RouteParams {
@@ -141,6 +142,19 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
 
   if (!canAccessEvent(authResult.roleAssignments, pitchResult.data.event_id)) {
     return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+  }
+
+  const eventResult = await client.db.getEventById(pitchResult.data.event_id);
+  if (eventResult.error) {
+    return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
+  }
+  if (!eventResult.data) {
+    return NextResponse.json({ success: false, message: 'Event not found.' }, { status: 404 });
+  }
+
+  const windowCheck = ensureScoringWindowOpen(eventResult.data);
+  if (!windowCheck.ok) {
+    return NextResponse.json({ success: false, message: windowCheck.message }, { status: 400 });
   }
 
   const rubricResult = await client.db.getLatestRubricVersionByEventId(pitchResult.data.event_id);

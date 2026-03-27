@@ -139,6 +139,27 @@ describe('judge scoring contract', () => {
           },
           error: null,
         })),
+        getEventById: jest.fn(async () => ({
+          data: {
+            id: 'event-1',
+            name: 'Demo Day',
+            description: null,
+            status: 'live',
+            start_date: '2026-03-26T10:00:00.000Z',
+            end_date: '2026-03-26T12:00:00.000Z',
+            scoring_start: '2020-01-01T00:00:00.000Z',
+            scoring_end: '2099-01-01T00:00:00.000Z',
+            publishing_start: null,
+            publishing_end: null,
+            archived_at: null,
+            starts_at: '2026-03-26T10:00:00.000Z',
+            ends_at: '2026-03-26T12:00:00.000Z',
+            config: {},
+            created_at: '2026-03-26T00:00:00.000Z',
+            updated_at: '2026-03-26T00:00:00.000Z',
+          },
+          error: null,
+        })),
         getLatestRubricVersionByEventId: jest.fn(async () => ({
           data: {
             id: 'rubric-v1',

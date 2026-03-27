@@ -189,24 +189,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
     return NextResponse.json({ success: false, message: 'Event not found.' }, { status: 404 });
   }
 
-  const updateResult = await client.db.updateEvent(id, { status: 'archived' });
-  if (updateResult.error || !updateResult.data) {
-    return NextResponse.json({ success: false, message: updateResult.error?.message || 'Failed to archive event.' }, { status: 500 });
-  }
-
-  await auditLog(
-    'event_archived',
-    authResult.userId,
+  return NextResponse.json(
     {
-      resource_type: 'event',
-      resource_id: id,
-      changes: {
-        before: existingResult.data,
-        after: updateResult.data,
-      },
+      success: false,
+      message: 'Event deletion is not supported. Use PATCH /api/admin/events/[id]/status to archive events.',
     },
-    { request_id: request.headers.get('x-request-id') ?? undefined }
+    { status: 405 }
   );
-
-  return NextResponse.json({ success: true, data: updateResult.data }, { status: 200 });
 }

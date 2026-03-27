@@ -5,6 +5,10 @@ import { GET as listEvents, POST as createEvent } from '../src/app/api/admin/eve
 import { DELETE as archiveEvent, GET as getEvent, PATCH as updateEvent } from '../src/app/api/admin/events/[id]/route';
 import { GET as getJudgeAssignments, POST as assignJudges } from '../src/app/api/admin/events/[id]/assign-judges/route';
 import { GET as getFounderAssignments, POST as assignFounders } from '../src/app/api/admin/events/[id]/assign-founders/route';
+import { PATCH as patchEventStatus } from '../src/app/api/admin/events/[id]/status/route';
+import { PATCH as patchScoringWindow } from '../src/app/api/admin/events/[id]/scoring-window/route';
+import { PATCH as patchPublishingWindow } from '../src/app/api/admin/events/[id]/publishing-window/route';
+import { GET as listEventSponsors, POST as addEventSponsor } from '../src/app/api/admin/events/[id]/sponsors/route';
 import { requireAdmin } from '../src/lib/auth/admin';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { auditLog } from '../src/lib/audit/log';
@@ -58,6 +62,13 @@ describe('admin events routes', () => {
       name: 'April Demo Day',
       description: 'Pitch event',
       status: 'upcoming',
+      start_date: '2026-04-01T10:00:00.000Z',
+      end_date: '2026-04-01T12:00:00.000Z',
+      scoring_start: '2026-04-01T10:15:00.000Z',
+      scoring_end: '2026-04-01T11:45:00.000Z',
+      publishing_start: '2026-04-01T12:30:00.000Z',
+      publishing_end: '2026-04-02T12:30:00.000Z',
+      archived_at: null,
       starts_at: '2026-04-01T10:00:00.000Z',
       ends_at: '2026-04-01T12:00:00.000Z',
       config: { max_judges: 4, max_founders: 8, rubric_id: 'rubric-1' },
@@ -145,6 +156,59 @@ describe('admin events routes', () => {
       getEventById: jest.fn().mockResolvedValue({ data: event, error: null }),
       insertEvent: jest.fn().mockResolvedValue({ data: { ...event, id: 'event-2' }, error: null }),
       updateEvent: jest.fn().mockResolvedValue({ data: { ...event, status: 'archived' }, error: null }),
+      listSponsors: jest.fn().mockResolvedValue({
+        data: [
+          {
+            id: 'sponsor-event',
+            name: 'Event Sponsor',
+            logo_url: null,
+            website_url: null,
+            tier: 'gold',
+            placement_scope: 'event',
+            event_id: 'event-1',
+            end_date: '2026-05-01T00:00:00.000Z',
+            pricing_cents: 250000,
+            status: 'active',
+            display_priority: 0,
+            created_at: '2026-03-25T00:00:00.000Z',
+            updated_at: '2026-03-25T00:00:00.000Z',
+          },
+          {
+            id: 'sponsor-site',
+            name: 'Site Sponsor',
+            logo_url: null,
+            website_url: null,
+            tier: 'silver',
+            placement_scope: 'site-wide',
+            event_id: null,
+            end_date: '2026-05-01T00:00:00.000Z',
+            pricing_cents: 100000,
+            status: 'active',
+            display_priority: 0,
+            created_at: '2026-03-25T00:00:00.000Z',
+            updated_at: '2026-03-25T00:00:00.000Z',
+          },
+        ],
+        error: null,
+      }),
+      insertSponsor: jest.fn().mockResolvedValue({
+        data: {
+          id: 'sponsor-new',
+          name: 'New Sponsor',
+          logo_url: null,
+          website_url: null,
+          tier: 'gold',
+          placement_scope: 'event',
+          event_id: 'event-1',
+          end_date: '2026-06-01T00:00:00.000Z',
+          pricing_cents: 250000,
+          status: 'active',
+          display_priority: 0,
+          created_at: '2026-03-25T00:00:00.000Z',
+          updated_at: '2026-03-25T00:00:00.000Z',
+        },
+        error: null,
+      }),
       searchUsersByEmail: jest.fn(),
       listRubricTemplates: jest.fn(),
       getRubricTemplateById: jest.fn(),
@@ -259,10 +323,154 @@ describe('admin events routes', () => {
     const response = await archiveEvent(buildRequest('http://localhost/api/admin/events/event-1', 'DELETE'), {
       params: Promise.resolve({ id: 'event-1' }),
     });
-    expect(response.status).toBe(200);
-    expect(mockDb.updateEvent).toHaveBeenCalledWith('event-1', { status: 'archived' });
+    expect(response.status).toBe(405);
+    expect(mockDb.updateEvent).not.toHaveBeenCalledWith('event-1', { status: 'archived' });
     expect(mockDb.deleteEvent).toBeUndefined();
   });
+
+  it('transitions event status using lifecycle route with audit logging', async () => {
+    const response = await patchEventStatus(
+      buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', {
+        new_status: 'Live',
+        notes: 'Launching scoring now',
+      }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockDb.updateEvent).toHaveBeenCalledWith('event-1', expect.objectContaining({ status: 'live' }));
+    expect(mockedAuditLog).toHaveBeenCalledWith(
+      'event_status_changed',
+      'admin-1',
+      expect.objectContaining({ resource_type: 'event' }),
+      expect.any(Object)
+    );
+  });
+
+  it('returns idempotent success for repeated lifecycle transition', async () => {
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'April Demo Day',
+        description: 'Pitch event',
+        status: 'live',
+        start_date: '2026-04-01T10:00:00.000Z',
+        end_date: '2026-04-01T12:00:00.000Z',
+        scoring_start: '2026-04-01T10:15:00.000Z',
+        scoring_end: '2026-04-01T11:45:00.000Z',
+        publishing_start: '2026-04-01T12:30:00.000Z',
+        publishing_end: '2026-04-02T12:30:00.000Z',
+        archived_at: null,
+        starts_at: '2026-04-01T10:00:00.000Z',
+        ends_at: '2026-04-01T12:00:00.000Z',
+        config: {},
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-03-25T00:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const response = await patchEventStatus(
+      buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', { new_status: 'Live' }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.idempotent).toBe(true);
+  });
+
+  it('updates scoring window with event-boundary validation and auditing', async () => {
+    const response = await patchScoringWindow(
+      buildRequest('http://localhost/api/admin/events/event-1/scoring-window', 'PATCH', {
+        scoring_start: '2026-04-01T10:20:00.000Z',
+        scoring_end: '2026-04-01T11:40:00.000Z',
+      }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockDb.updateEvent).toHaveBeenCalledWith(
+      'event-1',
+      expect.objectContaining({
+        scoring_start: '2026-04-01T10:20:00.000Z',
+        scoring_end: '2026-04-01T11:40:00.000Z',
+      })
+    );
+    expect(mockedAuditLog).toHaveBeenCalledWith(
+      'scoring_window_updated',
+      'admin-1',
+      expect.objectContaining({ resource_type: 'event' }),
+      expect.any(Object)
+    );
+  });
+
+  it('rejects scoring windows outside event boundaries with 400', async () => {
+    const response = await patchScoringWindow(
+      buildRequest('http://localhost/api/admin/events/event-1/scoring-window', 'PATCH', {
+        scoring_start: '2026-03-31T23:00:00.000Z',
+        scoring_end: '2026-04-01T11:00:00.000Z',
+      }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('updates publishing window and writes audit event', async () => {
+    const response = await patchPublishingWindow(
+      buildRequest('http://localhost/api/admin/events/event-1/publishing-window', 'PATCH', {
+        publishing_start: '2026-04-01T13:00:00.000Z',
+        publishing_end: '2026-04-02T13:00:00.000Z',
+      }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockedAuditLog).toHaveBeenCalledWith(
+      'publishing_window_updated',
+      'admin-1',
+      expect.objectContaining({ resource_type: 'event' }),
+      expect.any(Object)
+    );
+  });
+
+  it('lists event-scoped sponsors from dedicated event sponsors route', async () => {
+    const response = await listEventSponsors(
+      buildRequest('http://localhost/api/admin/events/event-1/sponsors', 'GET'),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.data).toHaveLength(2);
+    expect(payload.data.map((sponsor: { id: string }) => sponsor.id)).toEqual(
+      expect.arrayContaining(['sponsor-event', 'sponsor-site'])
+    );
+  });
+
+  it('adds event sponsor through dedicated event sponsors route', async () => {
+    const response = await addEventSponsor(
+      buildRequest('http://localhost/api/admin/events/event-1/sponsors', 'POST', {
+        name: 'New Sponsor',
+        tier: 'gold',
+        end_date: '2026-06-01T00:00:00.000Z',
+      }),
+      { params: Promise.resolve({ id: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockDb.insertSponsor).toHaveBeenCalledWith(
+      expect.objectContaining({ placement_scope: 'event', event_id: 'event-1' })
+    );
+    expect(mockedAuditLog).toHaveBeenCalledWith(
+      'sponsor_added',
+      'admin-1',
+      expect.objectContaining({ resource_type: 'sponsor' }),
+      expect.any(Object)
+    );
+  });
+
 
   it('loads judge candidates from role assignments and saves assignments', async () => {
     const getResponse = await getJudgeAssignments(buildRequest('http://localhost/api/admin/events/event-1/assign-judges', 'GET'), {

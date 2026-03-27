@@ -5,7 +5,7 @@ import { SponsorScope, SponsorTier, getSupabaseClient } from '../../../../../lib
 import { getDefaultPricingForTier } from '../../../../../lib/sponsors/tier-config';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ sponsorId: string }>;
 }
 
 interface UpdateSponsorPayload {
@@ -91,9 +91,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     return authResult;
   }
 
-  const { id } = await params;
+  const { sponsorId } = await params;
   const client = getSupabaseClient();
-  const existingResult = await client.db.getSponsorById(id);
+  const existingResult = await client.db.getSponsorById(sponsorId);
 
   if (existingResult.error) {
     return NextResponse.json({ success: false, message: existingResult.error.message }, { status: 500 });
@@ -145,7 +145,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
   }
 
   const effectiveTier = (body.tier ?? existingResult.data.tier) as SponsorTier;
-  const updateResult = await client.db.updateSponsor(id, {
+  const updateResult = await client.db.updateSponsor(sponsorId, {
     name: body.name?.trim(),
     logo_url: body.logo,
     website_url: body.website,
@@ -166,7 +166,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     authResult.userId,
     {
       resource_type: 'sponsor',
-      resource_id: id,
+      resource_id: sponsorId,
       changes: {
         before: existingResult.data,
         after: updateResult.data,
@@ -184,9 +184,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
     return authResult;
   }
 
-  const { id } = await params;
+  const { sponsorId } = await params;
   const client = getSupabaseClient();
-  const existingResult = await client.db.getSponsorById(id);
+  const existingResult = await client.db.getSponsorById(sponsorId);
   if (existingResult.error) {
     return NextResponse.json({ success: false, message: existingResult.error.message }, { status: 500 });
   }
@@ -194,17 +194,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
     return NextResponse.json({ success: false, message: 'Sponsor not found.' }, { status: 404 });
   }
 
-  const deleteResult = await client.db.deleteSponsor(id);
+  const deleteResult = await client.db.deleteSponsor(sponsorId);
   if (deleteResult.error) {
     return NextResponse.json({ success: false, message: deleteResult.error.message }, { status: 500 });
   }
 
   await auditLog(
-    'sponsor_deleted',
+    'sponsor_removed',
     authResult.userId,
     {
       resource_type: 'sponsor',
-      resource_id: id,
+      resource_id: sponsorId,
       changes: {
         before: existingResult.data,
         after: null,

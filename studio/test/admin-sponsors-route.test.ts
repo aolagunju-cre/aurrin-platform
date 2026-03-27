@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 import { GET as listSponsors, POST as createSponsor } from '../src/app/api/admin/sponsors/route';
-import { DELETE as deleteSponsor, PATCH as updateSponsor } from '../src/app/api/admin/sponsors/[id]/route';
+import { DELETE as deleteSponsor, PATCH as updateSponsor } from '../src/app/api/admin/sponsors/[sponsorId]/route';
 import { auditLog } from '../src/lib/audit/log';
 import { requireAdmin } from '../src/lib/auth/admin';
 import { getSupabaseClient } from '../src/lib/db/client';
@@ -167,7 +167,7 @@ describe('admin sponsors routes', () => {
         pricing: 50000,
         status: 'inactive',
       }),
-      { params: Promise.resolve({ id: 'sponsor-1' }) }
+      { params: Promise.resolve({ sponsorId: 'sponsor-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -188,13 +188,13 @@ describe('admin sponsors routes', () => {
   it('DELETE /api/admin/sponsors/[id] deletes sponsor and writes audit log', async () => {
     const response = await deleteSponsor(
       buildRequest('http://localhost/api/admin/sponsors/sponsor-1', 'DELETE'),
-      { params: Promise.resolve({ id: 'sponsor-1' }) }
+      { params: Promise.resolve({ sponsorId: 'sponsor-1' }) }
     );
 
     expect(response.status).toBe(200);
     expect(mockDb.deleteSponsor).toHaveBeenCalledWith('sponsor-1');
     expect(mockedAuditLog).toHaveBeenCalledWith(
-      'sponsor_deleted',
+      'sponsor_removed',
       'admin-1',
       expect.objectContaining({ resource_type: 'sponsor' }),
       expect.any(Object)

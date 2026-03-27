@@ -123,6 +123,13 @@ describe('judge scoring API routes', () => {
             name: 'Demo Day',
             description: null,
             status: 'live',
+            start_date: '2026-03-26T10:00:00.000Z',
+            end_date: '2026-03-26T12:00:00.000Z',
+            scoring_start: '2020-01-01T00:00:00.000Z',
+            scoring_end: '2099-01-01T00:00:00.000Z',
+            publishing_start: null,
+            publishing_end: null,
+            archived_at: null,
             starts_at: '2026-03-26T10:00:00.000Z',
             ends_at: '2026-03-26T12:00:00.000Z',
             config: {},
@@ -139,6 +146,13 @@ describe('judge scoring API routes', () => {
             name: 'Demo Day',
             description: null,
             status: 'live',
+            start_date: '2026-03-26T10:00:00.000Z',
+            end_date: '2026-03-26T12:00:00.000Z',
+            scoring_start: '2020-01-01T00:00:00.000Z',
+            scoring_end: '2099-01-01T00:00:00.000Z',
+            publishing_start: null,
+            publishing_end: null,
+            archived_at: null,
             starts_at: '2026-03-26T10:00:00.000Z',
             ends_at: '2026-03-26T12:00:00.000Z',
             config: {},
@@ -154,6 +168,13 @@ describe('judge scoring API routes', () => {
           name: 'Demo Day',
           description: null,
           status: 'live',
+          start_date: '2026-03-26T10:00:00.000Z',
+          end_date: '2026-03-26T12:00:00.000Z',
+          scoring_start: '2020-01-01T00:00:00.000Z',
+          scoring_end: '2099-01-01T00:00:00.000Z',
+          publishing_start: null,
+          publishing_end: null,
+          archived_at: null,
           starts_at: '2026-03-26T10:00:00.000Z',
           ends_at: '2026-03-26T12:00:00.000Z',
           config: {},
@@ -331,6 +352,41 @@ describe('judge scoring API routes', () => {
       success: false,
       message: 'This score was updated elsewhere',
     });
+  });
+
+  it('returns 400 when score mutation happens outside scoring window', async () => {
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'Demo Day',
+        description: null,
+        status: 'live',
+        start_date: '2026-03-26T10:00:00.000Z',
+        end_date: '2026-03-26T12:00:00.000Z',
+        scoring_start: '2000-01-01T00:00:00.000Z',
+        scoring_end: '2000-01-02T00:00:00.000Z',
+        publishing_start: null,
+        publishing_end: null,
+        archived_at: null,
+        starts_at: '2026-03-26T10:00:00.000Z',
+        ends_at: '2026-03-26T12:00:00.000Z',
+        config: {},
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-03-25T00:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const response = await savePitchScore(
+      buildRequest('http://localhost/api/judge/pitches/pitch-1/score', 'POST', {
+        responses: { q1: 90 },
+        comments: 'Outside scoring window',
+        state: 'draft',
+      }),
+      { params: Promise.resolve({ pitchId: 'pitch-1' }) }
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it('treats repeated submitted payload as idempotent and does not insert duplicates', async () => {
