@@ -18,6 +18,10 @@ const audienceValidationContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/013_audience_validation_contract.sql'),
   'utf8'
 );
+const mentorMatchingContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/014_mentor_matching_contract.sql'),
+  'utf8'
+);
 
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
@@ -173,6 +177,15 @@ describe('Database Schema Validation', () => {
       expect(true).toBe(true);
     });
 
+    test('mentor matching contract includes status fields and notes/decline metadata', () => {
+      expect(mentorMatchingContractSql).toContain('ADD COLUMN IF NOT EXISTS mentor_status TEXT');
+      expect(mentorMatchingContractSql).toContain('ADD COLUMN IF NOT EXISTS founder_status TEXT');
+      expect(mentorMatchingContractSql).toContain('ADD COLUMN IF NOT EXISTS declined_by TEXT');
+      expect(mentorMatchingContractSql).toContain('ADD COLUMN IF NOT EXISTS notes TEXT');
+      expect(mentorMatchingContractSql).toContain("mentor_status IN ('pending', 'accepted', 'declined')");
+      expect(mentorMatchingContractSql).toContain("founder_status IN ('pending', 'accepted', 'declined')");
+    });
+
     test('transactions has idempotency constraint on stripe_event_id', () => {
       // Verified in migration: UNIQUE(stripe_event_id)
       expect(true).toBe(true);
@@ -272,6 +285,12 @@ describe('Database Schema Validation', () => {
       expect(audienceValidationContractSql).toContain('CREATE POLICY audience_sessions_select_own_session ON audience_sessions');
       expect(audienceValidationContractSql).toContain('CREATE POLICY audience_responses_select_founder ON audience_responses');
       expect(audienceValidationContractSql).toContain('CREATE POLICY audience_responses_select_own_session ON audience_responses');
+    });
+
+    test('mentor matching policies preserve admin access and scoped visibility', () => {
+      expect(mentorMatchingContractSql).toContain('CREATE POLICY mentor_matches_admin_all ON mentor_matches');
+      expect(mentorMatchingContractSql).toContain('CREATE POLICY mentor_matches_select_mentor_own ON mentor_matches');
+      expect(mentorMatchingContractSql).toContain('CREATE POLICY mentor_matches_select_founder_published_only ON mentor_matches');
     });
   });
 

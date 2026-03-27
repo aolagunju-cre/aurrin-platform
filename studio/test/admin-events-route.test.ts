@@ -9,6 +9,9 @@ import { PATCH as patchEventStatus } from '../src/app/api/admin/events/[id]/stat
 import { PATCH as patchScoringWindow } from '../src/app/api/admin/events/[id]/scoring-window/route';
 import { PATCH as patchPublishingWindow } from '../src/app/api/admin/events/[id]/publishing-window/route';
 import { GET as listEventSponsors, POST as addEventSponsor } from '../src/app/api/admin/events/[id]/sponsors/route';
+import { POST as createMentorMatch } from '../src/app/api/admin/events/[eventId]/mentors/matches/route';
+import { DELETE as deleteMentorMatch } from '../src/app/api/admin/events/[eventId]/mentors/matches/[matchId]/route';
+import { POST as generateMentorMatches } from '../src/app/api/admin/events/[eventId]/mentors/match/route';
 import { requireAdmin } from '../src/lib/auth/admin';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { auditLog } from '../src/lib/audit/log';
@@ -210,6 +213,60 @@ describe('admin events routes', () => {
         error: null,
       }),
       searchUsersByEmail: jest.fn(),
+      listMentorIdsByEventId: jest.fn().mockResolvedValue({ data: ['mentor-1', 'mentor-2'], error: null }),
+      listFounderIdsByEventId: jest.fn().mockResolvedValue({ data: ['founder-1', 'founder-2'], error: null }),
+      listRecentMentorPairs: jest.fn().mockResolvedValue({ data: [], error: null }),
+      insertMentorMatch: jest.fn().mockResolvedValue({
+        data: {
+          id: 'match-1',
+          mentor_id: 'mentor-1',
+          founder_id: 'founder-1',
+          event_id: 'event-1',
+          mentor_status: 'pending',
+          founder_status: 'pending',
+          mentor_accepted_at: null,
+          founder_accepted_at: null,
+          declined_by: null,
+          notes: null,
+          created_at: '2026-03-25T00:00:00.000Z',
+          updated_at: '2026-03-25T00:00:00.000Z',
+        },
+        error: null,
+      }),
+      getMentorMatchById: jest.fn().mockResolvedValue({
+        data: {
+          id: 'match-1',
+          mentor_id: 'mentor-1',
+          founder_id: 'founder-1',
+          event_id: 'event-1',
+          mentor_status: 'pending',
+          founder_status: 'pending',
+          mentor_accepted_at: null,
+          founder_accepted_at: null,
+          declined_by: null,
+          notes: null,
+          created_at: '2026-03-25T00:00:00.000Z',
+          updated_at: '2026-03-25T00:00:00.000Z',
+        },
+        error: null,
+      }),
+      deleteMentorMatchById: jest.fn().mockResolvedValue({
+        data: {
+          id: 'match-1',
+          mentor_id: 'mentor-1',
+          founder_id: 'founder-1',
+          event_id: 'event-1',
+          mentor_status: 'pending',
+          founder_status: 'pending',
+          mentor_accepted_at: null,
+          founder_accepted_at: null,
+          declined_by: null,
+          notes: null,
+          created_at: '2026-03-25T00:00:00.000Z',
+          updated_at: '2026-03-25T00:00:00.000Z',
+        },
+        error: null,
+      }),
       listRubricTemplates: jest.fn(),
       getRubricTemplateById: jest.fn(),
       insertRubricTemplate: jest.fn(),
@@ -682,6 +739,135 @@ describe('admin events routes', () => {
       expect.objectContaining({ resource_type: 'event' }),
       expect.any(Object)
     );
+  });
+
+  it('generates mentor matches and reports repeat-prevention conflicts', async () => {
+    mockDb.listFounderIdsByEventId.mockResolvedValue({ data: ['founder-1'], error: null });
+    mockDb.listRecentMentorPairs.mockResolvedValue({
+      data: [{ mentor_id: 'mentor-1', founder_id: 'founder-1', created_at: new Date().toISOString() }],
+      error: null,
+    });
+    mockDb.insertMentorMatch.mockResolvedValueOnce({
+      data: {
+        id: 'match-2',
+        mentor_id: 'mentor-2',
+        founder_id: 'founder-1',
+        event_id: 'event-1',
+        mentor_status: 'pending',
+        founder_status: 'pending',
+        mentor_accepted_at: null,
+        founder_accepted_at: null,
+        declined_by: null,
+        notes: null,
+        created_at: '2026-03-25T00:00:00.000Z',
+        updated_at: '2026-03-25T00:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const response = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 2,
+        exclude_previous_pairs_months: 12,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload).toEqual({ matches_created: 1, conflicts: 1 });
+  });
+
+  it('validates mentor matching payload boundaries', async () => {
+    const negativeMonths = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 1,
+        exclude_previous_pairs_months: -1,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(negativeMonths.status).toBe(400);
+
+    const nonIntegerMonths = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 1,
+        exclude_previous_pairs_months: 1.2,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(nonIntegerMonths.status).toBe(400);
+
+    const zeroMonths = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 1,
+        exclude_previous_pairs_months: 0,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(zeroMonths.status).toBe(200);
+
+    const twelveMonths = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 1,
+        exclude_previous_pairs_months: 12,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(twelveMonths.status).toBe(200);
+  });
+
+  it('returns 400 for invalid JSON body in mentor matching route', async () => {
+    const invalidJsonRequest = new NextRequest(
+      new Request('http://localhost/api/admin/events/event-1/mentors/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{invalid',
+      })
+    );
+
+    const response = await generateMentorMatches(invalidJsonRequest, {
+      params: Promise.resolve({ eventId: 'event-1' }),
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it('returns auth failure for mentor matching routes', async () => {
+    mockedRequireAdmin.mockResolvedValueOnce(
+      NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 })
+    );
+
+    const response = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 1,
+        exclude_previous_pairs_months: 12,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it('creates and deletes manual mentor matches', async () => {
+    const createResponse = await createMentorMatch(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/matches', 'POST', {
+        mentor_id: 'mentor-1',
+        founder_id: 'founder-1',
+        notes: 'manual override',
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+
+    expect(createResponse.status).toBe(200);
+    expect(mockDb.insertMentorMatch).toHaveBeenCalledWith(
+      expect.objectContaining({ mentor_id: 'mentor-1', founder_id: 'founder-1', event_id: 'event-1' })
+    );
+
+    const deleteResponse = await deleteMentorMatch(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/matches/match-1', 'DELETE'),
+      { params: Promise.resolve({ eventId: 'event-1', matchId: 'match-1' }) }
+    );
+
+    expect(deleteResponse.status).toBe(200);
+    expect(mockDb.deleteMentorMatchById).toHaveBeenCalledWith('match-1');
   });
 
   it('enforces admin guard for events endpoint', async () => {

@@ -322,6 +322,41 @@ export interface FounderPitchRecord {
   updated_at: string;
 }
 
+export type MentorMatchStatus = 'pending' | 'accepted' | 'declined';
+
+export interface MentorMatchRecord {
+  id: string;
+  mentor_id: string;
+  founder_id: string;
+  event_id: string | null;
+  mentor_status: MentorMatchStatus;
+  founder_status: MentorMatchStatus;
+  mentor_accepted_at: string | null;
+  founder_accepted_at: string | null;
+  declined_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MentorMatchInsert {
+  mentor_id: string;
+  founder_id: string;
+  event_id: string | null;
+  mentor_status?: MentorMatchStatus;
+  founder_status?: MentorMatchStatus;
+  mentor_accepted_at?: string | null;
+  founder_accepted_at?: string | null;
+  declined_by?: string | null;
+  notes?: string | null;
+}
+
+export interface MentorMatchPairRecord {
+  mentor_id: string;
+  founder_id: string;
+  created_at: string;
+}
+
 export interface JudgeEventPitchRecord extends FounderPitchRecord {
   founder: {
     id: string;
@@ -642,6 +677,16 @@ export interface SupabaseDBClient {
   insertEvent(record: EventInsert): Promise<{ data: EventRecord | null; error: Error | null }>;
   updateEvent(id: string, updates: EventUpdate): Promise<{ data: EventRecord | null; error: Error | null }>;
   listFounderPitchesByEventId(eventId: string): Promise<{ data: JudgeEventPitchRecord[]; error: Error | null }>;
+  listMentorIdsByEventId(eventId: string): Promise<{ data: string[]; error: Error | null }>;
+  listFounderIdsByEventId(eventId: string): Promise<{ data: string[]; error: Error | null }>;
+  listRecentMentorPairs(
+    mentorIds: string[],
+    founderIds: string[],
+    createdAfterIso: string
+  ): Promise<{ data: MentorMatchPairRecord[]; error: Error | null }>;
+  insertMentorMatch(record: MentorMatchInsert): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
+  getMentorMatchById(id: string): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
+  deleteMentorMatchById(id: string): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
   getFounderPitchById(id: string): Promise<{ data: JudgePitchDetailRecord | null; error: Error | null }>;
   getLatestRubricVersionByEventId(eventId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
   getJudgeScoreByJudgeAndPitch(
@@ -748,6 +793,12 @@ export function getSupabaseClient(): SupabaseClient {
         insertEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updateEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listFounderPitchesByEventId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listMentorIdsByEventId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listFounderIdsByEventId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listRecentMentorPairs: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertMentorMatch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        deleteMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFounderPitchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getLatestRubricVersionByEventId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getJudgeScoreByJudgeAndPitch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1609,6 +1660,136 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows, error: null };
       } catch (err) {
         return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listMentorIdsByEventId(eventId) {
+      try {
+        const eventScopedFilter = `and(scope.eq.event,scoped_id.eq.${encodeURIComponent(eventId)})`;
+        const globalScopedFilter = 'scope.eq.global';
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/role_assignments?role=eq.mentor&or=(${eventScopedFilter},${globalScopedFilter})&select=user_id`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Mentor assignments query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as Array<{ user_id: string }>;
+        const ids = Array.from(
+          new Set(
+            rows
+              .map((row) => row.user_id)
+              .filter((value): value is string => typeof value === 'string' && value.length > 0)
+          )
+        );
+        return { data: ids, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listFounderIdsByEventId(eventId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founder_pitches?event_id=eq.${encodeURIComponent(eventId)}&select=founder_id`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Founder event assignments query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as Array<{ founder_id: string }>;
+        const ids = Array.from(
+          new Set(
+            rows
+              .map((row) => row.founder_id)
+              .filter((value): value is string => typeof value === 'string' && value.length > 0)
+          )
+        );
+        return { data: ids, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listRecentMentorPairs(mentorIds, founderIds, createdAfterIso) {
+      if (mentorIds.length === 0 || founderIds.length === 0) {
+        return { data: [], error: null };
+      }
+
+      const encodedMentorIds = mentorIds.map((id) => `"${id.replace(/"/g, '\\"')}"`).join(',');
+      const encodedFounderIds = founderIds.map((id) => `"${id.replace(/"/g, '\\"')}"`).join(',');
+
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/mentor_matches?mentor_id=in.(${encodeURIComponent(encodedMentorIds)})&founder_id=in.(${encodeURIComponent(encodedFounderIds)})&created_at=gt.${encodeURIComponent(createdAfterIso)}&select=mentor_id,founder_id,created_at&limit=5000`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Mentor matches history query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as MentorMatchPairRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertMentorMatch(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/mentor_matches`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            mentor_id: record.mentor_id,
+            founder_id: record.founder_id,
+            event_id: record.event_id,
+            mentor_status: record.mentor_status ?? 'pending',
+            founder_status: record.founder_status ?? 'pending',
+            mentor_accepted_at: record.mentor_accepted_at ?? null,
+            founder_accepted_at: record.founder_accepted_at ?? null,
+            declined_by: record.declined_by ?? null,
+            notes: record.notes ?? null,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Mentor match insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as MentorMatchRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getMentorMatchById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/mentor_matches?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Mentor match query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as MentorMatchRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async deleteMentorMatchById(id) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/mentor_matches?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { ...headers, Prefer: 'return=representation' },
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Mentor match delete failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as MentorMatchRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
 
