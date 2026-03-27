@@ -31,6 +31,14 @@ Use separate environment variable values for dev, staging, and prod.
 | `LOG_LEVEL` | debug/info | info | info/warn |
 | `SENTRY_DSN` | optional | optional | recommended |
 
+Supabase auth baseline requires all four keys to be set together in non-demo deployments:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_JWT_SECRET`
+
+If one or more are missing, runtime falls back to demo mode unless `DEMO_MODE=false` is explicitly set.
+
 ## 4. Install, Build, and Test
 
 Run from repository root:
@@ -54,6 +62,16 @@ npx supabase db push
 ```
 
 For manual migration execution, apply SQL files in `studio/src/lib/db/migrations/` in order.
+
+After migration, verify baseline auth-contract tables exist:
+
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('users', 'role_assignments', 'events', 'founder_applications', 'sponsors')
+ORDER BY table_name;
+```
 
 ## 6. Backups and Recovery
 

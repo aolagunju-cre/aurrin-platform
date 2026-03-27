@@ -87,16 +87,28 @@ function buildRuntimeEnv(): RuntimeEnv {
   const supabaseUrl = readEnv('NEXT_PUBLIC_SUPABASE_URL', { legacyKeys: ['SUPABASE_URL'] });
   const supabaseAnonKey = readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', { legacyKeys: ['SUPABASE_ANON_KEY'] });
   const supabaseServiceRoleKey = readEnv('SUPABASE_SERVICE_ROLE_KEY', { legacyKeys: ['SUPABASE_SERVICE_KEY'] });
+  const supabaseJwtSecret = readEnv('SUPABASE_JWT_SECRET', { defaultValue: 'your-secret-key' }) ?? 'your-secret-key';
   const demoModePreference = readOptionalBooleanEnv('DEMO_MODE');
   const forceDemo = readBooleanEnv('FORCE_DEMO_MODE');
-  const hasSupabaseConfig = Boolean(supabaseUrl && (supabaseServiceRoleKey || supabaseAnonKey));
+  const hasSupabaseConfig = Boolean(
+    supabaseUrl
+      && supabaseAnonKey
+      && supabaseServiceRoleKey
+      && supabaseJwtSecret !== 'your-secret-key'
+  );
   const demoMode = forceDemo || demoModePreference === true || (demoModePreference !== false && process.env.NODE_ENV === 'production' && !hasSupabaseConfig);
 
   if (demoModePreference === null && demoMode && process.env.NODE_ENV === 'production' && !hasSupabaseConfig) {
     warnOnce('[env] Demo mode enabled automatically because Supabase environment variables are not configured.');
   }
 
-  const supabaseJwtSecret = readEnv('SUPABASE_JWT_SECRET', { defaultValue: 'your-secret-key' }) ?? 'your-secret-key';
+  if (demoModePreference === false && !hasSupabaseConfig) {
+    warnOnce(
+      '[env] DEMO_MODE=false but one or more required Supabase keys are missing: '
+      + 'NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET.'
+    );
+  }
+
   if (supabaseJwtSecret === 'your-secret-key') {
     warnOnce('[env] SUPABASE_JWT_SECRET is not configured; using the default development secret.');
   }

@@ -6,6 +6,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+const initialSchemaSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/001_initial_schema.sql'),
+  'utf8'
+);
+const rlsPoliciesSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/002_rls_policies.sql'),
+  'utf8'
+);
 const judgeScoresContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/010_judge_scores_state_contract.sql'),
   'utf8'
@@ -30,6 +38,29 @@ const publicDirectoryContractSql = fs.readFileSync(
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
   // They validate that migration files would create the expected schema
+
+  describe('Supabase auth baseline contract', () => {
+    test('required auth and dependency tables are present in migrations', () => {
+      expect(initialSchemaSql).toContain('CREATE TABLE users');
+      expect(initialSchemaSql).toContain('CREATE TABLE role_assignments');
+      expect(initialSchemaSql).toContain('CREATE TABLE events');
+      expect(initialSchemaSql).toContain('CREATE TABLE founder_applications');
+      expect(initialSchemaSql).toContain('CREATE TABLE sponsors');
+    });
+
+    test('role assignment contract is auditable and deduplicated', () => {
+      expect(initialSchemaSql).toContain('created_by UUID REFERENCES users(id)');
+      expect(initialSchemaSql).toContain('UNIQUE(user_id, role, scope, scoped_id)');
+    });
+
+    test('RLS policies protect auth-critical tables', () => {
+      expect(rlsPoliciesSql).toContain('ALTER TABLE users ENABLE ROW LEVEL SECURITY;');
+      expect(rlsPoliciesSql).toContain('ALTER TABLE role_assignments ENABLE ROW LEVEL SECURITY;');
+      expect(rlsPoliciesSql).toContain('CREATE POLICY users_select_admin ON users FOR SELECT');
+      expect(rlsPoliciesSql).toContain('CREATE POLICY role_assignments_admin_insert ON role_assignments FOR INSERT');
+      expect(rlsPoliciesSql).toContain('CREATE POLICY role_assignments_admin_update ON role_assignments FOR UPDATE');
+    });
+  });
 
   describe('Enums', () => {
     const expectedEnums = [

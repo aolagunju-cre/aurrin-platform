@@ -39,6 +39,17 @@ npx supabase db push
 # Or manually: apply migration SQL files in order from studio/src/lib/db/migrations/
 ```
 
+### 3a. Verify Auth Baseline Tables
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('users', 'role_assignments', 'events', 'founder_applications', 'sponsors')
+ORDER BY table_name;
+```
+
+Expected result set includes all five rows above before enabling non-demo auth flows.
+
 ### 4. Enable Point-in-Time Recovery
 In Supabase dashboard: Project Settings → Backup → Enable PITR (7 day retention recommended)
 
