@@ -16,8 +16,26 @@ perl -0ne '
   }
 
   my %seen;
+  my @ordered;
+  my $emit = sub {
+    my ($number) = @_;
+    return if !defined $number || $seen{$number}++;
+    push @ordered, $number;
+  };
+
+  while ($source =~ /#([0-9]+)\s*(?:through|to|-|–|—)\s*#?([0-9]+)/gi) {
+    my ($start, $finish) = ($1, $2);
+    ($start, $finish) = ($finish, $start) if $start > $finish;
+    for my $number ($start .. $finish) {
+      $emit->($number);
+    }
+  }
+
   while ($source =~ /#([0-9]+)\b/g) {
-    next if $seen{$1}++;
-    print "$1\n";
+    $emit->($1);
+  }
+
+  if (@ordered) {
+    print join("\n", @ordered), "\n";
   }
 '

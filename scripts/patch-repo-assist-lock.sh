@@ -11,10 +11,23 @@ content = File.read(path)
 original = content.dup
 
 step_name = "      - name: Fail targeted issue runs without actionable output\n"
+dependency_step_name = "      - name: Handle dependency-blocked targeted issues\n"
 insert_before = "      - name: Invalidate GitHub App token\n"
 fallback_insert_after = "      - name: Update reaction comment with completion status\n"
 dedupe_step_name = "      - name: Deduplicate repeated create_pull_request outputs\n"
 detection_skip_message = "Detection skipped: PIPELINE_MVP_MODE=true"
+
+dependency_step = <<'STEP'.chomp
+      - name: Handle dependency-blocked targeted issues
+        if: always() && needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != '' && steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT != ''
+        env:
+          GH_TOKEN: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GITHUB_TOKEN }}
+          GH_AW_AGENT_OUTPUT: ${{ steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT }}
+          GH_AW_TARGET_ISSUE: ${{ github.event.inputs.issue_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          bash scripts/handle-dependency-blocked-issue.sh
+STEP
 
 fail_step = <<'STEP'.chomp
       - name: Fail targeted issue runs without actionable output
@@ -152,6 +165,34 @@ ANCHOR
   end
 end
 
+legacy_dependency_step_pattern = /
+^      -\ name:\ Handle\ dependency-blocked\ targeted\ issues\n
+.*?
+(?=^      -\ name:\ Fail\ targeted\ issue\ runs\ without\ actionable\ output\n)
+/mx
+
+content.sub!(legacy_dependency_step_pattern, "#{dependency_step}\n")
+
+unless content.include?(dependency_step_name)
+  if content.include?(step_name)
+    content.sub!(step_name, "#{dependency_step}\n#{step_name}")
+  elsif content.include?(insert_before)
+    content.sub!(insert_before, "#{dependency_step}\n#{insert_before}")
+  elsif content.include?(fallback_insert_after)
+    anchor = <<'ANCHOR'
+      - name: Update reaction comment with completion status
+        id: conclusion
+ANCHOR
+    raise "Could not find insertion point for dependency-block handler in #{path}" unless content.include?(anchor)
+    content.sub!(anchor, "#{anchor}\n#{dependency_step}")
+  else
+    raise "Could not find insertion point for dependency-block handler in #{path}"
+  end
+end
+
+raise "Patched dependency-block handler missing in #{path}" unless content.include?(dependency_step_name)
+raise "Duplicate dependency-block handlers detected in #{path}" unless content.scan(dependency_step_name).length == 1
+raise "Dependency-block handler must invoke handle-dependency-blocked-issue.sh in #{path}" unless content.include?("bash scripts/handle-dependency-blocked-issue.sh")
 raise "Patched targeted issue guard missing in #{path}" unless content.include?(step_name)
 raise "Duplicate targeted issue guard detected in #{path}" unless content.scan(step_name).length == 1
 raise "Targeted issue guard missing noop guidance in #{path}" unless content.include?("Use missing_data or missing_tool with the exact blocker and next step instead of noop")

@@ -56,4 +56,20 @@ ACTUAL=$(printf '%s' "$BODY_WITHOUT_DEPENDENCIES" | bash "$SCRIPT")
   exit 1
 }
 
+BODY_WITH_RANGE_DEPENDS=$(cat <<'EOF'
+## Dependencies
+
+Depends on #30 through #34.
+Depends on #40-#42.
+Depends on #45 to #44 for reverse-order tolerance.
+EOF
+)
+
+EXPECTED=$'30\n31\n32\n33\n34\n40\n41\n42\n44\n45'
+ACTUAL=$(printf '%s' "$BODY_WITH_RANGE_DEPENDS" | bash "$SCRIPT")
+[ "$ACTUAL" = "$EXPECTED" ] || {
+  echo "FAIL: expected dependency ranges to expand into individual issue numbers" >&2
+  exit 1
+}
+
 echo "extract-issue-dependencies.sh tests passed"

@@ -44,6 +44,8 @@ jobs:
         run: bash scripts/tests/test-ci-node-layout.sh
       - name: Test issue dependency extraction
         run: bash scripts/tests/test-extract-issue-dependencies.sh
+      - name: Test dependency-blocked issue reroute helper
+        run: bash scripts/tests/test-handle-dependency-blocked-issue.sh
       - name: Test auto-dispatch requeue token wiring
         run: bash scripts/tests/test-auto-dispatch-requeue.sh
       - name: Test deploy validation wiring

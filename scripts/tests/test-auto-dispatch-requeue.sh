@@ -66,6 +66,16 @@ grep -F 'bash scripts/extract-issue-dependencies.sh' "$WORKFLOW" >/dev/null || {
   exit 1
 }
 
+grep -F 'ensure_dependency_blocked_label() {' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must add blocked labels when skipping dependency-gated issues" >&2
+  exit 1
+}
+
+grep -F 'gh issue edit "$issue_number" --repo "$REPO" --add-label blocked' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must persist blocked labels for dependency-gated issues" >&2
+  exit 1
+}
+
 grep -F -- '--json number,title,createdAt,labels,body' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must read issue bodies for dependency-aware backlog fallback" >&2
   exit 1

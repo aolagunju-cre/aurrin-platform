@@ -403,6 +403,21 @@ jobs:
             fi
           }
 
+          ensure_dependency_blocked_label() {
+            local issue_number=$1
+            local labels_json=$2
+            local blockers=$3
+
+            [ -n "$blockers" ] || return 0
+
+            if printf '%s' "$labels_json" | jq -e '[.[] | ascii_downcase] | index("blocked") != null' >/dev/null; then
+              return 0
+            fi
+
+            gh issue edit "$issue_number" --repo "$REPO" --add-label blocked >/dev/null 2>&1 || \
+              echo "::warning::Could not add blocked label to issue #${issue_number}"
+          }
+
           find_issue_for_run() {
             local run_id=$1
             local comments_json
@@ -451,6 +466,7 @@ jobs:
               ISSUE_ACTIONABLE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.actionable')
               ISSUE_WORKFLOW=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.workflow_file')
               ISSUE_ROUTE=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.route')
+              ISSUE_LABELS=$(printf '%s' "$ISSUE_ROW" | jq -c '[.labels[]?.name // empty]')
               if [ "$ISSUE_ACTIONABLE" != "true" ]; then
                 ISSUE_REASON=$(printf '%s' "$ISSUE_CLASSIFICATION" | jq -r '.reason')
                 echo "Issue #${ISSUE_NUM}: skipping non-actionable issue (${ISSUE_REASON})."
@@ -464,6 +480,7 @@ jobs:
 
               BLOCKING_DEPENDENCIES=$(open_dependency_numbers "$ISSUE_BODY" || true)
               if [ -n "$BLOCKING_DEPENDENCIES" ]; then
+                ensure_dependency_blocked_label "$ISSUE_NUM" "$ISSUE_LABELS" "$BLOCKING_DEPENDENCIES"
                 echo "Issue #${ISSUE_NUM}: waiting on open dependencies ${BLOCKING_DEPENDENCIES}."
                 continue
               fi
