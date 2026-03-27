@@ -68,10 +68,11 @@ function readEnv(canonicalKey: string, options: EnvLookupOptions = {}): string |
 
 function buildRuntimeEnv(): RuntimeEnv {
   const demoModeRequested = readBooleanEnv('DEMO_MODE');
-  const demoMode = demoModeRequested && process.env.NODE_ENV !== 'production';
+  const forceDemo = readBooleanEnv('FORCE_DEMO_MODE');
+  const demoMode = forceDemo || (demoModeRequested && process.env.NODE_ENV !== 'production');
 
-  if (demoModeRequested && process.env.NODE_ENV === 'production') {
-    warnOnce('[env] DEMO_MODE is ignored in production environments.');
+  if (demoModeRequested && !forceDemo && process.env.NODE_ENV === 'production') {
+    warnOnce('[env] DEMO_MODE is ignored in production environments. Use FORCE_DEMO_MODE=true to override.');
   }
 
   const supabaseJwtSecret = readEnv('SUPABASE_JWT_SECRET', { defaultValue: 'your-secret-key' }) ?? 'your-secret-key';
