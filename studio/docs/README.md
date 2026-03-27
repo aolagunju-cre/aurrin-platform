@@ -50,6 +50,7 @@ This hub is the canonical entrypoint for platform documentation under `studio/do
 - [Email Guide](./EMAIL.md)
 - [Analytics Guide](./ANALYTICS.md)
 - [Payments Guide](./PAYMENTS.md)
+- [Monetization Operations](./MONETIZATION.md)
 
 ### Role Guides
 
