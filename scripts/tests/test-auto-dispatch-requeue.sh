@@ -36,6 +36,11 @@ grep -F 'workflow_run.name == '\''Pipeline Repo Assist'\''' "$WORKFLOW" >/dev/nu
   exit 1
 }
 
+grep -F 'workflows: ["Pipeline Repo Assist", "Frontend Agent", "PRD Decomposer"]' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must wake immediately after PRD Decomposer completion" >&2
+  exit 1
+}
+
 grep -F "<!-- provider-retry:v1" "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must record provider retry markers" >&2
   exit 1

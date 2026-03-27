@@ -2,7 +2,7 @@ name: Auto-Dispatch Requeue
 
 on:
   workflow_run:
-    workflows: ["Pipeline Repo Assist", "Frontend Agent"]
+    workflows: ["Pipeline Repo Assist", "Frontend Agent", "PRD Decomposer"]
     types: [completed]
   pull_request:
     types: [closed]
