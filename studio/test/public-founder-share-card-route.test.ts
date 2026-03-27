@@ -96,4 +96,69 @@ describe('public founder share-card route', () => {
     expect(mockStorage.upload).not.toHaveBeenCalled();
     expect(mockStorage.remove).not.toHaveBeenCalled();
   });
+
+  it('returns 404 when founder does not exist', async () => {
+    mockDb.queryTable.mockResolvedValueOnce({ data: [], error: null });
+
+    const response = await getShareCard(new Request('http://localhost/api/public/founders/missing/share-card'), {
+      params: Promise.resolve({ founderId: 'missing' }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(payload.message).toBe('Founder not found.');
+  });
+
+  it('filters highlights to pitches published for public view and normalizes breakdown values', async () => {
+    mockDb.queryTable
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'founder-1',
+            company_name: 'Orbit Labs',
+            tagline: 'Funding climate tools',
+            bio: 'We build carbon measurement software.',
+            website: 'https://orbit.example',
+            user: { name: 'Sam Founder' },
+          },
+        ],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'pitch-published',
+            score_aggregate: 91,
+            score_breakdown: { Market: 95, Team: 'ignore-me' },
+            is_published: false,
+            published_at: '2026-03-01T00:00:00.000Z',
+            event: { id: 'event-1', name: 'Spring Demo Day', publishing_start: '2000-03-01T00:00:00.000Z' },
+          },
+          {
+            id: 'pitch-hidden',
+            score_aggregate: 88,
+            score_breakdown: { Market: 88 },
+            is_published: false,
+            published_at: null,
+            event: { id: 'event-2', name: 'Future Demo Day', publishing_start: '3026-03-01T00:00:00.000Z' },
+          },
+        ],
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: [], error: null });
+
+    const response = await getShareCard(new Request('http://localhost/api/public/founders/founder-1/share-card'), {
+      params: Promise.resolve({ founderId: 'founder-1' }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.highlights).toEqual([
+      expect.objectContaining({
+        pitch_id: 'pitch-published',
+        event_id: 'event-1',
+        score_breakdown: { Market: 95 },
+      }),
+    ]);
+  });
 });

@@ -133,6 +133,53 @@ describe('Public validation session APIs', () => {
     expect(body.data.questions).toEqual([{ id: 'q1', type: 'rating', prompt: 'Would you invest?' }]);
   });
 
+  it('returns session questions from config.questions fallback', async () => {
+    mockDb.getEventById.mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        name: 'Demo Day',
+        config: {
+          questions: [{ id: 'q-fallback', type: 'text', prompt: 'Fallback prompt?' }],
+        },
+        start_date: '2026-04-01T10:00:00.000Z',
+        end_date: '2026-04-01T12:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const request = new NextRequest(new Request('http://localhost/api/public/validate/event-1/session/session-1'));
+    const response = await getSession(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.questions).toEqual([{ id: 'q-fallback', type: 'text', prompt: 'Fallback prompt?' }]);
+  });
+
+  it('returns 403 for expired session when loading session details', async () => {
+    mockDb.getAudienceSessionById.mockResolvedValueOnce({
+      data: {
+        id: 'session-1',
+        event_id: 'event-1',
+        session_token: 'token-1',
+        ip_address: '127.0.0.1',
+        email: 'guest@example.com',
+        consent_given: true,
+        created_at: '2026-04-01T10:00:00.000Z',
+        expires_at: '2000-01-01T00:00:00.000Z',
+      },
+      error: null,
+    });
+
+    const request = new NextRequest(new Request('http://localhost/api/public/validate/event-1/session/session-1'));
+    const response = await getSession(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   it('submits responses successfully', async () => {
     const request = new NextRequest(
       new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
@@ -199,5 +246,130 @@ describe('Public validation session APIs', () => {
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it('returns 400 when response payload is malformed', async () => {
+    const request = new NextRequest(
+      new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
+        method: 'POST',
+        body: JSON.stringify({ founder_pitch_id: 'pitch-1', responses: [] }),
+      })
+    );
+
+    const response = await submitResponse(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 400 when responses object is empty', async () => {
+    const request = new NextRequest(
+      new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
+        method: 'POST',
+        body: JSON.stringify({ founder_pitch_id: 'pitch-1', responses: {} }),
+      })
+    );
+
+    const response = await submitResponse(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('returns 404 when founder pitch is outside the target event', async () => {
+    mockDb.getFounderPitchById.mockResolvedValueOnce({
+      data: { id: 'pitch-1', event_id: 'other-event' },
+      error: null,
+    });
+
+    const request = new NextRequest(
+      new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
+        method: 'POST',
+        body: JSON.stringify({ founder_pitch_id: 'pitch-1', responses: { q1: 4 } }),
+      })
+    );
+
+    const response = await submitResponse(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns 409 when same IP already submitted for founder in another session', async () => {
+    mockDb.listAudienceSessionsByEventAndIp.mockResolvedValueOnce({
+      data: [{ id: 'session-2' }],
+      error: null,
+    });
+    mockDb.listAudienceResponsesByFounderPitchAndSessionIds.mockResolvedValueOnce({
+      data: [{ id: 'resp-2' }],
+      error: null,
+    });
+
+    const request = new NextRequest(
+      new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
+        method: 'POST',
+        body: JSON.stringify({ founder_pitch_id: 'pitch-1', responses: { q1: 5 } }),
+      })
+    );
+
+    const response = await submitResponse(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.message).toBe("You've already submitted feedback for this founder");
+  });
+
+  it('returns 409 when same email already submitted for founder in another session', async () => {
+    mockDb.listAudienceSessionsByEventAndIp.mockResolvedValueOnce({ data: [], error: null });
+    mockDb.listAudienceSessionsByEventAndEmail.mockResolvedValueOnce({
+      data: [{ id: 'session-2' }],
+      error: null,
+    });
+    mockDb.listAudienceResponsesByFounderPitchAndSessionIds.mockResolvedValueOnce({
+      data: [{ id: 'resp-2' }],
+      error: null,
+    });
+
+    const request = new NextRequest(
+      new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
+        method: 'POST',
+        body: JSON.stringify({ founder_pitch_id: 'pitch-1', responses: { q1: 5 } }),
+      })
+    );
+
+    const response = await submitResponse(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.message).toBe("You've already submitted feedback for this founder");
+  });
+
+  it('maps unique constraint insert errors to 409 duplicate message', async () => {
+    mockDb.insertAudienceResponse.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'duplicate key value violates unique constraint' },
+    });
+
+    const request = new NextRequest(
+      new Request('http://localhost/api/public/validate/event-1/session/session-1/response', {
+        method: 'POST',
+        body: JSON.stringify({ founder_pitch_id: 'pitch-1', responses: { q1: 5 } }),
+      })
+    );
+
+    const response = await submitResponse(request, {
+      params: Promise.resolve({ eventId: 'event-1', sessionId: 'session-1' }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.message).toBe("You've already submitted feedback for this founder");
   });
 });

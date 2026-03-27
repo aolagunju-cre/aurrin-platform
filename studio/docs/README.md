@@ -25,6 +25,7 @@ This hub is the canonical entrypoint for platform documentation under `studio/do
 - Manage mentor workflows: [Mentor Matching Guide](./MENTOR_MATCHING.md)
 - Handle subscriber and entitlement flows: [Subscriber Guide](./SUBSCRIBER_GUIDE.md)
 - Run local development setup: [Development Guide](./DEVELOPMENT.md)
+- Run and debug automated tests: [Testing Guide](./TESTING.md)
 - Follow implementation conventions: [Style Guide](./STYLE.md)
 - Troubleshoot jobs, metrics, and logs: [Background Jobs](./JOBS.md), [Observability Guide](./OBSERVABILITY.md)
 - Work with file uploads and retention: [Storage Guide](./STORAGE.md)
@@ -68,6 +69,7 @@ This hub is the canonical entrypoint for platform documentation under `studio/do
 ### Developer References
 
 - [Development Guide](./DEVELOPMENT.md)
+- [Testing Guide](./TESTING.md)
 - [Style Guide](./STYLE.md)
 - [Glossary](./GLOSSARY.md)
 - [Frequently Asked Questions](./FAQ.md)
