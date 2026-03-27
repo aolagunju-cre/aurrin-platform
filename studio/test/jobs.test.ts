@@ -497,13 +497,38 @@ describe('handlePdfJob', () => {
 
 describe('handleAssetJob', () => {
   it('returns success with valid payload', async () => {
-    const result = await handleAssetJob({ founder_id: 'f1', event_id: 'e1', asset_type: 'og_image' });
+    const result = await handleAssetJob({
+      founder_id: 'f1',
+      event_id: 'e1',
+      asset_type: 'profile',
+      format: 'og',
+      founder_name: 'Sam Founder',
+      company_name: 'Orbit Labs',
+      score: '91.2',
+      date: '2026-03-27',
+      event_name: 'Spring Demo Day',
+    });
     expect(result.success).toBe(true);
   });
 
   it('returns failure when required fields missing', async () => {
     const result = await handleAssetJob({ event_id: 'e1' });
     expect(result.success).toBe(false);
+  });
+
+  it('returns failure for unsupported format', async () => {
+    const result = await handleAssetJob({
+      asset_type: 'profile',
+      format: 'facebook',
+      founder_id: 'f1',
+      event_id: 'e1',
+      founder_name: 'Sam Founder',
+      company_name: 'Orbit Labs',
+      score: '91.2',
+      date: '2026-03-27',
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('invalid format');
   });
 });
 
