@@ -386,6 +386,31 @@ jobs:
             gh issue view "$issue_number" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN"
           }
 
+          cancel_superseded_repo_assist_runs() {
+            local keep_run_id=$1
+            local active_json stale_id
+
+            [ -n "$keep_run_id" ] || return 0
+
+            active_json=$(gh run list --repo "$REPO" \
+              --workflow "Pipeline Repo Assist" \
+              --limit 50 \
+              --json databaseId,status \
+              2>/dev/null || echo '[]')
+
+            while IFS= read -r stale_id; do
+              [ -n "$stale_id" ] || continue
+              echo "Canceling superseded Pipeline Repo Assist run ${stale_id} after dispatching replacement ${keep_run_id}."
+              gh run cancel "$stale_id" --repo "$REPO" >/dev/null 2>&1 || \
+                echo "::warning::Could not cancel superseded Pipeline Repo Assist run ${stale_id}"
+            done < <(printf '%s' "$active_json" | jq -r --arg keep "$keep_run_id" '
+              .[]
+              | select((.status == "queued") or (.status == "in_progress"))
+              | select((.databaseId | tostring) != $keep)
+              | .databaseId
+            ')
+          }
+
           open_dependency_numbers() {
             local issue_body=$1
             local blocked=()
@@ -666,6 +691,10 @@ jobs:
             fi
             sleep 5
           done
+
+          if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ] && [ -n "$AGENT_RUN_ID" ]; then
+            cancel_superseded_repo_assist_runs "$AGENT_RUN_ID"
+          fi
 
           MARKER_BODY=$(printf '%s\n' \
             '<!-- self-healing-dispatch:v1' \

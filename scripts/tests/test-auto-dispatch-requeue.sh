@@ -76,6 +76,21 @@ grep -F 'gh issue edit "$issue_number" --repo "$REPO" --add-label blocked' "$WOR
   exit 1
 }
 
+grep -F 'cancel_superseded_repo_assist_runs() {' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must cancel older repo-assist runs after dispatching a replacement" >&2
+  exit 1
+}
+
+grep -F 'gh run cancel "$stale_id" --repo "$REPO"' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must cancel superseded repo-assist runs" >&2
+  exit 1
+}
+
+grep -F 'if [ "$SELECTED_WORKFLOW" = "repo-assist.lock.yml" ] && [ -n "$AGENT_RUN_ID" ]; then' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must only cancel superseded runs for repo-assist dispatches" >&2
+  exit 1
+}
+
 grep -F -- '--json number,title,createdAt,labels,body' "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must read issue bodies for dependency-aware backlog fallback" >&2
   exit 1
