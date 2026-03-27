@@ -19,6 +19,8 @@ interface JudgeEventPitchesPageProps {
 export default function JudgeEventPitchesPage({ params }: JudgeEventPitchesPageProps): React.ReactElement {
   const [eventId, setEventId] = useState<string>('');
   const [pitches, setPitches] = useState<JudgePitchListItem[]>([]);
+  const [scoringWindowOpen, setScoringWindowOpen] = useState(false);
+  const [scoringEnd, setScoringEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,11 +34,18 @@ export default function JudgeEventPitchesPage({ params }: JudgeEventPitchesPageP
 
       try {
         const response = await fetch(`/api/judge/events/${encodeURIComponent(resolvedParams.eventId)}/pitches`);
-        const payload = await response.json() as { success: boolean; data?: JudgePitchListItem[]; message?: string };
+        const payload = await response.json() as {
+          success: boolean;
+          data?: JudgePitchListItem[];
+          meta?: { scoring_window_open: boolean; scoring_end: string | null };
+          message?: string;
+        };
         if (!response.ok || !payload.success) {
           throw new Error(payload.message || 'Failed to load assigned pitches.');
         }
         setPitches(payload.data ?? []);
+        setScoringWindowOpen(payload.meta?.scoring_window_open ?? false);
+        setScoringEnd(payload.meta?.scoring_end ?? null);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load assigned pitches.');
       } finally {
@@ -51,6 +60,9 @@ export default function JudgeEventPitchesPage({ params }: JudgeEventPitchesPageP
     <section style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ margin: 0 }}>Founder Pitches</h1>
       {eventId ? <p style={{ margin: 0 }}>Event: {eventId}</p> : null}
+      <p style={{ margin: 0 }}>
+        {scoringWindowOpen && scoringEnd ? `Scoring open until ${new Date(scoringEnd).toLocaleString()}` : 'Scoring closed'}
+      </p>
 
       {error ? (
         <p role="alert" style={{ color: '#b00020', margin: 0 }}>
@@ -83,7 +95,11 @@ export default function JudgeEventPitchesPage({ params }: JudgeEventPitchesPageP
                 <td>{pitch.founder_email ?? 'N/A'}</td>
                 <td>{pitch.pitch_order ?? 'N/A'}</td>
                 <td>
-                  <a href={`/judge/events/${pitch.event_id}/pitch/${pitch.id}`}>Score Pitch</a>
+                  {scoringWindowOpen ? (
+                    <a href={`/judge/events/${pitch.event_id}/pitch/${pitch.id}`}>Score Pitch</a>
+                  ) : (
+                    <span>Scoring closed</span>
+                  )}
                 </td>
               </tr>
             ))}

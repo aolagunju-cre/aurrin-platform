@@ -8,6 +8,8 @@ interface JudgeEventListItem {
   status: 'upcoming' | 'live' | 'archived';
   start_date: string;
   end_date: string;
+  scoring_start: string | null;
+  scoring_end: string | null;
 }
 
 function toStatusLabel(status: JudgeEventListItem['status']): 'Upcoming' | 'Live' | 'Archived' {
@@ -63,6 +65,23 @@ export default function JudgeEventsPage(): React.ReactElement {
 
   const visibleEvents = useMemo(() => events.filter(isLiveOrRecent), [events]);
 
+  const scoringStatusLabel = useMemo(() => {
+    return (event: JudgeEventListItem): string => {
+      if (!event.scoring_start || !event.scoring_end) {
+        return 'Scoring closed';
+      }
+
+      const now = Date.now();
+      const scoringStart = Date.parse(event.scoring_start);
+      const scoringEnd = Date.parse(event.scoring_end);
+      if (Number.isNaN(scoringStart) || Number.isNaN(scoringEnd) || now < scoringStart || now > scoringEnd) {
+        return 'Scoring closed';
+      }
+
+      return `Scoring open until ${new Date(event.scoring_end).toLocaleString()}`;
+    };
+  }, []);
+
   return (
     <section style={{ display: 'grid', gap: '1rem' }}>
       <h1 style={{ margin: 0 }}>Judge Events</h1>
@@ -86,6 +105,7 @@ export default function JudgeEventsPage(): React.ReactElement {
               <th align="left">Event</th>
               <th align="left">Status</th>
               <th align="left">Dates</th>
+              <th align="left">Scoring Window</th>
               <th align="left">Action</th>
             </tr>
           </thead>
@@ -95,6 +115,7 @@ export default function JudgeEventsPage(): React.ReactElement {
                 <td>{event.name}</td>
                 <td>{toStatusLabel(event.status)}</td>
                 <td>{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
+                <td>{scoringStatusLabel(event)}</td>
                 <td>
                   <a href={`/judge/events/${event.id}`}>View Founder Pitches</a>
                 </td>

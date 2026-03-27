@@ -6,6 +6,21 @@ interface RouteParams {
   params: Promise<{ eventId: string }>;
 }
 
+function isScoringWindowOpen(scoringStart: string | null, scoringEnd: string | null): boolean {
+  if (!scoringStart || !scoringEnd) {
+    return false;
+  }
+
+  const now = Date.now();
+  const start = Date.parse(scoringStart);
+  const end = Date.parse(scoringEnd);
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return false;
+  }
+
+  return now >= start && now <= end;
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const authResult = await requireJudge(request);
   if (authResult instanceof NextResponse) {
@@ -34,6 +49,10 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   return NextResponse.json(
     {
       success: true,
+      meta: {
+        scoring_window_open: isScoringWindowOpen(eventResult.data.scoring_start, eventResult.data.scoring_end),
+        scoring_end: eventResult.data.scoring_end,
+      },
       data: pitchesResult.data.map((pitch) => ({
         id: pitch.id,
         event_id: pitch.event_id,

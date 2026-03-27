@@ -106,6 +106,16 @@ describe('GET /api/events/[id]', () => {
     expect(response.status).toBe(200);
   });
 
+  it('returns event details for global admin', async () => {
+    mockDb.getRoleAssignmentsByUserId.mockResolvedValueOnce({
+      data: [{ id: 'ra-admin', role: 'admin', scope: 'global', scoped_id: null }],
+      error: null,
+    });
+
+    const response = await getEvent(buildRequest('Bearer token'), { params: Promise.resolve({ id: 'event-1' }) });
+    expect(response.status).toBe(200);
+  });
+
   it('returns event details for assigned founder via founder pitch', async () => {
     mockDb.getRoleAssignmentsByUserId.mockResolvedValueOnce({
       data: [{ id: 'ra-founder', role: 'founder', scope: 'global', scoped_id: null }],
@@ -124,6 +134,16 @@ describe('GET /api/events/[id]', () => {
   it('returns 403 for users without event visibility', async () => {
     mockDb.getRoleAssignmentsByUserId.mockResolvedValueOnce({
       data: [{ id: 'ra-judge', role: 'judge', scope: 'event', scoped_id: 'event-2' }],
+      error: null,
+    });
+
+    const response = await getEvent(buildRequest('Bearer token'), { params: Promise.resolve({ id: 'event-1' }) });
+    expect(response.status).toBe(403);
+  });
+
+  it('returns 403 for audience role without assignment access', async () => {
+    mockDb.getRoleAssignmentsByUserId.mockResolvedValueOnce({
+      data: [{ id: 'ra-audience', role: 'audience', scope: 'global', scoped_id: null }],
       error: null,
     });
 
