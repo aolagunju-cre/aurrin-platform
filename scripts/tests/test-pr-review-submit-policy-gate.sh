@@ -40,7 +40,7 @@ grep -F 'Dispatch requeue after MVP merge reported success path but no auto-disp
 grep -F 'EFFECTIVE_PIPELINE_PR="${PIPELINE_PR:-}"' "$WORKFLOW" >/dev/null
 grep -F 'PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title,headRefName,baseRefName,author)' "$WORKFLOW" >/dev/null
 grep -F "bash scripts/classify-pipeline-pr.sh" "$WORKFLOW" >/dev/null
-grep -F 'gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch' "$WORKFLOW" >/dev/null
+grep -F 'gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin' "$WORKFLOW" >/dev/null
 grep -F "merged via MVP fast-track mode" "$WORKFLOW" >/dev/null
 grep -F "bug\" or . == \"docs\" or . == \"test\"" "$WORKFLOW" >/dev/null
 grep -F "startsWith(github.event.comment.body, '/approve_sensitive')" "$WORKFLOW" >/dev/null

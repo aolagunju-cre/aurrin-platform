@@ -39,7 +39,7 @@ grep -F 'PRIMARY_MERGE_TOKEN="${PIPELINE_APP_TOKEN:-}"' "$SCRIPT" >/dev/null
 grep -F 'SECONDARY_MERGE_TOKEN="${GH_TOKEN:-}"' "$SCRIPT" >/dev/null
 grep -F 'READY_TOKEN="${PRIMARY_MERGE_TOKEN:-${SECONDARY_MERGE_TOKEN:-${FALLBACK_MERGE_TOKEN:-}}}"' "$SCRIPT" >/dev/null
 grep -F 'merge_with_token "$SECONDARY_MERGE_TOKEN" "secondary" 1' "$SCRIPT" >/dev/null
-grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch' "$SCRIPT" >/dev/null
+grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"' "$SCRIPT" >/dev/null
 grep -F 'Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping orphaned-issue dispatch to preserve one-PR-at-a-time flow.' "$SCRIPT" >/dev/null
 grep -F 'excluded from actionable count until dependencies close' "$SCRIPT" >/dev/null

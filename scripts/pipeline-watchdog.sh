@@ -378,7 +378,7 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
       local attempt
       [ -z "$token" ] && return 1
       for attempt in $(seq 1 "$attempts"); do
-        if GH_TOKEN="$token" gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch; then
+        if GH_TOKEN="$token" gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin; then
           return 0
         fi
         echo "::warning::PR #${PR_NUM}: ${label} merge attempt ${attempt}/${attempts} failed."

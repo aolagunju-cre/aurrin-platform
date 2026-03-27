@@ -390,7 +390,7 @@ jobs:
             local attempt
             [ -z "$token" ] && return 1
             for attempt in $(seq 1 "$attempts"); do
-              if GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch; then
+              if GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin; then
                 return 0
               fi
               echo "::warning::${label} merge attempt ${attempt}/${attempts} failed for PR #${PR_NUMBER}."
@@ -1009,7 +1009,7 @@ jobs:
             local attempt
             [ -z "$token" ] && return 1
             for attempt in $(seq 1 "$attempts"); do
-              if GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin --delete-branch; then
+              if GH_TOKEN="$token" gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --admin; then
                 return 0
               fi
               echo "::warning::${label} merge attempt ${attempt}/${attempts} failed for PR #${PR_NUMBER}."
