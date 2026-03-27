@@ -271,6 +271,26 @@ export interface JudgeScoreUpsert {
   locked_at?: string | null;
 }
 
+export interface AudienceSessionRecord {
+  id: string;
+  event_id: string;
+  session_token: string;
+  ip_address: string | null;
+  email: string | null;
+  consent_given: boolean;
+  created_at: string;
+  expires_at: string | null;
+}
+
+export interface AudienceResponseRecord {
+  id: string;
+  audience_session_id: string;
+  founder_pitch_id: string;
+  responses: Record<string, unknown>;
+  submitted_at: string | null;
+  created_at: string;
+}
+
 export interface FounderPitchRecord {
   id: string;
   founder_id: string;
@@ -541,6 +561,7 @@ export interface SupabaseDBClient {
   getFile(fileId: string): Promise<{ data: FileRecord | null; error: Error | null }>;
   deleteFile(fileId: string): Promise<{ error: Error | null }>;
   getExpiredFiles(beforeDate: Date): Promise<{ data: FileRecord[]; error: Error | null }>;
+  deleteExpiredAudienceSessions(beforeDate: Date): Promise<{ deleted: number; error: Error | null }>;
   insertAuditLog(log: AuditLogInsert): Promise<{ error: Error | null }>;
   insertOutboxJob(job: OutboxJobInsert): Promise<{ data: OutboxJob | null; error: Error | null }>;
   fetchPendingJobs(limit: number): Promise<{ data: OutboxJob[]; error: Error | null }>;
@@ -644,6 +665,10 @@ export function getSupabaseClient(): SupabaseClient {
         getFile: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         deleteFile: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getExpiredFiles: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        deleteExpiredAudienceSessions: async () => ({
+          deleted: 0,
+          error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set'),
+        }),
         insertAuditLog: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertOutboxJob: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         fetchPendingJobs: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -858,6 +883,26 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows, error: null };
       } catch (err) {
         return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async deleteExpiredAudienceSessions(beforeDate) {
+      try {
+        const iso = beforeDate.toISOString();
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/audience_sessions?expires_at=lt.${encodeURIComponent(iso)}&select=id`,
+          {
+            method: 'DELETE',
+            headers: { ...headers, Prefer: 'return=representation' },
+          }
+        );
+        if (!response.ok) {
+          return { deleted: 0, error: new Error(`Audience session cleanup failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as Array<{ id: string }>;
+        return { deleted: rows.length, error: null };
+      } catch (err) {
+        return { deleted: 0, error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
 

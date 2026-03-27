@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { processPendingJobs } from '../../../../lib/jobs/processor';
 import { enqueueHourlySubscriptionReconciliation } from '../../../../lib/jobs/reconciliation-scheduler';
+import { getSupabaseClient } from '../../../../lib/db/client';
 
 /**
  * Cron route: GET /api/cron/jobs
@@ -18,6 +19,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   try {
+    let expiredAudienceSessionsDeleted = 0;
+    try {
+      const cleanup = await getSupabaseClient().db.deleteExpiredAudienceSessions(new Date());
+      if (cleanup.error) {
+        console.error('[cron/jobs] Failed to cleanup expired audience sessions:', cleanup.error);
+      } else {
+        expiredAudienceSessionsDeleted = cleanup.deleted;
+      }
+    } catch (error) {
+      console.error('[cron/jobs] Failed to cleanup expired audience sessions:', error);
+    }
+
     try {
       await enqueueHourlySubscriptionReconciliation();
     } catch (error) {
@@ -25,7 +38,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     }
 
     const result = await processPendingJobs();
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, expiredAudienceSessionsDeleted, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[cron/jobs] Unhandled error during job processing:', message);

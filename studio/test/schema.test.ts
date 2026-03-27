@@ -14,6 +14,10 @@ const eventLifecycleContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/012_event_lifecycle_sponsor_contract.sql'),
   'utf8'
 );
+const audienceValidationContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/013_audience_validation_contract.sql'),
+  'utf8'
+);
 
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
@@ -152,8 +156,16 @@ describe('Database Schema Validation', () => {
     });
 
     test('audience_responses has dedup constraint', () => {
-      // Verified in migration: UNIQUE(audience_session_id, founder_pitch_id, question_id)
-      expect(true).toBe(true);
+      expect(audienceValidationContractSql).toContain('UNIQUE(audience_session_id, founder_pitch_id)');
+      expect(audienceValidationContractSql).toContain(
+        'DROP CONSTRAINT IF EXISTS audience_responses_audience_session_id_founder_pitch_id_question_id_key'
+      );
+    });
+
+    test('audience session expiry defaults and response contract columns are enforced', () => {
+      expect(audienceValidationContractSql).toContain("ALTER COLUMN expires_at SET DEFAULT (NOW() + INTERVAL '24 hours')");
+      expect(audienceValidationContractSql).toContain("ADD COLUMN IF NOT EXISTS responses JSONB NOT NULL DEFAULT '{}'::jsonb");
+      expect(audienceValidationContractSql).toContain('ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ');
     });
 
     test('mentor_matches has repeat prevention constraint', () => {
@@ -256,7 +268,10 @@ describe('Database Schema Validation', () => {
     });
 
     test('audience policies allow public participation', () => {
-      expect(true).toBe(true);
+      expect(audienceValidationContractSql).toContain('CREATE POLICY audience_sessions_insert_public ON audience_sessions');
+      expect(audienceValidationContractSql).toContain('CREATE POLICY audience_sessions_select_own_session ON audience_sessions');
+      expect(audienceValidationContractSql).toContain('CREATE POLICY audience_responses_select_founder ON audience_responses');
+      expect(audienceValidationContractSql).toContain('CREATE POLICY audience_responses_select_own_session ON audience_responses');
     });
   });
 

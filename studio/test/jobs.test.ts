@@ -40,6 +40,7 @@ function makeClient(overrides: Partial<SupabaseClient['db']> = {}): SupabaseClie
     getFile: jest.fn().mockResolvedValue({ data: null, error: null }),
     deleteFile: jest.fn().mockResolvedValue({ error: null }),
     getExpiredFiles: jest.fn().mockResolvedValue({ data: [], error: null }),
+    deleteExpiredAudienceSessions: jest.fn().mockResolvedValue({ deleted: 0, error: null }),
     insertAuditLog: jest.fn().mockResolvedValue({ error: null }),
     insertOutboxJob: jest.fn().mockResolvedValue({ data: makeJob(), error: null }),
     fetchPendingJobs: jest.fn().mockResolvedValue({ data: [], error: null }),
