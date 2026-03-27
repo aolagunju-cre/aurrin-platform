@@ -260,6 +260,41 @@ describe('social assets routes', () => {
     expect(payload.data.error).toBe('render failed');
   });
 
+  it('GET /api/social-assets/[jobId]/status maps dead_letter state to failed', async () => {
+    mockedRequireAdmin.mockResolvedValueOnce({
+      userId: 'admin-1',
+      auth: { sub: 'admin-1', email: 'admin@example.com', aud: 'authenticated', iat: 0, exp: 1, iss: 'issuer' },
+    });
+    mockDb.queryTable.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'job-dead-letter',
+          state: 'dead_letter',
+          payload: {
+            asset_type: 'event',
+            founder_id: 'founder-1',
+            event_id: 'event-1',
+            format: 'linkedin',
+          },
+          error_message: 'retry exhausted',
+          last_error: 'retry exhausted',
+          created_at: '2026-03-27T00:00:00.000Z',
+          completed_at: null,
+        },
+      ],
+      error: null,
+    });
+
+    const response = await getSocialAssetStatus(buildRequest('http://localhost/api/social-assets/job-dead-letter/status', 'GET'), {
+      params: Promise.resolve({ jobId: 'job-dead-letter' }),
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.data.status).toBe('failed');
+    expect(payload.data.error).toBe('retry exhausted');
+  });
+
   it('GET /api/social-assets/[jobId]/status includes signed metadata on completed jobs', async () => {
     mockedRequireAdmin.mockResolvedValueOnce({
       userId: 'admin-1',

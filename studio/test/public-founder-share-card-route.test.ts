@@ -93,5 +93,7 @@ describe('public founder share-card route', () => {
         download_action_label: 'Download Share Card',
       }),
     ]);
+    expect(mockStorage.upload).not.toHaveBeenCalled();
+    expect(mockStorage.remove).not.toHaveBeenCalled();
   });
 });
