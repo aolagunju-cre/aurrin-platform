@@ -6,15 +6,30 @@ import { GET as getFounderValidation } from '../src/app/api/founder/events/[even
 import { POST as generateReport } from '../src/app/api/founder/reports/generate/route';
 import { GET as getReportStatus } from '../src/app/api/founder/reports/[reportId]/status/route';
 import { GET as downloadReport } from '../src/app/api/founder/reports/[reportId]/download/route';
+import { POST as generateMentorMatches } from '../src/app/api/admin/events/[eventId]/mentors/match/route';
+import { PATCH as patchMentorMatch } from '../src/app/api/mentor/matches/[matchId]/route';
+import { GET as listFounderMentorMatches } from '../src/app/api/founder/matches/route';
+import { requireAdmin } from '../src/lib/auth/admin';
 import { requireFounderOrAdmin } from '../src/lib/auth/founder';
+import { requireMentor } from '../src/lib/auth/mentor';
 import { enqueueJob } from '../src/lib/jobs/enqueue';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { handlePdfJob } from '../src/lib/jobs/handlers/pdf';
+import { handleMentorMatchJob } from '../src/lib/jobs/handlers/mentor-match';
 import { renderEmailTemplate } from '../src/lib/email/templates';
+
+jest.mock('../src/lib/auth/admin', () => ({
+  requireAdmin: jest.fn(),
+}));
 
 jest.mock('../src/lib/auth/founder', () => ({
   requireFounderOrAdmin: jest.fn(),
   canAccessFounderEvent: jest.fn(() => true),
+}));
+
+jest.mock('../src/lib/auth/mentor', () => ({
+  requireMentor: jest.fn(),
+  canAccessMentorEvent: jest.fn(() => true),
 }));
 
 jest.mock('../src/lib/jobs/enqueue', () => ({
@@ -26,6 +41,8 @@ jest.mock('../src/lib/db/client', () => ({
 }));
 
 const mockedRequireFounderOrAdmin = requireFounderOrAdmin as jest.MockedFunction<typeof requireFounderOrAdmin>;
+const mockedRequireAdmin = requireAdmin as jest.MockedFunction<typeof requireAdmin>;
+const mockedRequireMentor = requireMentor as jest.MockedFunction<typeof requireMentor>;
 const mockedEnqueueJob = enqueueJob as jest.MockedFunction<typeof enqueueJob>;
 const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof getSupabaseClient>;
 
@@ -77,12 +94,52 @@ describe('founder portal end-to-end contract', () => {
     isAdmin: false,
     isFounder: true,
   };
+  const adminContext = {
+    userId: 'admin-1',
+    auth: {
+      sub: 'admin-1',
+      email: 'admin@example.com',
+      iat: 0,
+      exp: 9999999999,
+      aud: 'authenticated',
+      iss: 'https://example.supabase.co/auth/v1',
+    },
+    roleAssignments: [],
+    isAdmin: true,
+  };
+  const mentorContext = {
+    userId: 'mentor-2',
+    auth: {
+      sub: 'mentor-2',
+      email: 'mentor2@example.com',
+      iat: 0,
+      exp: 9999999999,
+      aud: 'authenticated',
+      iss: 'https://example.supabase.co/auth/v1',
+    },
+    roleAssignments: [
+      {
+        id: 'ra-mentor-2',
+        user_id: 'mentor-2',
+        role: 'mentor',
+        scope: 'event',
+        scoped_id: 'event-1',
+        created_at: '2026-03-27T00:00:00.000Z',
+        updated_at: '2026-03-27T00:00:00.000Z',
+        created_by: null,
+      },
+    ],
+    isAdmin: false,
+    isMentor: true,
+  };
 
   let mockDb: Record<string, jest.Mock>;
   let mockStorage: Record<string, jest.Mock>;
 
   beforeEach(() => {
+    mockedRequireAdmin.mockReset();
     mockedRequireFounderOrAdmin.mockReset();
+    mockedRequireMentor.mockReset();
     mockedEnqueueJob.mockReset();
     mockedGetSupabaseClient.mockReset();
 
@@ -90,6 +147,13 @@ describe('founder portal end-to-end contract', () => {
       getEventById: jest.fn(),
       queryTable: jest.fn(),
       insertFile: jest.fn(),
+      listMentorIdsByEventId: jest.fn(),
+      listFounderIdsByEventId: jest.fn(),
+      listRecentMentorPairs: jest.fn(),
+      insertMentorMatch: jest.fn(),
+      getMentorMatchById: jest.fn(),
+      updateMentorMatchById: jest.fn(),
+      getUserById: jest.fn(),
     };
 
     mockStorage = {
@@ -313,6 +377,250 @@ describe('founder portal end-to-end contract', () => {
     const downloadPayload = await downloadResponse.json();
     expect(downloadPayload.data.url).toBe('https://example.test/signed/report-job-2.pdf');
     expect(downloadPayload.data.expires_in).toBe(7 * 24 * 60 * 60);
+  });
+
+  it('covers mentor-matching contract flow: random matching, accept transitions, and intro email trigger', async () => {
+    const createdMatches: Array<Record<string, unknown>> = [];
+    let founderAccepted = false;
+
+    mockedRequireAdmin.mockResolvedValue(adminContext as never);
+    mockedRequireMentor.mockResolvedValue(mentorContext as never);
+    mockedRequireFounderOrAdmin.mockResolvedValue(founderContext as never);
+    mockedEnqueueJob.mockResolvedValue({
+      id: 'job-mentor-1',
+      job_type: 'mentor_match',
+      aggregate_id: 'match-1',
+      aggregate_type: 'mentor_match',
+      payload: {},
+      state: 'pending',
+      retry_count: 0,
+      max_retries: 3,
+      last_error: null,
+      email_id: null,
+      error_message: null,
+      scheduled_at: null,
+      started_at: null,
+      completed_at: null,
+      created_at: '2026-03-27T00:00:00.000Z',
+      updated_at: '2026-03-27T00:00:00.000Z',
+    } as never);
+
+    mockDb.getEventById.mockResolvedValue({
+      data: { id: 'event-1', name: 'Demo Day', publishing_start: '2000-01-01T00:00:00.000Z' },
+      error: null,
+    });
+    mockDb.listMentorIdsByEventId
+      .mockResolvedValueOnce({ data: ['mentor-1', 'mentor-2'], error: null })
+      .mockResolvedValueOnce({ data: ['mentor-1'], error: null });
+    mockDb.listFounderIdsByEventId.mockResolvedValue({ data: ['founder-1'], error: null });
+    mockDb.listRecentMentorPairs.mockResolvedValue({
+      data: [{ mentor_id: 'mentor-1', founder_id: 'founder-1', created_at: '2026-03-20T00:00:00.000Z' }],
+      error: null,
+    });
+    mockDb.insertMentorMatch.mockImplementation(async (payload: Record<string, unknown>) => {
+      const match = {
+        id: `match-${createdMatches.length + 1}`,
+        mentor_id: payload.mentor_id as string,
+        founder_id: payload.founder_id as string,
+        event_id: payload.event_id as string,
+        mentor_status: payload.mentor_status ?? 'pending',
+        founder_status: payload.founder_status ?? 'pending',
+        mentor_accepted_at: null,
+        founder_accepted_at: founderAccepted ? '2026-03-27T00:12:00.000Z' : null,
+        declined_by: null,
+        notes: null,
+        created_at: '2026-03-27T00:00:00.000Z',
+        updated_at: '2026-03-27T00:00:00.000Z',
+      };
+      createdMatches.push(match);
+      return { data: match, error: null };
+    });
+    mockDb.getMentorMatchById.mockImplementation(async (matchId: string) => {
+      const match = createdMatches.find((candidate) => candidate.id === matchId);
+      if (!match) {
+        return { data: null, error: null };
+      }
+      return {
+        data: {
+          ...match,
+          founder_status: founderAccepted ? 'accepted' : match.founder_status,
+          founder_accepted_at: founderAccepted ? '2026-03-27T00:12:00.000Z' : null,
+        },
+        error: null,
+      };
+    });
+    mockDb.updateMentorMatchById.mockImplementation(async (matchId: string, updates: Record<string, unknown>) => {
+      const match = createdMatches.find((candidate) => candidate.id === matchId);
+      if (!match) {
+        return { data: null, error: null };
+      }
+      Object.assign(match, updates, { updated_at: '2026-03-27T00:15:00.000Z' });
+      return { data: match, error: null };
+    });
+    mockDb.getUserById.mockImplementation(async (userId: string) => {
+      if (userId === 'mentor-2') {
+        return { data: { id: 'mentor-2', email: 'mentor2@example.com', name: 'Mentor Two' }, error: null };
+      }
+      if (userId === 'founder-user-1') {
+        return { data: { id: 'founder-user-1', email: 'founder@example.com', name: 'Founder One' }, error: null };
+      }
+      return { data: null, error: null };
+    });
+    mockDb.queryTable.mockImplementation(async (table: string) => {
+      if (table === 'founders') {
+        return { data: [{ id: 'founder-1', user_id: 'founder-user-1', company_name: 'Aurrin Labs', bio: 'Pitch summary' }], error: null };
+      }
+      if (table === 'mentor_matches') {
+        return {
+          data: createdMatches
+            .filter((match) => match.mentor_status === 'accepted' && founderAccepted)
+            .map((match) => ({
+              id: match.id,
+              founder_id: match.founder_id,
+              mentor_id: match.mentor_id,
+              event_id: match.event_id,
+              mentor_status: 'accepted',
+              founder_status: 'accepted',
+              mentor_accepted_at: match.mentor_accepted_at ?? null,
+              founder_accepted_at: founderAccepted ? '2026-03-27T00:12:00.000Z' : null,
+              created_at: match.created_at,
+              mentor: { id: 'mentor-2', name: 'Mentor Two', email: 'mentor2@example.com' },
+              event: { id: 'event-1', name: 'Demo Day', publishing_start: '2000-01-01T00:00:00.000Z' },
+            })),
+          error: null,
+        };
+      }
+      return { data: [], error: null };
+    });
+
+    const generateResponse = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 2,
+        exclude_previous_pairs_months: 12,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(generateResponse.status).toBe(200);
+    expect(await generateResponse.json()).toEqual({ matches_created: 1, conflicts: 1 });
+
+    const patchResponse = await patchMentorMatch(
+      buildRequest('http://localhost/api/mentor/matches/match-1', 'PATCH', { action: 'accept' }),
+      { params: Promise.resolve({ matchId: 'match-1' }) }
+    );
+    expect(patchResponse.status).toBe(200);
+    expect(await patchResponse.json()).toEqual({
+      success: true,
+      data: { status: 'accepted', mutual_acceptance: false },
+    });
+
+    let founderListResponse = await listFounderMentorMatches(buildRequest('http://localhost/api/founder/matches', 'GET'));
+    expect(founderListResponse.status).toBe(200);
+    expect((await founderListResponse.json()).data.matches).toHaveLength(0);
+
+    founderAccepted = true;
+    const introResult = await handleMentorMatchJob({ match_id: 'match-1', reason: 'mutual_acceptance' });
+    expect(introResult.success).toBe(true);
+
+    const introCalls = mockedEnqueueJob.mock.calls.filter(
+      (call) => call[0] === 'send_email' && call[1]?.template_name === 'match_accepted'
+    );
+    expect(introCalls).toHaveLength(2);
+
+    founderListResponse = await listFounderMentorMatches(buildRequest('http://localhost/api/founder/matches', 'GET'));
+    expect(founderListResponse.status).toBe(200);
+    const founderPayload = await founderListResponse.json();
+    expect(founderPayload.data.matches).toHaveLength(1);
+    expect(founderPayload.data.matches[0]).toEqual(
+      expect.objectContaining({
+        mentor_accepted_at: expect.any(String),
+        founder_accepted_at: expect.any(String),
+      })
+    );
+  });
+
+  it('supports declined-state retry with a different pairing and allows rerun outside the 12-month window', async () => {
+    const createdPairs: Array<{ mentor_id: string; founder_id: string }> = [];
+    let recentPairData: Array<{ mentor_id: string; founder_id: string; created_at: string }> = [
+      { mentor_id: 'mentor-1', founder_id: 'founder-1', created_at: '2026-03-20T00:00:00.000Z' },
+    ];
+
+    mockedRequireAdmin.mockResolvedValue(adminContext as never);
+    mockedEnqueueJob.mockResolvedValue({
+      id: 'job-mentor-2',
+      job_type: 'mentor_match',
+      aggregate_id: 'match-1',
+      aggregate_type: 'mentor_match',
+      payload: {},
+      state: 'pending',
+      retry_count: 0,
+      max_retries: 3,
+      last_error: null,
+      email_id: null,
+      error_message: null,
+      scheduled_at: null,
+      started_at: null,
+      completed_at: null,
+      created_at: '2026-03-27T00:00:00.000Z',
+      updated_at: '2026-03-27T00:00:00.000Z',
+    } as never);
+
+    mockDb.getEventById.mockResolvedValue({
+      data: { id: 'event-1', name: 'Demo Day', publishing_start: '2000-01-01T00:00:00.000Z' },
+      error: null,
+    });
+    mockDb.listMentorIdsByEventId
+      .mockResolvedValueOnce({ data: ['mentor-1', 'mentor-2'], error: null })
+      .mockResolvedValueOnce({ data: ['mentor-1'], error: null });
+    mockDb.listFounderIdsByEventId.mockResolvedValue({ data: ['founder-1'], error: null });
+    mockDb.listRecentMentorPairs.mockImplementation(async () => ({ data: recentPairData, error: null }));
+    mockDb.insertMentorMatch.mockImplementation(async (payload: Record<string, unknown>) => {
+      createdPairs.push({ mentor_id: payload.mentor_id as string, founder_id: payload.founder_id as string });
+      return {
+        data: {
+          id: `match-${createdPairs.length}`,
+          mentor_id: payload.mentor_id,
+          founder_id: payload.founder_id,
+          event_id: payload.event_id,
+          mentor_status: 'declined',
+          founder_status: 'pending',
+          mentor_accepted_at: null,
+          founder_accepted_at: null,
+          declined_by: 'mentor',
+          notes: 'declined in prior run',
+          created_at: '2026-03-27T00:00:00.000Z',
+          updated_at: '2026-03-27T00:00:00.000Z',
+        },
+        error: null,
+      };
+    });
+
+    const firstRun = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 2,
+        exclude_previous_pairs_months: 12,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(firstRun.status).toBe(200);
+    expect(await firstRun.json()).toEqual({ matches_created: 1, conflicts: 1 });
+    expect(createdPairs[0]).toEqual({ mentor_id: 'mentor-2', founder_id: 'founder-1' });
+
+    recentPairData = [];
+    const secondRun = await generateMentorMatches(
+      buildRequest('http://localhost/api/admin/events/event-1/mentors/match', 'POST', {
+        num_mentors_per_founder: 1,
+        exclude_previous_pairs_months: 12,
+      }),
+      { params: Promise.resolve({ eventId: 'event-1' }) }
+    );
+    expect(secondRun.status).toBe(200);
+    expect(await secondRun.json()).toEqual({ matches_created: 1, conflicts: 0 });
+    expect(createdPairs).toEqual(
+      expect.arrayContaining([
+        { mentor_id: 'mentor-2', founder_id: 'founder-1' },
+        { mentor_id: 'mentor-1', founder_id: 'founder-1' },
+      ])
+    );
   });
 
   it('verifies generated PDF content markers and score-published email copy', async () => {
