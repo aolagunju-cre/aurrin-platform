@@ -41,6 +41,31 @@ grep -F 'workflows: ["Pipeline Repo Assist", "Frontend Agent", "PRD Decomposer"]
   exit 1
 }
 
+grep -F "TRIGGER_WORKFLOW_NAME: \${{ github.event.workflow_run.name || '' }}" "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must capture the triggering workflow name for PRD Decomposer handoff handling" >&2
+  exit 1
+}
+
+grep -F 'record_deferred_marker() {' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must be able to persist a deferred handoff marker for PRD Decomposer child issues" >&2
+  exit 1
+}
+
+grep -F 'contains("actions/runs/" + $run_id)' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must identify child issues emitted by the triggering PRD Decomposer run" >&2
+  exit 1
+}
+
+grep -F 'recorded deferred PRD Decomposer handoff behind active ${issue_workflow} run ${blocking_run_id}.' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must record deferred handoff coverage when a decomposer batch lands behind an active repo-assist lane" >&2
+  exit 1
+}
+
+grep -F 'PRD Decomposer created actionable child issues, and a deferred handoff marker is in place behind the active repo-assist lane.' "$WORKFLOW" >/dev/null || {
+  echo "FAIL: auto-dispatch-requeue must exit cleanly once a decomposer child handoff has been secured" >&2
+  exit 1
+}
+
 grep -F "<!-- provider-retry:v1" "$WORKFLOW" >/dev/null || {
   echo "FAIL: auto-dispatch-requeue must record provider retry markers" >&2
   exit 1

@@ -308,6 +308,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+          TRIGGER_WORKFLOW_NAME: ${{ github.event.workflow_run.name || '' }}
         run: |
           set -euo pipefail
 
@@ -315,6 +316,7 @@ jobs:
           DISPATCH_MARKER='<!-- self-healing-dispatch:v1'
           OUTCOME_MARKER='<!-- self-healing-dispatch-outcome:v1'
           MAX_STALE_REDISPATCHES=3
+          DECOMPOSER_HANDOFF_READY="false"
 
           read_marker_field() {
             local body=$1
@@ -384,6 +386,34 @@ jobs:
           live_issue_state() {
             local issue_number=$1
             gh issue view "$issue_number" --repo "$REPO" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN"
+          }
+
+          record_deferred_marker() {
+            local issue_number=$1
+            local route=$2
+            local workflow_file=$3
+            local blocking_run_id=$4
+            local blocking_run_url=$5
+            local deferred_at body
+
+            deferred_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            body=$(printf '%s\n' \
+              '<!-- self-healing-dispatch-deferred:v1' \
+              'dispatch_workflow=Auto-Dispatch Requeue' \
+              "dispatch_workflow_run_id=${GITHUB_RUN_ID}" \
+              "dispatch_workflow_run_url=https://github.com/${REPO}/actions/runs/${GITHUB_RUN_ID}" \
+              "route=${route}" \
+              "workflow_file=${workflow_file}" \
+              "blocking_repo_assist_run_id=${blocking_run_id}" \
+              "blocking_repo_assist_run_url=${blocking_run_url}" \
+              "blocking_agent_run_id=${blocking_run_id}" \
+              "blocking_agent_run_url=${blocking_run_url}" \
+              "deferred_at=${deferred_at}" \
+              '-->' \
+              '' \
+              "Self-healing audit marker: PRD Decomposer child handoff deferred while ${workflow_file} was already active.")
+            gh issue comment "$issue_number" --repo "$REPO" --body "$body" >/dev/null || \
+              echo "::warning::Could not record deferred dispatch marker on issue #${issue_number}"
           }
 
           cancel_superseded_repo_assist_runs() {
@@ -471,6 +501,68 @@ jobs:
             PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --limit 200 \
               --json number,title,createdAt,labels,body 2>/dev/null || echo '[]')
             TRIGGER_ISSUE=$(find_issue_for_run "${TRIGGER_RUN_ID:-}")
+          }
+
+          ensure_decomposer_child_handoff() {
+            local batch_children issue_row issue_num issue_body issue_classification issue_actionable issue_workflow issue_route issue_labels
+            local blocking_dependencies issue_active active_runs_json blocking_run_id blocking_run_url deferred_json deferred_id
+
+            if [ "${TRIGGER_WORKFLOW_NAME:-}" != "PRD Decomposer" ] || [ -z "${TRIGGER_RUN_ID:-}" ]; then
+              return 0
+            fi
+
+            batch_children=$(printf '%s' "$PIPELINE_ISSUES" | jq -c --arg run_id "$TRIGGER_RUN_ID" '
+              [ .[] | select((.body // "") | contains("actions/runs/" + $run_id)) ] | sort_by(.createdAt)
+            ')
+
+            while IFS= read -r issue_row; do
+              [ -z "$issue_row" ] && continue
+              issue_num=$(printf '%s' "$issue_row" | jq -r '.number')
+              issue_body=$(printf '%s' "$issue_row" | jq -r '.body // ""')
+              issue_classification=$(printf '%s' "$issue_row" | scripts/classify-pipeline-issue.sh)
+              issue_actionable=$(printf '%s' "$issue_classification" | jq -r '.actionable')
+              issue_workflow=$(printf '%s' "$issue_classification" | jq -r '.workflow_file')
+              issue_route=$(printf '%s' "$issue_classification" | jq -r '.route')
+              issue_labels=$(printf '%s' "$issue_row" | jq -c '[.labels[]?.name // empty]')
+
+              if [ "$issue_actionable" != "true" ]; then
+                continue
+              fi
+
+              if printf '%s\n' "$LINKED_ISSUES" | grep -q "^${issue_num}$"; then
+                continue
+              fi
+
+              blocking_dependencies=$(open_dependency_numbers "$issue_body" || true)
+              if [ -n "$blocking_dependencies" ]; then
+                ensure_dependency_blocked_label "$issue_num" "$issue_labels" "$blocking_dependencies"
+                continue
+              fi
+
+              issue_active=$(workflow_active_count "$issue_workflow")
+              if [ "${issue_active:-0}" -le 0 ]; then
+                continue
+              fi
+
+              deferred_json=$(find_marker_comment "$issue_num" "$DEFERRED_MARKER")
+              deferred_id=$(printf '%s' "$deferred_json" | jq -r '.id // empty')
+              if [ -z "$deferred_id" ]; then
+                active_runs_json=$(gh run list --repo "$REPO" \
+                  --workflow "$issue_workflow" \
+                  --limit 20 \
+                  --json databaseId,status,event,url,createdAt \
+                  | jq '[.[] | select((.status == "in_progress" or .status == "queued") and .event == "workflow_dispatch")] | sort_by(.createdAt)')
+                blocking_run_id=$(printf '%s' "$active_runs_json" | jq -r '.[0].databaseId // ""')
+                blocking_run_url=$(printf '%s' "$active_runs_json" | jq -r '.[0].url // ""')
+                record_deferred_marker "$issue_num" "$issue_route" "$issue_workflow" "$blocking_run_id" "$blocking_run_url"
+                echo "Issue #${issue_num}: recorded deferred PRD Decomposer handoff behind active ${issue_workflow} run ${blocking_run_id}."
+              else
+                echo "Issue #${issue_num}: existing deferred handoff marker already covers this PRD Decomposer batch."
+              fi
+
+              DECOMPOSER_HANDOFF_READY="true"
+              break
+            done < <(printf '%s' "$batch_children" | jq -c '.[]')
           }
 
           select_candidate_issue() {
@@ -614,9 +706,14 @@ jobs:
           }
 
           refresh_issue_snapshots
+          ensure_decomposer_child_handoff
           select_candidate_issue
 
           if [ -z "$SELECTED_ISSUE" ]; then
+            if [ "$DECOMPOSER_HANDOFF_READY" = "true" ]; then
+              echo "PRD Decomposer created actionable child issues, and a deferred handoff marker is in place behind the active repo-assist lane."
+              exit 0
+            fi
             echo "No deferred actionable issues require re-dispatch and no backlog fallback candidate is ready."
             exit 0
           fi
