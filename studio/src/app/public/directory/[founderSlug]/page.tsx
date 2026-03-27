@@ -87,8 +87,8 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
 
   if (!profile) {
     return (
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p role="alert">Founder profile not found.</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p role="alert" className="py-12 text-center text-default-400">Founder profile not found.</p>
       </main>
     );
   }
@@ -96,68 +96,68 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
   const profileUrl = `${getBaseUrl()}/public/directory/${encodeURIComponent(profile.founder_slug)}`;
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1rem' }}>
-      <header style={{ display: 'grid', gap: '0.5rem' }}>
-        <h1 style={{ marginBottom: 0 }}>{profile.name ?? 'Founder Profile'}</h1>
-        <p style={{ margin: 0 }}>
+    <main className="container mx-auto max-w-3xl px-6 py-8 space-y-6">
+      <header className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{profile.name ?? 'Founder Profile'}</h1>
+        <p className="text-lg text-default-500">
           <strong>{profile.company ?? 'Company unavailable'}</strong>
         </p>
-        <p style={{ margin: 0 }}>Industry: {profile.industry ?? 'Not listed'}</p>
-        <p style={{ margin: 0 }}>Stage: {profile.stage ?? 'Not listed'}</p>
+        <p className="text-sm text-default-500">Industry: {profile.industry ?? 'Not listed'}</p>
+        <p className="text-sm text-default-500">Stage: {profile.stage ?? 'Not listed'}</p>
       </header>
 
       {profile.photo ? (
         <img
           src={profile.photo}
           alt={`${profile.name ?? profile.company ?? 'Founder'} profile`}
-          style={{ width: '100%', maxWidth: 460, borderRadius: 10 }}
+          className="w-full max-w-md rounded-xl"
         />
       ) : null}
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ marginBottom: 0 }}>Pitch Summary</h2>
-        <p style={{ marginTop: 0 }}>{profile.summary ?? 'Summary not available.'}</p>
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold text-foreground">Pitch Summary</h2>
+        <p className="text-default-500">{profile.summary ?? 'Summary not available.'}</p>
       </section>
 
-      <section style={{ display: 'grid', gap: '0.25rem' }}>
-        <h2 style={{ marginBottom: 0 }}>Event</h2>
-        <p style={{ margin: 0 }}>
+      <section className="space-y-1">
+        <h2 className="text-xl font-semibold text-foreground">Event</h2>
+        <p className="text-default-500">
           {profile.event.name} · {toDisplayDate(profile.event.starts_at)}
         </p>
-        <p style={{ margin: 0 }}>
-          <Link href={`/public/validate/${encodeURIComponent(profile.event.id)}`}>Open Public Event Page</Link>
+        <p>
+          <Link href={`/public/validate/${encodeURIComponent(profile.event.id)}`} className="text-violet-400 hover:text-violet-300 transition-colors">Open Public Event Page</Link>
         </p>
       </section>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ marginBottom: 0 }}>Profile Highlights</h2>
-        <p style={{ margin: 0 }}>Aggregate score: {profile.score ?? 'Not published'}</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold text-foreground">Profile Highlights</h2>
+        <p className="text-default-500">Aggregate score: {profile.score ?? 'Not published'}</p>
+        <div className="flex flex-wrap gap-2">
           {(profile.badges.length > 0 ? profile.badges : ['Top Score', 'Audience Favorite']).map((badge) => (
-            <span key={badge} style={{ border: '1px solid #ccc', borderRadius: 999, padding: '0.2rem 0.65rem' }}>
+            <span key={badge} className="inline-flex px-3 py-1 rounded-full text-xs font-medium border border-default-200 bg-default-50 dark:bg-default-50/5 text-default-600">
               {badge}
             </span>
           ))}
         </div>
       </section>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ marginBottom: 0 }}>Deck and Social</h2>
+      <section className="space-y-2">
+        <h2 className="text-xl font-semibold text-foreground">Deck and Social</h2>
         {profile.deck_link ? (
-          <p style={{ margin: 0 }}>
-            <a href={profile.deck_link} target="_blank" rel="noreferrer">
+          <p>
+            <a href={profile.deck_link} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">
               Preview Deck
             </a>
           </p>
         ) : (
-          <p style={{ margin: 0 }}>Deck link not available.</p>
+          <p className="text-default-400">Deck link not available.</p>
         )}
 
-        <ul style={{ margin: 0, paddingInlineStart: '1.25rem' }}>
+        <ul className="list-disc pl-5 space-y-1 text-default-500">
           {profile.social_links.website ? (
             <li>
               Website:{' '}
-              <a href={profile.social_links.website} target="_blank" rel="noreferrer">
+              <a href={profile.social_links.website} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">
                 {toSocialLinkLabel(profile.social_links.website)}
               </a>
             </li>
@@ -165,7 +165,7 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
           {profile.social_links.linkedin ? (
             <li>
               LinkedIn:{' '}
-              <a href={profile.social_links.linkedin} target="_blank" rel="noreferrer">
+              <a href={profile.social_links.linkedin} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">
                 {toSocialLinkLabel(profile.social_links.linkedin)}
               </a>
             </li>
@@ -173,7 +173,7 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
           {profile.social_links.twitter ? (
             <li>
               Twitter:{' '}
-              <a href={profile.social_links.twitter} target="_blank" rel="noreferrer">
+              <a href={profile.social_links.twitter} target="_blank" rel="noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">
                 {toSocialLinkLabel(profile.social_links.twitter)}
               </a>
             </li>
@@ -183,9 +183,9 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
 
       <DirectoryShareButton profileUrl={profileUrl} />
 
-      <p style={{ margin: 0 }}>
+      <p className="text-default-500">
         Interested? Contact {`{Aurrin}`}{' '}
-        <a href="mailto:hello@aurrin.com">hello@aurrin.com</a>
+        <a href="mailto:hello@aurrin.com" className="text-violet-400 hover:text-violet-300 transition-colors">hello@aurrin.com</a>
       </p>
     </main>
   );

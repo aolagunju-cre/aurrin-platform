@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SubscribePage from '../src/app/public/subscribe/[priceId]/page';
 
@@ -45,11 +45,14 @@ describe('SubscribePage', () => {
       expect(screen.getByText(/Gold Plan/)).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Features')).toBeInTheDocument();
-    expect(screen.getByText('Billing period')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Subscribe' })).toBeInTheDocument();
+    const checkoutCard = screen.getByText(/Gold Plan/).closest('section');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
+    expect(checkoutCard).not.toBeNull();
+    expect(screen.getByText('Features')).toBeInTheDocument();
+    expect(screen.getByText(/Billing period:/i)).toBeInTheDocument();
+    expect(within(checkoutCard as HTMLElement).getByRole('button', { name: 'Subscribe' })).toBeInTheDocument();
+
+    fireEvent.click(within(checkoutCard as HTMLElement).getByRole('button', { name: 'Subscribe' }));
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/commerce/checkout',

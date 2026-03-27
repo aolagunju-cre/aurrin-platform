@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 import {
   AnalyticsKpiResponse,
   CohortResponse,
@@ -211,12 +212,12 @@ export default function AdminAnalyticsPage(): React.ReactElement {
     retentionPoints.length > 0;
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0 }}>Analytics Dashboard</h1>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <label htmlFor="date-preset">Date range</label>
-          <select id="date-preset" value={preset} onChange={(event) => setPreset(event.target.value as DatePreset)}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <div className="flex flex-wrap justify-between items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Analytics Dashboard</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="date-preset" className="text-sm text-default-500">Date range</label>
+          <select id="date-preset" value={preset} onChange={(event) => setPreset(event.target.value as DatePreset)} className="rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500">
             <option value="last-30-days">Last 30 days</option>
             <option value="quarter">Quarter</option>
             <option value="year">Year</option>
@@ -225,58 +226,71 @@ export default function AdminAnalyticsPage(): React.ReactElement {
           </select>
           {preset === 'custom' ? (
             <>
-              <label htmlFor="start-date">Start</label>
+              <label htmlFor="start-date" className="text-sm text-default-500">Start</label>
               <input
                 id="start-date"
                 type="date"
                 value={customStartDate}
                 onChange={(event) => setCustomStartDate(event.target.value)}
+                className="rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
-              <label htmlFor="end-date">End</label>
+              <label htmlFor="end-date" className="text-sm text-default-500">End</label>
               <input
                 id="end-date"
                 type="date"
                 value={customEndDate}
                 onChange={(event) => setCustomEndDate(event.target.value)}
+                className="rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
             </>
           ) : null}
-          <span style={{ marginLeft: '0.5rem' }}>Export Report</span>
-          <button
-            type="button"
-            onClick={() => void handleExport('csv')}
-            disabled={exportingType !== null}
+          <span className="text-sm text-default-500 ml-2">Export Report</span>
+          <Button
+            size="sm"
+            color="secondary"
+            variant="flat"
+            onPress={() => void handleExport('csv')}
+            isDisabled={exportingType !== null}
           >
             {exportingType === 'csv' ? 'Exporting CSV...' : 'CSV'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleExport('json')}
-            disabled={exportingType !== null}
+          </Button>
+          <Button
+            size="sm"
+            color="secondary"
+            variant="flat"
+            onPress={() => void handleExport('json')}
+            isDisabled={exportingType !== null}
           >
             {exportingType === 'json' ? 'Exporting JSON...' : 'JSON'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {isLoading ? <p>Loading analytics dashboard...</p> : null}
-      {error ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{error}</p> : null}
-      {exportError ? <p role="status" style={{ color: '#b00020', margin: 0 }}>{exportError}</p> : null}
+      {isLoading ? <p className="text-default-400">Loading analytics dashboard...</p> : null}
+      {error ? <p role="alert" className="text-danger">{error}</p> : null}
+      {exportError ? <p role="status" className="text-danger">{exportError}</p> : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem' }}>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Total events</h2><p style={{ margin: 0 }}>{kpis.totalEvents}</p></article>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Total founders</h2><p style={{ margin: 0 }}>{kpis.totalFounders}</p></article>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Total judges</h2><p style={{ margin: 0 }}>{kpis.totalJudges}</p></article>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Total scores submitted</h2><p style={{ margin: 0 }}>{kpis.totalScoresSubmitted}</p></article>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Total validation responses</h2><p style={{ margin: 0 }}>{kpis.totalValidationResponses}</p></article>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Active subscriptions</h2><p style={{ margin: 0 }}>{kpis.activeSubscriptions}</p></article>
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>MRR</h2><p style={{ margin: 0 }}>{formatUsd(kpis.mrr)}</p></article>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+        {[
+          { label: 'Total events', value: kpis.totalEvents },
+          { label: 'Total founders', value: kpis.totalFounders },
+          { label: 'Total judges', value: kpis.totalJudges },
+          { label: 'Total scores submitted', value: kpis.totalScoresSubmitted },
+          { label: 'Total validation responses', value: kpis.totalValidationResponses },
+          { label: 'Active subscriptions', value: kpis.activeSubscriptions },
+          { label: 'MRR', value: formatUsd(kpis.mrr) },
+        ].map((kpi) => (
+          <article key={kpi.label} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+            <p className="text-sm text-default-500">{kpi.label}</p>
+            <p className="text-3xl font-bold text-violet-400">{kpi.value}</p>
+          </article>
+        ))}
       </div>
 
-      {!isLoading && !error && !hasChartData ? <p>No chart data for selected date range.</p> : null}
+      {!isLoading && !error && !hasChartData ? <p className="py-12 text-center text-default-400">No chart data for selected date range.</p> : null}
 
       {!isLoading && !error && hasChartData ? (
-        <div style={{ display: 'grid', gap: '1rem' }}>
+        <div className="space-y-6">
           <HistogramChart title="Founder score distribution" points={histogram} />
           <HistogramChart title="Validation response distribution" points={ratingDistribution} />
 
@@ -327,81 +341,78 @@ export default function AdminAnalyticsPage(): React.ReactElement {
             points={retentionPoints}
           />
 
-          <p style={{ margin: 0, color: '#555' }}>Average validation rating: {toPercent((state?.validation.averageRating ?? 0) / 100)}</p>
+          <p className="text-sm text-default-400">Average validation rating: {toPercent((state?.validation.averageRating ?? 0) / 100)}</p>
         </div>
       ) : null}
 
-      <section style={{ display: 'grid', gap: '1rem' }}>
-        <h2 style={{ margin: 0 }}>Cohort analysis</h2>
+      <section className="space-y-6">
+        <h2 className="text-xl font-semibold text-foreground">Cohort analysis</h2>
 
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}>
-          <h3 style={{ marginTop: 0 }}>Founders by stage</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th align="left">Stage</th>
-                <th align="left">Count</th>
-                <th align="left">Avg score</th>
-                <th align="left">Validation rating</th>
+        {[
+          {
+            title: 'Founders by stage',
+            headers: ['Stage', 'Count', 'Avg score', 'Validation rating'],
+            rows: cohorts.byFounderStage,
+            renderRow: (row: (typeof cohorts.byFounderStage)[number]) => (
+              <tr key={`stage-${row.value}`} className="hover:bg-default-100/50 transition-colors">
+                <td className="px-4 py-3 border-b border-default-100 text-foreground">{row.value}</td>
+                <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.count}</td>
+                <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.averageScore.toFixed(1)}</td>
+                <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.averageValidationRating.toFixed(1)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {cohorts.byFounderStage.map((row) => (
-                <tr key={`stage-${row.value}`}>
-                  <td>{row.value}</td>
-                  <td>{row.count}</td>
-                  <td>{row.averageScore.toFixed(1)}</td>
-                  <td>{row.averageValidationRating.toFixed(1)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
-
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}>
-          <h3 style={{ marginTop: 0 }}>Founders by industry</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th align="left">Industry</th>
-                <th align="left">Count</th>
-                <th align="left">Avg score</th>
-                <th align="left">Validation rating</th>
+            ),
+          },
+          {
+            title: 'Founders by industry',
+            headers: ['Industry', 'Count', 'Avg score', 'Validation rating'],
+            rows: cohorts.byIndustry,
+            renderRow: (row: (typeof cohorts.byIndustry)[number]) => (
+              <tr key={`industry-${row.value}`} className="hover:bg-default-100/50 transition-colors">
+                <td className="px-4 py-3 border-b border-default-100 text-foreground">{row.value}</td>
+                <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.count}</td>
+                <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.averageScore.toFixed(1)}</td>
+                <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.averageValidationRating.toFixed(1)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {cohorts.byIndustry.map((row) => (
-                <tr key={`industry-${row.value}`}>
-                  <td>{row.value}</td>
-                  <td>{row.count}</td>
-                  <td>{row.averageScore.toFixed(1)}</td>
-                  <td>{row.averageValidationRating.toFixed(1)}</td>
+            ),
+          },
+        ].map((section) => (
+          <article key={section.title} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+            <h3 className="text-lg font-semibold text-foreground mb-3">{section.title}</h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  {section.headers.map((header) => (
+                    <th key={header} className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">{header}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
+              </thead>
+              <tbody>
+                {section.rows.map((row) => section.renderRow(row))}
+              </tbody>
+            </table>
+          </article>
+        ))}
 
-        <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem' }}>
-          <h3 style={{ marginTop: 0 }}>Founders by cohort (event)</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <article className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <h3 className="text-lg font-semibold text-foreground mb-3">Founders by cohort (event)</h3>
+          <table className="w-full text-sm">
             <thead>
               <tr>
-                <th align="left">Event</th>
-                <th align="left">Count</th>
-                <th align="left">Avg score</th>
-                <th align="left">% matched with mentors</th>
-                <th align="left">Retention to next event</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Event</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Count</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Avg score</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">% matched with mentors</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Retention to next event</th>
               </tr>
             </thead>
             <tbody>
               {cohorts.byEventCohort.map((row) => (
-                <tr key={`event-${row.eventId}`}>
-                  <td>{row.eventName}</td>
-                  <td>{row.count}</td>
-                  <td>{row.averageScore.toFixed(1)}</td>
-                  <td>{toPercent(row.matchedWithMentorsRate)}</td>
-                  <td>{toPercent(row.retentionToNextEventRate)}</td>
+                <tr key={`event-${row.eventId}`} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100 text-foreground">{row.eventName}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.count}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{row.averageScore.toFixed(1)}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{toPercent(row.matchedWithMentorsRate)}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{toPercent(row.retentionToNextEventRate)}</td>
                 </tr>
               ))}
             </tbody>

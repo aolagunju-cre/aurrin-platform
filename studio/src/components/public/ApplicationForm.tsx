@@ -1,6 +1,8 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
+import { Input } from '@heroui/input';
 
 type FormValues = {
   full_name: string;
@@ -129,126 +131,184 @@ export function ApplicationForm() {
 
   if (submitted) {
     return (
-      <div role="status" style={{ padding: '1rem', border: '1px solid #0b7a43', borderRadius: 8 }}>
+      <div
+        role="status"
+        className="rounded-2xl border border-green-500/30 bg-green-500/10 p-6 text-green-400"
+      >
         {SUCCESS_MESSAGE}
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate>
-      <h1>Founder Application</h1>
-      <p>Apply to pitch at Aurrin events.</p>
+    <form onSubmit={onSubmit} noValidate className="grid gap-5 max-w-2xl">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Founder Application</h1>
+        <p className="text-default-500 mt-1">Apply to pitch at Aurrin events.</p>
+      </div>
 
-      <label htmlFor="full_name">Full name</label>
-      <input
+      <Input
         id="full_name"
         name="full_name"
+        label="Full name"
         value={values.full_name}
         onChange={(e) => setValues((prev) => ({ ...prev, full_name: e.target.value }))}
         onBlur={() => onBlur('full_name')}
-        required
+        isRequired
+        isInvalid={!!errors.full_name}
+        errorMessage={errors.full_name}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
-      {errors.full_name && <p role="alert">{errors.full_name}</p>}
 
-      <label htmlFor="email">Email</label>
-      <input
+      <Input
         id="email"
         name="email"
         type="email"
+        label="Email"
         value={values.email}
         onChange={(e) => setValues((prev) => ({ ...prev, email: e.target.value }))}
         onBlur={() => onBlur('email')}
-        required
+        isRequired
+        isInvalid={!!errors.email}
+        errorMessage={errors.email}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
-      {errors.email && <p role="alert">{errors.email}</p>}
 
-      <label htmlFor="company_name">Company name</label>
-      <input
+      <Input
         id="company_name"
         name="company_name"
+        label="Company name"
         value={values.company_name}
         onChange={(e) => setValues((prev) => ({ ...prev, company_name: e.target.value }))}
         onBlur={() => onBlur('company_name')}
-        required
+        isRequired
+        isInvalid={!!errors.company_name}
+        errorMessage={errors.company_name}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
-      {errors.company_name && <p role="alert">{errors.company_name}</p>}
 
-      <label htmlFor="pitch_summary">Pitch summary (100-1000 chars)</label>
-      <textarea
-        id="pitch_summary"
-        name="pitch_summary"
-        value={values.pitch_summary}
-        onChange={(e) => setValues((prev) => ({ ...prev, pitch_summary: e.target.value }))}
-        onBlur={() => onBlur('pitch_summary')}
-        minLength={100}
-        maxLength={1000}
-        required
-      />
-      <p>{pitchLength}/1000</p>
-      {errors.pitch_summary && <p role="alert">{errors.pitch_summary}</p>}
+      <div className="grid gap-1.5">
+        <label htmlFor="pitch_summary" className="text-sm text-foreground">
+          Pitch summary (100-1000 chars) <span className="text-danger">*</span>
+        </label>
+        <textarea
+          id="pitch_summary"
+          name="pitch_summary"
+          value={values.pitch_summary}
+          onChange={(e) => setValues((prev) => ({ ...prev, pitch_summary: e.target.value }))}
+          onBlur={() => onBlur('pitch_summary')}
+          minLength={100}
+          maxLength={1000}
+          required
+          className="w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground placeholder:text-default-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 min-h-[120px] resize-y"
+        />
+        <p className="text-xs text-default-400">{pitchLength}/1000</p>
+        {errors.pitch_summary && <p role="alert" className="text-danger text-sm">{errors.pitch_summary}</p>}
+      </div>
 
-      <label htmlFor="industry">Industry</label>
-      <input
+      <Input
         id="industry"
         name="industry"
+        label="Industry"
         value={values.industry}
         onChange={(e) => setValues((prev) => ({ ...prev, industry: e.target.value }))}
         onBlur={() => onBlur('industry')}
-        required
+        isRequired
+        isInvalid={!!errors.industry}
+        errorMessage={errors.industry}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
-      {errors.industry && <p role="alert">{errors.industry}</p>}
 
-      <label htmlFor="stage">Stage</label>
-      <input
+      <Input
         id="stage"
         name="stage"
+        label="Stage"
         value={values.stage}
         onChange={(e) => setValues((prev) => ({ ...prev, stage: e.target.value }))}
         onBlur={() => onBlur('stage')}
-        required
+        isRequired
+        isInvalid={!!errors.stage}
+        errorMessage={errors.stage}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
-      {errors.stage && <p role="alert">{errors.stage}</p>}
 
-      <label htmlFor="deck_file">Pitch deck (PDF, max 50MB)</label>
-      <input
-        id="deck_file"
-        name="deck_file"
-        type="file"
-        accept=".pdf,application/pdf"
-        onChange={(e) => setDeckFile(e.target.files?.[0] ?? null)}
-      />
-      {errors.deck_file && <p role="alert">{errors.deck_file}</p>}
+      <div className="grid gap-1.5">
+        <label htmlFor="deck_file" className="text-sm text-foreground">
+          Pitch deck (PDF, max 50MB) <span className="text-danger">*</span>
+        </label>
+        <input
+          id="deck_file"
+          name="deck_file"
+          type="file"
+          accept=".pdf,application/pdf"
+          onChange={(e) => setDeckFile(e.target.files?.[0] ?? null)}
+          className="w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground file:mr-4 file:rounded-lg file:border-0 file:bg-violet-500/10 file:px-4 file:py-1 file:text-sm file:font-medium file:text-violet-400 hover:file:bg-violet-500/20"
+        />
+        {errors.deck_file && <p role="alert" className="text-danger text-sm">{errors.deck_file}</p>}
+      </div>
 
-      <label htmlFor="website">Website (optional)</label>
-      <input
+      <Input
         id="website"
         name="website"
+        label="Website (optional)"
         value={values.website}
         onChange={(e) => setValues((prev) => ({ ...prev, website: e.target.value }))}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
 
-      <label htmlFor="twitter">Twitter (optional)</label>
-      <input
+      <Input
         id="twitter"
         name="twitter"
+        label="Twitter (optional)"
         value={values.twitter}
         onChange={(e) => setValues((prev) => ({ ...prev, twitter: e.target.value }))}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
 
-      <label htmlFor="linkedin">LinkedIn (optional)</label>
-      <input
+      <Input
         id="linkedin"
         name="linkedin"
+        label="LinkedIn (optional)"
         value={values.linkedin}
         onChange={(e) => setValues((prev) => ({ ...prev, linkedin: e.target.value }))}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
       />
 
-      <button type="submit" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        color="primary"
+        isDisabled={isSubmitting}
+        isLoading={isSubmitting}
+        className="bg-violet-600 hover:bg-violet-700 max-w-[220px]"
+      >
         {isSubmitting ? 'Submitting...' : 'Submit application'}
-      </button>
+      </Button>
 
-      {submitError && <p role="alert">{submitError}</p>}
+      {submitError && <p role="alert" className="text-danger text-sm">{submitError}</p>}
     </form>
   );
 }

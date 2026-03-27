@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { Button } from '@heroui/button';
 
 type ReportType = 'full' | 'summary';
 
@@ -106,14 +107,16 @@ export default function FounderReportsPage(): React.ReactElement {
     }
   }
 
+  const inputClass = "w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500";
+
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Founder Reports</h1>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Reports</h1>
 
-      <form onSubmit={(event) => void handleGenerate(event)} style={{ display: 'grid', gap: '0.5rem', maxWidth: 480 }}>
-        <h2 style={{ margin: 0 }}>Generate New Report</h2>
+      <form onSubmit={(event) => void handleGenerate(event)} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3 max-w-lg">
+        <h2 className="text-xl font-semibold text-foreground">Generate New Report</h2>
 
-        <label htmlFor="event-id-input">Event ID</label>
+        <label htmlFor="event-id-input" className="block text-sm text-default-500">Event ID</label>
         <input
           id="event-id-input"
           name="event_id"
@@ -121,9 +124,10 @@ export default function FounderReportsPage(): React.ReactElement {
           onChange={(event) => setEventId(event.target.value)}
           placeholder="event-123"
           required
+          className={inputClass}
         />
 
-        <label htmlFor="pitch-id-input">Pitch ID</label>
+        <label htmlFor="pitch-id-input" className="block text-sm text-default-500">Pitch ID</label>
         <input
           id="pitch-id-input"
           name="pitch_id"
@@ -131,67 +135,77 @@ export default function FounderReportsPage(): React.ReactElement {
           onChange={(event) => setPitchId(event.target.value)}
           placeholder="pitch-123"
           required
+          className={inputClass}
         />
 
-        <label htmlFor="report-type-input">Report Type</label>
+        <label htmlFor="report-type-input" className="block text-sm text-default-500">Report Type</label>
         <select
           id="report-type-input"
           name="report_type"
           value={reportType}
           onChange={(event) => setReportType(event.target.value as ReportType)}
+          className={inputClass}
         >
           <option value="full">full</option>
           <option value="summary">summary</option>
         </select>
 
-        <button type="submit" disabled={isSubmitting}>
+        <Button type="submit" color="secondary" isDisabled={isSubmitting}>
           {isSubmitting ? 'Queueing report...' : 'Generate New Report'}
-        </button>
+        </Button>
       </form>
 
-      {message ? <p style={{ margin: 0 }}>{message}</p> : null}
+      {message ? <p className="text-sm text-green-400">{message}</p> : null}
       {error ? (
-        <p role="alert" style={{ margin: 0, color: '#b00020' }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading reports...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading reports...</p> : null}
 
       {!isLoading ? (
-        <table aria-label="Founder Reports Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Event</th>
-              <th align="left">Type</th>
-              <th align="left">Created</th>
-              <th align="left">Status</th>
-              <th align="left">Download</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((report) => (
-              <tr key={report.report_id}>
-                <td>{report.event_name ?? report.event_id}</td>
-                <td>{report.report_type}</td>
-                <td>{new Date(report.created_at).toLocaleString()}</td>
-                <td>{statusLabel(report.status)}</td>
-                <td>
-                  {report.status === 'ready' && report.download_url ? (
-                    <a href={report.download_url}>Download</a>
-                  ) : (
-                    <span>Unavailable</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {reports.length === 0 ? (
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Founder Reports Table" className="w-full text-sm">
+            <thead>
               <tr>
-                <td colSpan={5}>No reports yet.</td>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Event</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Type</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Created</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Status</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Download</th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {reports.map((report) => (
+                <tr key={report.report_id} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100 text-foreground">{report.event_name ?? report.event_id}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{report.report_type}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(report.created_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                      report.status === 'ready' ? 'bg-green-500/10 text-green-400' :
+                      report.status === 'failed' ? 'bg-red-500/10 text-red-400' :
+                      'bg-yellow-500/10 text-yellow-400'
+                    }`}>{statusLabel(report.status)}</span>
+                  </td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    {report.status === 'ready' && report.download_url ? (
+                      <a href={report.download_url} className="text-violet-400 hover:text-violet-300 transition-colors">Download</a>
+                    ) : (
+                      <span className="text-default-400">Unavailable</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {reports.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-default-400">No reports yet.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

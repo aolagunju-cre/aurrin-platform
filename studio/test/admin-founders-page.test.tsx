@@ -3,7 +3,20 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import '@testing-library/jest-dom';
 import AdminFoundersPage from '../src/app/(protected)/admin/founders/page';
 
+jest.mock('@heroui/button', () => {
+  const React = require('react');
+
+  return {
+    Button: ({ children, onPress, onClick, ...props }: any) =>
+      React.createElement('button', { ...props, onClick: onPress ?? onClick }, children),
+  };
+});
+
 describe('AdminFoundersPage', () => {
+  function renderPage(): void {
+    render(<AdminFoundersPage />);
+  }
+
   beforeEach(() => {
     jest.restoreAllMocks();
 
@@ -47,21 +60,21 @@ describe('AdminFoundersPage', () => {
   });
 
   it('renders required founders table columns', async () => {
-    render(<AdminFoundersPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Founders Table')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('columnheader', { name: 'name' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'email' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'application_status' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'assigned_event' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'submission_date' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /name/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /email/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /assigned event/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /submission date/i })).toBeInTheDocument();
   });
 
   it('filters founders by application status', async () => {
-    render(<AdminFoundersPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Founders Table')).toBeInTheDocument();

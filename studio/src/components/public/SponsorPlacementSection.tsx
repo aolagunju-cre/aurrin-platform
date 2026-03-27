@@ -16,30 +16,48 @@ interface SponsorResponse {
   message?: string;
 }
 
+const TIER_BADGE_CLASSES: Record<SponsorCardData['tier'], string> = {
+  gold: 'bg-yellow-500/10 text-yellow-400',
+  silver: 'bg-gray-400/10 text-gray-400',
+  bronze: 'bg-orange-500/10 text-orange-400',
+};
+
 function SponsorCard({ sponsor }: { sponsor: SponsorCardData }) {
   const cardContent = (
-    <>
+    <div className="flex flex-col items-center gap-3 text-center">
       {sponsor.logo ? (
         <img
           src={sponsor.logo}
           alt={`${sponsor.name} logo`}
-          style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8 }}
+          className="w-14 h-14 object-contain rounded-lg"
         />
       ) : null}
       <div>
-        <strong>{sponsor.name}</strong>
+        <strong className="text-foreground">{sponsor.name}</strong>
       </div>
-      <small>{sponsor.tier} sponsor</small>
-    </>
+      <span
+        className={`inline-block px-3 py-1 rounded-full text-xs font-medium capitalize ${TIER_BADGE_CLASSES[sponsor.tier]}`}
+      >
+        {sponsor.tier} sponsor
+      </span>
+    </div>
   );
 
+  const wrapperClasses =
+    'rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6 transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10';
+
   if (!sponsor.link) {
-    return <article style={{ display: 'grid', gap: '0.25rem' }}>{cardContent}</article>;
+    return <article className={wrapperClasses}>{cardContent}</article>;
   }
 
   return (
-    <article style={{ display: 'grid', gap: '0.25rem' }}>
-      <a href={sponsor.link} target="_blank" rel="noreferrer">
+    <article className={wrapperClasses}>
+      <a
+        href={sponsor.link}
+        target="_blank"
+        rel="noreferrer"
+        className="block no-underline"
+      >
         {cardContent}
       </a>
     </article>
@@ -88,7 +106,7 @@ export function SponsorPlacementSection({ eventId }: { eventId?: string }) {
   }, [endpoint]);
 
   if (error) {
-    return <p role="alert">{error}</p>;
+    return <p role="alert" className="text-danger text-sm">{error}</p>;
   }
 
   if (sponsors.length === 0) {
@@ -96,9 +114,11 @@ export function SponsorPlacementSection({ eventId }: { eventId?: string }) {
   }
 
   return (
-    <section aria-label={eventId ? 'Event Sponsors' : 'Site Sponsors'} style={{ display: 'grid', gap: '0.75rem' }}>
-      <h2 style={{ margin: 0 }}>{eventId ? 'Event Sponsors' : 'Our Sponsors'}</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
+    <section aria-label={eventId ? 'Event Sponsors' : 'Site Sponsors'} className="grid gap-4">
+      <h2 className="text-xl font-semibold text-foreground">
+        {eventId ? 'Event Sponsors' : 'Our Sponsors'}
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {sponsors.map((sponsor) => (
           <SponsorCard key={sponsor.id} sponsor={sponsor} />
         ))}

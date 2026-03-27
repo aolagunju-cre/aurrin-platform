@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 type AccessType = 'perpetual' | 'time-limited';
 type ProductStatus = 'draft' | 'active' | 'archived';
@@ -161,25 +162,26 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
       <header>
-        <h1 style={{ marginBottom: '0.25rem' }}>Digital Products</h1>
-        <p style={{ margin: 0 }}>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Digital Products</h1>
+        <p className="text-sm text-default-500 mt-1">
           Total sales: {totals.sales} | Total revenue: {formatMoney(totals.revenue)}
         </p>
       </header>
 
-      {error ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{error}</p> : null}
-      {isLoading ? <p>Loading digital products...</p> : null}
+      {error ? <p role="alert" className="text-danger">{error}</p> : null}
+      {isLoading ? <p className="text-default-400">Loading digital products...</p> : null}
 
-      <form onSubmit={(event) => void createProduct(event)} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ margin: 0 }}>Create Digital Product</h2>
+      <form onSubmit={(event) => void createProduct(event)} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
+        <h2 className="text-xl font-semibold text-foreground">Create Digital Product</h2>
         <input
           aria-label="name"
           placeholder="name"
           value={draft.name}
           onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
           required
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
         <textarea
           aria-label="description"
@@ -187,6 +189,7 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
           value={draft.description}
           onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
           required
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
         <input
           aria-label="Stripe price link"
@@ -194,20 +197,22 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
           value={draft.stripe_price_link}
           onChange={(event) => setDraft((prev) => ({ ...prev, stripe_price_link: event.target.value }))}
           required
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
         <select
           aria-label="access type"
           value={draft.access_type}
           onChange={(event) => setDraft((prev) => ({ ...prev, access_type: event.target.value as AccessType }))}
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
         >
           <option value="perpetual">perpetual</option>
           <option value="time-limited">time-limited</option>
         </select>
-        <button type="submit">Create Digital Product</button>
+        <Button type="submit" color="secondary">Create Digital Product</Button>
       </form>
 
       {products.map((product) => (
-        <article key={product.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.5rem' }}>
+        <article key={product.id} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
           <input
             aria-label={`name ${product.id}`}
             value={product.name}
@@ -215,6 +220,7 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
               const value = event.target.value;
               setProducts((prev) => prev.map((item) => (item.id === product.id ? { ...item, name: value } : item)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
           <textarea
             aria-label={`description ${product.id}`}
@@ -223,6 +229,7 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
               const value = event.target.value;
               setProducts((prev) => prev.map((item) => (item.id === product.id ? { ...item, description: value } : item)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
           <input
             aria-label={`Stripe price link ${product.id}`}
@@ -231,6 +238,7 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
               const value = event.target.value;
               setProducts((prev) => prev.map((item) => (item.id === product.id ? { ...item, stripe_price_link: value } : item)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
           <select
             aria-label={`access type ${product.id}`}
@@ -239,6 +247,7 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
               const value = event.target.value as AccessType;
               setProducts((prev) => prev.map((item) => (item.id === product.id ? { ...item, access_type: value } : item)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           >
             <option value="perpetual">perpetual</option>
             <option value="time-limited">time-limited</option>
@@ -250,24 +259,27 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
               const value = event.target.value as ProductStatus;
               setProducts((prev) => prev.map((item) => (item.id === product.id ? { ...item, status: value } : item)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           >
             <option value="draft">draft</option>
             <option value="active">active</option>
             <option value="archived">archived</option>
           </select>
 
-          <p style={{ margin: 0 }}>sales count: {product.sales_count}</p>
-          <p style={{ margin: 0 }}>revenue: {formatMoney(product.revenue_cents)}</p>
-          <p style={{ margin: 0 }}>status: {product.status}</p>
-          <p style={{ margin: 0 }}>file: {product.file_path ?? 'none'}</p>
-
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => void saveProduct(product)}>Save</button>
-            <button type="button" onClick={() => void deleteProduct(product.id)}>Delete</button>
+          <div className="space-y-1 text-sm text-default-500">
+            <p>sales count: {product.sales_count}</p>
+            <p>revenue: {formatMoney(product.revenue_cents)}</p>
+            <p>status: <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-default-100 text-default-600">{product.status}</span></p>
+            <p>file: {product.file_path ?? 'none'}</p>
           </div>
 
-          <div style={{ display: 'grid', gap: '0.5rem', borderTop: '1px dashed #ddd', paddingTop: '0.75rem' }}>
-            <label htmlFor={`upload-${product.id}`}>file upload (PDF, ZIP, etc.)</label>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" color="secondary" onPress={() => void saveProduct(product)}>Save</Button>
+            <Button size="sm" color="danger" variant="flat" onPress={() => void deleteProduct(product.id)}>Delete</Button>
+          </div>
+
+          <div className="space-y-2 border-t border-dashed border-default-200 pt-4">
+            <label htmlFor={`upload-${product.id}`} className="text-sm text-default-500">file upload (PDF, ZIP, etc.)</label>
             <input
               id={`upload-${product.id}`}
               aria-label={`file upload ${product.id}`}
@@ -275,14 +287,16 @@ export default function AdminDigitalProductsPage(): React.ReactElement {
               onChange={(event) => {
                 setUploadFiles((prev) => ({ ...prev, [product.id]: event.target.files?.[0] ?? null }));
               }}
+              className="block w-full text-sm text-default-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-500/10 file:text-violet-400 hover:file:bg-violet-500/20"
             />
-            <button
-              type="button"
-              onClick={() => void uploadProductFile(product.id)}
-              disabled={uploadingProductId === product.id}
+            <Button
+              size="sm"
+              color="secondary"
+              onPress={() => void uploadProductFile(product.id)}
+              isDisabled={uploadingProductId === product.id}
             >
               Upload File
-            </button>
+            </Button>
           </div>
         </article>
       ))}

@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
+import { Input } from '@heroui/input';
+import { Spinner } from '@heroui/spinner';
 
 interface DirectoryProfileSummary {
   founder_slug: string;
@@ -151,50 +154,55 @@ export function DirectorySearch() {
   };
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-        <label htmlFor="directory-search">Search by company or founder name</label>
-        <input
+    <section className="grid gap-6">
+      <form onSubmit={onSubmit} className="grid gap-4">
+        <Input
           id="directory-search"
           name="directory-search"
+          label="Search by company or founder name"
           value={filters.search}
           onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
           placeholder="Search founders"
+          variant="bordered"
+          classNames={{
+            inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+          }}
         />
 
-        <div
-          style={{
-            display: 'grid',
-            gap: '0.75rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          }}
-        >
-          <label htmlFor="directory-industry" style={{ display: 'grid', gap: '0.25rem' }}>
-            Industry
-            <input
-              id="directory-industry"
-              value={filters.industry}
-              onChange={(event) => setFilters((current) => ({ ...current, industry: event.target.value }))}
-              placeholder="e.g. fintech"
-            />
-          </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Input
+            id="directory-industry"
+            label="Industry"
+            value={filters.industry}
+            onChange={(event) => setFilters((current) => ({ ...current, industry: event.target.value }))}
+            placeholder="e.g. fintech"
+            variant="bordered"
+            classNames={{
+              inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+            }}
+          />
 
-          <label htmlFor="directory-stage" style={{ display: 'grid', gap: '0.25rem' }}>
-            Stage
-            <input
-              id="directory-stage"
-              value={filters.stage}
-              onChange={(event) => setFilters((current) => ({ ...current, stage: event.target.value }))}
-              placeholder="e.g. seed"
-            />
-          </label>
+          <Input
+            id="directory-stage"
+            label="Stage"
+            value={filters.stage}
+            onChange={(event) => setFilters((current) => ({ ...current, stage: event.target.value }))}
+            placeholder="e.g. seed"
+            variant="bordered"
+            classNames={{
+              inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+            }}
+          />
 
-          <label htmlFor="directory-event" style={{ display: 'grid', gap: '0.25rem' }}>
-            Event
+          <div className="grid gap-1.5">
+            <label htmlFor="directory-event" className="text-sm text-foreground">
+              Event
+            </label>
             <select
               id="directory-event"
               value={filters.event}
               onChange={(event) => setFilters((current) => ({ ...current, event: event.target.value }))}
+              className="w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground focus:border-violet-500 focus:outline-none"
             >
               <option value="">All events</option>
               {eventOptions.map((option) => (
@@ -203,77 +211,108 @@ export function DirectorySearch() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label htmlFor="directory-min-score" style={{ display: 'grid', gap: '0.25rem' }}>
-            Min score
-            <input
-              id="directory-min-score"
-              type="number"
-              min={0}
-              max={100}
-              value={filters.minScore}
-              onChange={(event) => setFilters((current) => ({ ...current, minScore: event.target.value }))}
-            />
-          </label>
+          <Input
+            id="directory-min-score"
+            label="Min score"
+            type="number"
+            min={0}
+            max={100}
+            value={filters.minScore}
+            onChange={(event) => setFilters((current) => ({ ...current, minScore: event.target.value }))}
+            variant="bordered"
+            classNames={{
+              inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+            }}
+          />
 
-          <label htmlFor="directory-max-score" style={{ display: 'grid', gap: '0.25rem' }}>
-            Max score
-            <input
-              id="directory-max-score"
-              type="number"
-              min={0}
-              max={100}
-              value={filters.maxScore}
-              onChange={(event) => setFilters((current) => ({ ...current, maxScore: event.target.value }))}
-            />
-          </label>
+          <Input
+            id="directory-max-score"
+            label="Max score"
+            type="number"
+            min={0}
+            max={100}
+            value={filters.maxScore}
+            onChange={(event) => setFilters((current) => ({ ...current, maxScore: event.target.value }))}
+            variant="bordered"
+            classNames={{
+              inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+            }}
+          />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="submit">Apply Filters</button>
-          <button
+        <div className="flex gap-3">
+          <Button type="submit" color="primary" className="bg-violet-600 hover:bg-violet-700">
+            Apply Filters
+          </Button>
+          <Button
             type="button"
-            onClick={() => {
+            color="default"
+            variant="bordered"
+            onPress={() => {
               setFilters(INITIAL_FILTERS);
               setActiveFilters(INITIAL_FILTERS);
             }}
           >
             Clear
-          </button>
+          </Button>
         </div>
       </form>
 
-      {isLoading ? <p>Loading directory...</p> : null}
-      {error ? <p role="alert">{error}</p> : null}
+      {isLoading ? (
+        <div className="flex items-center gap-3 py-8">
+          <Spinner color="secondary" size="sm" />
+          <p className="text-default-500">Loading directory...</p>
+        </div>
+      ) : null}
+      {error ? <p role="alert" className="text-danger text-sm">{error}</p> : null}
 
-      {!isLoading && !error && results.length === 0 ? <p>No public founder profiles match your filters.</p> : null}
+      {!isLoading && !error && results.length === 0 ? (
+        <p className="text-default-500 py-4">No public founder profiles match your filters.</p>
+      ) : null}
 
       <div
         data-testid="directory-grid"
-        style={{
-          display: 'grid',
-          gap: '1rem',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        }}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
       >
         {results.map((item) => (
-          <article key={item.founder_slug} style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '1rem' }}>
+          <article
+            key={item.founder_slug}
+            className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6 transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10"
+          >
             {item.photo ? (
               <img
                 src={item.photo}
                 alt={`${item.founder_name ?? item.company ?? 'Founder'} profile`}
-                style={{ width: '100%', aspectRatio: '3 / 2', objectFit: 'cover', borderRadius: 6 }}
+                className="w-full aspect-[3/2] object-cover rounded-xl mb-4"
               />
             ) : null}
-            <h2 style={{ marginBottom: '0.5rem' }}>{item.founder_name ?? 'Founder'}</h2>
-            <p style={{ margin: '0 0 0.5rem' }}><strong>{item.company ?? 'Company unavailable'}</strong></p>
-            <p style={{ margin: '0 0 0.25rem' }}>Industry: {item.industry ?? 'Not listed'}</p>
-            <p style={{ margin: '0 0 0.25rem' }}>Stage: {item.stage ?? 'Not listed'}</p>
-            <p style={{ margin: '0 0 0.25rem' }}>Event: {item.event.name}</p>
-            <p style={{ margin: '0 0 0.5rem' }}>Aggregate score: {item.score ?? 'Not published'}</p>
-            <p style={{ marginTop: 0 }}>{toExcerpt(item.summary)}</p>
-            <Link href={`/public/directory/${encodeURIComponent(item.founder_slug)}`}>View Profile</Link>
+            <h2 className="text-lg font-semibold text-foreground mb-2">
+              {item.founder_name ?? 'Founder'}
+            </h2>
+            <p className="font-semibold text-foreground mb-2">
+              {item.company ?? 'Company unavailable'}
+            </p>
+            <p className="text-sm text-default-600 mb-1">
+              Industry: {item.industry ?? 'Not listed'}
+            </p>
+            <p className="text-sm text-default-600 mb-1">
+              Stage: {item.stage ?? 'Not listed'}
+            </p>
+            <p className="text-sm text-default-600 mb-1">
+              Event: {item.event.name}
+            </p>
+            <p className="text-sm text-default-600 mb-3">
+              Aggregate score: {item.score ?? 'Not published'}
+            </p>
+            <p className="text-sm text-default-500 mb-4">{toExcerpt(item.summary)}</p>
+            <Link
+              href={`/public/directory/${encodeURIComponent(item.founder_slug)}`}
+              className="text-violet-400 hover:text-violet-300 text-sm font-medium transition-colors"
+            >
+              View Profile
+            </Link>
           </article>
         ))}
       </div>

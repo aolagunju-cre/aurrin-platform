@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MentorDashboardPage from '../src/app/(protected)/mentor/page';
 import MentorMatchDetailPage from '../src/app/(protected)/mentor/matches/[matchId]/page';
@@ -42,8 +42,15 @@ describe('mentor portal pages', () => {
       expect(screen.getByText("You've been matched with Founder One. Accept or decline?")).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Pending matches: 1')).toBeInTheDocument();
-    expect(screen.getByText('Accepted matches: 1')).toBeInTheDocument();
+    const matchCounts = screen.getByLabelText('Mentor Match Counts');
+    const pendingMatchesCard = screen.getByText('Pending matches').closest('div');
+    const acceptedMatchesCard = screen.getByText('Accepted matches').closest('div');
+
+    expect(pendingMatchesCard).not.toBeNull();
+    expect(acceptedMatchesCard).not.toBeNull();
+    expect(within(matchCounts).getByText('Pending matches')).toBeInTheDocument();
+    expect(within(pendingMatchesCard as HTMLElement).getByText('1')).toBeInTheDocument();
+    expect(within(acceptedMatchesCard as HTMLElement).getByText('1')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Review match details' })).toHaveAttribute('href', '/mentor/matches/match-1');
   });
 
@@ -87,9 +94,9 @@ describe('mentor portal pages', () => {
     render(<MentorMatchDetailPage params={Promise.resolve({ matchId: 'match-1' })} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Founder name: Founder One')).toBeInTheDocument();
+      expect(screen.getByText((_, element) => element?.textContent === 'Founder name: Founder One')).toBeInTheDocument();
     });
-    expect(screen.getByText('Pitch summary: Building a better workflow.')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === 'Pitch summary: Building a better workflow.')).toBeInTheDocument();
     expect(screen.getByText('market: 44')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept' }));

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { PremiumContentNotice } from '../content/PremiumContentNotice';
+import { Button } from '@heroui/button';
+import { Spinner } from '@heroui/spinner';
 
 interface Product {
   id: string;
@@ -87,25 +89,50 @@ export function SubscribeCheckout({ priceId }: { priceId: string }): React.React
   }
 
   return (
-    <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1rem' }}>
-      <h1 style={{ marginBottom: 0 }}>Subscribe</h1>
+    <main className="container mx-auto max-w-3xl px-6 py-8 grid gap-6">
+      <h1 className="text-2xl font-bold text-foreground">Subscribe</h1>
       <PremiumContentNotice />
 
-      {error ? <p role="alert" style={{ color: '#b00', margin: 0 }}>{error}</p> : null}
-      {isLoading ? <p>Loading subscription details...</p> : null}
+      {error ? <p role="alert" className="text-danger text-sm">{error}</p> : null}
+      {isLoading ? (
+        <div className="flex items-center gap-3 py-8">
+          <Spinner color="secondary" size="sm" />
+          <p className="text-default-500">Loading subscription details...</p>
+        </div>
+      ) : null}
 
       {details ? (
-        <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.5rem' }}>
-          <p style={{ margin: 0 }}><strong>Product</strong>: {details.product?.name ?? 'Subscription'}</p>
-          <p style={{ margin: 0 }}><strong>Price</strong>: {formattedPrice}</p>
-          <p style={{ margin: 0 }}><strong>Billing period</strong>: {details.price.billing_interval}</p>
-          <div>
-            <p style={{ margin: 0 }}><strong>Features</strong></p>
-            <p style={{ margin: 0 }}>{details.product?.description ?? 'Premium subscriber access'}</p>
+        <section className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6 grid gap-4 transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10">
+          <div className="grid gap-2">
+            <p className="text-foreground">
+              <span className="font-semibold text-default-500">Product:</span>{' '}
+              {details.product?.name ?? 'Subscription'}
+            </p>
+            <p className="text-foreground">
+              <span className="font-semibold text-default-500">Price:</span>{' '}
+              <span className="text-violet-400 font-semibold">{formattedPrice}</span>
+            </p>
+            <p className="text-foreground">
+              <span className="font-semibold text-default-500">Billing period:</span>{' '}
+              <span className="inline-block px-3 py-1 rounded-full bg-violet-500/10 text-violet-400 text-sm font-medium capitalize">
+                {details.price.billing_interval}
+              </span>
+            </p>
           </div>
-          <button type="button" onClick={() => void startCheckout()} disabled={isSubmitting}>
+          <div className="border-t border-default-200 dark:border-gray-700 pt-4">
+            <p className="font-semibold text-default-500 mb-1">Features</p>
+            <p className="text-default-600">{details.product?.description ?? 'Premium subscriber access'}</p>
+          </div>
+          <Button
+            type="button"
+            color="primary"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            onPress={() => void startCheckout()}
+            className="bg-violet-600 hover:bg-violet-700"
+          >
             {isSubmitting ? 'Starting checkout...' : 'Subscribe'}
-          </button>
+          </Button>
         </section>
       ) : null}
     </main>

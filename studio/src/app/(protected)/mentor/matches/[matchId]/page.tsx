@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 interface MentorMatchDetailPageProps {
   params: Promise<{ matchId: string }>;
@@ -124,55 +125,58 @@ export default function MentorMatchDetailPage({ params }: MentorMatchDetailPageP
   }, [detail]);
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Mentor Match Detail</h1>
+    <section className="container mx-auto max-w-3xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Mentor Match Detail</h1>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading mentor match...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading mentor match...</p> : null}
 
       {!isLoading && detail ? (
         <>
-          <p style={{ margin: 0 }}>Founder name: {detail.founder.name ?? 'Not provided'}</p>
-          <p style={{ margin: 0 }}>Company: {detail.founder.company ?? 'Not provided'}</p>
-          <p style={{ margin: 0 }}>Pitch summary: {detail.founder.pitch_summary ?? 'Not provided'}</p>
-          <p style={{ margin: 0 }}>Mentor status: {detail.mentor_status}</p>
-          <p style={{ margin: 0 }}>Founder status: {detail.founder_status}</p>
-          <p style={{ margin: 0 }}>Aggregate score: {detail.founder.scores.aggregate ?? 'N/A'}</p>
+          <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-2">
+            <p className="text-sm text-default-500">Founder name: <span className="text-foreground">{detail.founder.name ?? 'Not provided'}</span></p>
+            <p className="text-sm text-default-500">Company: <span className="text-foreground">{detail.founder.company ?? 'Not provided'}</span></p>
+            <p className="text-sm text-default-500">Pitch summary: <span className="text-foreground">{detail.founder.pitch_summary ?? 'Not provided'}</span></p>
+            <p className="text-sm text-default-500">Mentor status: <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${detail.mentor_status === 'accepted' ? 'bg-green-500/10 text-green-400' : detail.mentor_status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}`}>{detail.mentor_status}</span></p>
+            <p className="text-sm text-default-500">Founder status: <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${detail.founder_status === 'accepted' ? 'bg-green-500/10 text-green-400' : detail.founder_status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-red-500/10 text-red-400'}`}>{detail.founder_status}</span></p>
+            <p className="text-sm text-default-500">Aggregate score: <span className="text-3xl font-bold text-violet-400">{detail.founder.scores.aggregate ?? 'N/A'}</span></p>
+          </div>
 
-          <section aria-label="Score Breakdown" style={{ display: 'grid', gap: '0.5rem' }}>
-            <h2 style={{ margin: 0 }}>Score Breakdown</h2>
-            {scoreBreakdownLines.length === 0 ? <p style={{ margin: 0 }}>No score breakdown available.</p> : null}
+          <section aria-label="Score Breakdown" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-2">
+            <h2 className="text-xl font-semibold text-foreground">Score Breakdown</h2>
+            {scoreBreakdownLines.length === 0 ? <p className="text-default-400">No score breakdown available.</p> : null}
             {scoreBreakdownLines.map((line) => (
-              <p key={line} style={{ margin: 0 }}>
+              <p key={line} className="text-sm text-default-500">
                 {line}
               </p>
             ))}
           </section>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => {
+          <div className="flex gap-3">
+            <Button
+              color="secondary"
+              onPress={() => {
                 void submitAction('accept');
               }}
-              disabled={isSubmitting || detail.mentor_status !== 'pending'}
+              isDisabled={isSubmitting || detail.mentor_status !== 'pending'}
             >
               Accept
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+            </Button>
+            <Button
+              color="danger"
+              variant="flat"
+              onPress={() => {
                 void submitAction('decline');
               }}
-              disabled={isSubmitting || detail.mentor_status !== 'pending'}
+              isDisabled={isSubmitting || detail.mentor_status !== 'pending'}
             >
               Decline
-            </button>
+            </Button>
           </div>
         </>
       ) : null}

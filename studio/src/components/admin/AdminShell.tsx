@@ -9,11 +9,11 @@ interface AdminShellProps {
 
 export function AdminShell({ userEmail, children }: AdminShellProps): React.ReactElement {
   return (
-    <div>
+    <div className="flex h-screen flex-col bg-background text-foreground">
       <AdminHeader userEmail={userEmail} />
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 56px)' }}>
+      <div className="flex flex-1 overflow-hidden">
         <AdminSidebar />
-        <main role="main" style={{ flex: 1, padding: '1rem' }}>
+        <main role="main" className="flex-1 overflow-auto p-6">
           {children}
         </main>
       </div>

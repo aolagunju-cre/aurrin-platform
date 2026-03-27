@@ -75,35 +75,46 @@ export default function FounderDashboardPage(): React.ReactElement {
   }, [events]);
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Founder Dashboard</h1>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Dashboard</h1>
 
-      <nav aria-label="Founder Navigation">
-        <a href="/founder/profile">Profile</a> | <a href="/founder/events">Events</a> | <a href="/founder/reports">Reports</a>
+      <nav aria-label="Founder Navigation" className="flex gap-4 text-sm">
+        <a href="/founder/profile" className="text-violet-400 hover:text-violet-300 transition-colors">Profile</a>
+        <span className="text-default-300">|</span>
+        <a href="/founder/events" className="text-violet-400 hover:text-violet-300 transition-colors">Events</a>
+        <span className="text-default-300">|</span>
+        <a href="/founder/reports" className="text-violet-400 hover:text-violet-300 transition-colors">Reports</a>
       </nav>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      <section aria-label="Founder Quick Stats" style={{ display: 'grid', gap: '0.5rem' }}>
-        <p style={{ margin: 0 }}>Applications submitted: {stats.applications_submitted}</p>
-        <p style={{ margin: 0 }}>Active events: {stats.active_events}</p>
-        <p style={{ margin: 0 }}>Completed events: {stats.completed_events}</p>
-        <p style={{ margin: 0 }}>Accepted mentor matches: {matches.length}</p>
+      <section aria-label="Founder Quick Stats" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Applications submitted', value: stats.applications_submitted },
+          { label: 'Active events', value: stats.active_events },
+          { label: 'Completed events', value: stats.completed_events },
+          { label: 'Accepted mentor matches', value: matches.length },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+            <p className="text-sm text-default-500">{stat.label}</p>
+            <p className="text-3xl font-bold text-violet-400">{stat.value}</p>
+          </div>
+        ))}
       </section>
 
-      <section aria-label="Mentor Matches" style={{ display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ margin: 0 }}>Mentor Matches</h2>
+      <section aria-label="Mentor Matches" className="space-y-3">
+        <h2 className="text-xl font-semibold text-foreground">Mentor Matches</h2>
         {matches.length === 0 ? (
-          <p style={{ margin: 0 }}>No accepted mentor matches available yet.</p>
+          <p className="py-12 text-center text-default-400">No accepted mentor matches available yet.</p>
         ) : (
-          <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+          <ul className="list-disc pl-5 space-y-2 text-default-500">
             {matches.map((match) => (
               <li key={match.id}>
-                <strong>{match.mentor.name ?? 'Mentor'}</strong>
+                <strong className="text-foreground">{match.mentor.name ?? 'Mentor'}</strong>
                 {match.mentor.title ? ` (${match.mentor.title})` : ''}
                 {match.mentor.contact.email ? ` — ${match.mentor.contact.email}` : ''}
               </li>

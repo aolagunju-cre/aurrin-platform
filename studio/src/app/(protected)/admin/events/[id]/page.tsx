@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Button } from '@heroui/button';
 
 type EventStatus = 'Upcoming' | 'Live' | 'Archived';
 
@@ -357,193 +358,149 @@ export default function AdminEventDetailPage(): React.ReactElement {
   }
 
   if (loading) {
-    return <p>Loading event detail...</p>;
+    return <div className="container mx-auto max-w-7xl px-6 py-8"><p className="text-default-400">Loading event detail...</p></div>;
   }
 
   if (error) {
-    return <p role="alert" style={{ color: '#b00020' }}>{error}</p>;
+    return <div className="container mx-auto max-w-7xl px-6 py-8"><p role="alert" className="text-danger">{error}</p></div>;
   }
 
   if (!eventDetail) {
-    return <p role="alert" style={{ color: '#b00020' }}>Event not found.</p>;
+    return <div className="container mx-auto max-w-7xl px-6 py-8"><p role="alert" className="text-danger">Event not found.</p></div>;
   }
 
+  const inputClass = "mt-1 w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500";
+
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
       <header>
-        <h1 style={{ marginBottom: '0.5rem' }}>{eventDetail.name}</h1>
-        <p style={{ margin: 0 }}>{eventDetail.description || 'No description provided.'}</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{eventDetail.name}</h1>
+        <p className="text-lg text-default-500 mt-1">{eventDetail.description || 'No description provided.'}</p>
       </header>
 
-      <div style={{ display: 'grid', gap: '0.25rem' }}>
-        <p style={{ margin: 0 }}><strong>Status:</strong> {eventDetail.status}</p>
-        <p style={{ margin: 0 }}><strong>Event Window:</strong> {new Date(eventDetail.start_date).toLocaleString()} - {new Date(eventDetail.end_date).toLocaleString()}</p>
-        <p style={{ margin: 0 }}><strong>Scoring Window:</strong> {eventDetail.scoring_start ? new Date(eventDetail.scoring_start).toLocaleString() : 'Not set'} - {eventDetail.scoring_end ? new Date(eventDetail.scoring_end).toLocaleString() : 'Not set'}</p>
-        <p style={{ margin: 0 }}><strong>Publishing Window:</strong> {eventDetail.publishing_start ? new Date(eventDetail.publishing_start).toLocaleString() : 'Not set'} - {eventDetail.publishing_end ? new Date(eventDetail.publishing_end).toLocaleString() : 'Not set'}</p>
-        <p style={{ margin: 0 }}><strong>Logo/Image:</strong> {eventDetail.logo_url || eventDetail.image_url || 'Not set'}</p>
+      <div className="space-y-1 text-sm text-default-500">
+        <p><strong className="text-foreground">Status:</strong> <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${eventDetail.status === 'Live' ? 'bg-green-500/10 text-green-400' : eventDetail.status === 'Upcoming' ? 'bg-violet-500/10 text-violet-400' : 'bg-default-100 text-default-500'}`}>{eventDetail.status}</span></p>
+        <p><strong className="text-foreground">Event Window:</strong> {new Date(eventDetail.start_date).toLocaleString()} - {new Date(eventDetail.end_date).toLocaleString()}</p>
+        <p><strong className="text-foreground">Scoring Window:</strong> {eventDetail.scoring_start ? new Date(eventDetail.scoring_start).toLocaleString() : 'Not set'} - {eventDetail.scoring_end ? new Date(eventDetail.scoring_end).toLocaleString() : 'Not set'}</p>
+        <p><strong className="text-foreground">Publishing Window:</strong> {eventDetail.publishing_start ? new Date(eventDetail.publishing_start).toLocaleString() : 'Not set'} - {eventDetail.publishing_end ? new Date(eventDetail.publishing_end).toLocaleString() : 'Not set'}</p>
+        <p><strong className="text-foreground">Logo/Image:</strong> {eventDetail.logo_url || eventDetail.image_url || 'Not set'}</p>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <button type="button" onClick={() => setIsEditing((current) => !current)}>
+      <div className="flex flex-wrap gap-3">
+        <Button color="secondary" variant={isEditing ? 'flat' : 'solid'} onPress={() => setIsEditing((current) => !current)}>
           {isEditing ? 'Cancel Edit' : 'Edit'}
-        </button>
+        </Button>
         {statusActionLabel ? (
-          <button type="button" onClick={() => setPendingStatus(getNextStatus(eventDetail.status))}>
+          <Button color="warning" onPress={() => setPendingStatus(getNextStatus(eventDetail.status))}>
             {statusActionLabel}
-          </button>
+          </Button>
         ) : null}
-        <a href={`/admin/events/${eventDetail.id}/sponsors`}>Manage Sponsors</a>
+        <a href={`/admin/events/${eventDetail.id}/sponsors`} className="text-violet-400 hover:text-violet-300 transition-colors inline-flex items-center">Manage Sponsors</a>
       </div>
 
-      {statusError ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{statusError}</p> : null}
+      {statusError ? <p role="alert" className="text-danger">{statusError}</p> : null}
 
       {pendingStatus ? (
-        <div role="dialog" aria-modal="true" style={{ border: '1px solid #999', padding: '0.75rem', maxWidth: 420 }}>
-          <p style={{ marginTop: 0 }}>Are you sure?</p>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={() => void handleStatusChange()} disabled={isUpdatingStatus}>
+        <div role="dialog" aria-modal="true" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 max-w-md space-y-3">
+          <p className="text-foreground">Are you sure?</p>
+          <div className="flex gap-3">
+            <Button color="secondary" onPress={() => void handleStatusChange()} isDisabled={isUpdatingStatus}>
               {isUpdatingStatus ? 'Updating...' : 'Confirm'}
-            </button>
-            <button type="button" onClick={() => setPendingStatus(null)} disabled={isUpdatingStatus}>Cancel</button>
+            </Button>
+            <Button color="default" variant="flat" onPress={() => setPendingStatus(null)} isDisabled={isUpdatingStatus}>Cancel</Button>
           </div>
         </div>
       ) : null}
 
       {isEditing ? (
-        <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.75rem' }}>
-          <h2 style={{ margin: 0 }}>Edit Event</h2>
+        <section className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Edit Event</h2>
 
-          <label>
-            name
-            <input
-              aria-label="name"
-              value={eventDraft.name}
-              onChange={(event) => setEventDraft((current) => ({ ...current, name: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Name
+            <input aria-label="name" value={eventDraft.name} onChange={(event) => setEventDraft((current) => ({ ...current, name: event.target.value }))} className={inputClass} />
           </label>
 
-          <label>
-            description
-            <textarea
-              aria-label="description"
-              rows={3}
-              value={eventDraft.description}
-              onChange={(event) => setEventDraft((current) => ({ ...current, description: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Description
+            <textarea aria-label="description" rows={3} value={eventDraft.description} onChange={(event) => setEventDraft((current) => ({ ...current, description: event.target.value }))} className={inputClass} />
           </label>
 
-          <label>
-            start_date
-            <input
-              aria-label="start_date"
-              type="datetime-local"
-              value={eventDraft.start_date}
-              onChange={(event) => setEventDraft((current) => ({ ...current, start_date: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Start Date
+            <input aria-label="start_date" type="datetime-local" value={eventDraft.start_date} onChange={(event) => setEventDraft((current) => ({ ...current, start_date: event.target.value }))} className={inputClass} />
           </label>
 
-          <label>
-            end_date
-            <input
-              aria-label="end_date"
-              type="datetime-local"
-              value={eventDraft.end_date}
-              onChange={(event) => setEventDraft((current) => ({ ...current, end_date: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            End Date
+            <input aria-label="end_date" type="datetime-local" value={eventDraft.end_date} onChange={(event) => setEventDraft((current) => ({ ...current, end_date: event.target.value }))} className={inputClass} />
           </label>
 
-          <label>
-            logo_url
-            <input
-              aria-label="logo_url"
-              value={eventDraft.logo_url}
-              onChange={(event) => setEventDraft((current) => ({ ...current, logo_url: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Logo URL
+            <input aria-label="logo_url" value={eventDraft.logo_url} onChange={(event) => setEventDraft((current) => ({ ...current, logo_url: event.target.value }))} className={inputClass} />
           </label>
 
-          <label>
-            image_url
-            <input
-              aria-label="image_url"
-              value={eventDraft.image_url}
-              onChange={(event) => setEventDraft((current) => ({ ...current, image_url: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Image URL
+            <input aria-label="image_url" value={eventDraft.image_url} onChange={(event) => setEventDraft((current) => ({ ...current, image_url: event.target.value }))} className={inputClass} />
           </label>
 
-          <h3 style={{ marginBottom: 0 }}>Scoring Window</h3>
-          <label>
-            scoring_start
-            <input
-              aria-label="scoring_start"
-              type="datetime-local"
-              value={windowDraft.scoring_start}
-              onChange={(event) => setWindowDraft((current) => ({ ...current, scoring_start: event.target.value }))}
-            />
+          <h3 className="text-lg font-semibold text-foreground pt-2">Scoring Window</h3>
+          <label className="block text-sm text-default-500">
+            Scoring Start
+            <input aria-label="scoring_start" type="datetime-local" value={windowDraft.scoring_start} onChange={(event) => setWindowDraft((current) => ({ ...current, scoring_start: event.target.value }))} className={inputClass} />
           </label>
-          <label>
-            scoring_end
-            <input
-              aria-label="scoring_end"
-              type="datetime-local"
-              value={windowDraft.scoring_end}
-              onChange={(event) => setWindowDraft((current) => ({ ...current, scoring_end: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Scoring End
+            <input aria-label="scoring_end" type="datetime-local" value={windowDraft.scoring_end} onChange={(event) => setWindowDraft((current) => ({ ...current, scoring_end: event.target.value }))} className={inputClass} />
           </label>
 
-          <h3 style={{ marginBottom: 0 }}>Publishing Window</h3>
-          <label>
-            publishing_start
-            <input
-              aria-label="publishing_start"
-              type="datetime-local"
-              value={windowDraft.publishing_start}
-              onChange={(event) => setWindowDraft((current) => ({ ...current, publishing_start: event.target.value }))}
-            />
+          <h3 className="text-lg font-semibold text-foreground pt-2">Publishing Window</h3>
+          <label className="block text-sm text-default-500">
+            Publishing Start
+            <input aria-label="publishing_start" type="datetime-local" value={windowDraft.publishing_start} onChange={(event) => setWindowDraft((current) => ({ ...current, publishing_start: event.target.value }))} className={inputClass} />
           </label>
-          <label>
-            publishing_end
-            <input
-              aria-label="publishing_end"
-              type="datetime-local"
-              value={windowDraft.publishing_end}
-              onChange={(event) => setWindowDraft((current) => ({ ...current, publishing_end: event.target.value }))}
-            />
+          <label className="block text-sm text-default-500">
+            Publishing End
+            <input aria-label="publishing_end" type="datetime-local" value={windowDraft.publishing_end} onChange={(event) => setWindowDraft((current) => ({ ...current, publishing_end: event.target.value }))} className={inputClass} />
           </label>
 
-          {saveError ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{saveError}</p> : null}
+          {saveError ? <p role="alert" className="text-danger">{saveError}</p> : null}
 
-          <button type="button" onClick={() => void saveEdits()} disabled={isSaving}>
+          <Button color="secondary" onPress={() => void saveEdits()} isDisabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+          </Button>
         </section>
       ) : null}
 
-      <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.75rem' }}>
-        <h2 style={{ margin: 0 }}>Publish Founders to Directory</h2>
+      <section className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-4">
+        <h2 className="text-xl font-semibold text-foreground">Publish Founders to Directory</h2>
         {!publishFoundersControlEnabled ? (
-          <p style={{ margin: 0 }}>
+          <p className="text-default-400">
             Publishing controls become available only after the event is archived and scores are published.
           </p>
         ) : (
           <>
-            <p style={{ margin: 0 }}>Select founders to publish or hide from the public directory.</p>
+            <p className="text-sm text-default-500">Select founders to publish or hide from the public directory.</p>
             {directoryCandidates.length === 0 ? (
-              <p style={{ margin: 0 }}>No founders are assigned to this event yet.</p>
+              <p className="py-12 text-center text-default-400">No founders are assigned to this event yet.</p>
             ) : (
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <div className="space-y-2">
                 {directoryCandidates.map((candidate) => (
-                  <label key={candidate.founder_id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <label key={candidate.founder_id} className="flex items-center gap-3 text-sm text-default-500">
                     <input
                       type="checkbox"
                       aria-label={`select founder ${candidate.company_name ?? candidate.founder_name ?? candidate.founder_id}`}
                       checked={selectedFounderIds.includes(candidate.founder_id)}
                       onChange={() => toggleFounderSelection(candidate.founder_id)}
                       disabled={isPublishingDirectory}
+                      className="rounded border-default-300"
                     />
                     <span>
                       {(candidate.company_name ?? candidate.founder_name ?? candidate.founder_id)}
                       {' · '}
-                      {candidate.visible_in_directory ? 'Visible' : 'Hidden'}
+                      <span className={candidate.visible_in_directory ? 'text-green-400' : 'text-default-400'}>{candidate.visible_in_directory ? 'Visible' : 'Hidden'}</span>
                       {' · '}
                       {candidate.application_status ?? 'unknown status'}
                     </span>
@@ -552,33 +509,38 @@ export default function AdminEventDetailPage(): React.ReactElement {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => void applyDirectoryPublishing({ founder_ids: selectedFounderIds, visible: true })}
-                disabled={isPublishingDirectory || selectedFounderIds.length === 0}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                size="sm"
+                color="secondary"
+                onPress={() => void applyDirectoryPublishing({ founder_ids: selectedFounderIds, visible: true })}
+                isDisabled={isPublishingDirectory || selectedFounderIds.length === 0}
               >
                 {isPublishingDirectory ? 'Updating...' : 'Publish Selected'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void applyDirectoryPublishing({ founder_ids: selectedFounderIds, visible: false })}
-                disabled={isPublishingDirectory || selectedFounderIds.length === 0}
+              </Button>
+              <Button
+                size="sm"
+                color="default"
+                variant="flat"
+                onPress={() => void applyDirectoryPublishing({ founder_ids: selectedFounderIds, visible: false })}
+                isDisabled={isPublishingDirectory || selectedFounderIds.length === 0}
               >
                 Hide Selected
-              </button>
-              <button
-                type="button"
-                onClick={() => void applyDirectoryPublishing({ auto_publish_accepted: true, visible: true })}
-                disabled={isPublishingDirectory}
+              </Button>
+              <Button
+                size="sm"
+                color="secondary"
+                variant="flat"
+                onPress={() => void applyDirectoryPublishing({ auto_publish_accepted: true, visible: true })}
+                isDisabled={isPublishingDirectory}
               >
                 Auto-Publish Accepted Founders
-              </button>
+              </Button>
             </div>
           </>
         )}
 
-        {directoryError ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{directoryError}</p> : null}
+        {directoryError ? <p role="alert" className="text-danger">{directoryError}</p> : null}
       </section>
     </section>
   );

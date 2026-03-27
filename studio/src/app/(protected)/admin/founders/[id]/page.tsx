@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FounderDetailData, FounderDetailModal } from '../../../../../components/admin/FounderDetailModal';
+import { Button } from '@heroui/button';
 
 export default function AdminFounderDetailPage(): React.ReactElement {
   const params = useParams<{ id: string }>();
@@ -65,32 +66,32 @@ export default function AdminFounderDetailPage(): React.ReactElement {
   }
 
   if (isLoading) {
-    return <p>Loading founder detail...</p>;
+    return <div className="container mx-auto max-w-7xl px-6 py-8"><p className="text-default-400">Loading founder detail...</p></div>;
   }
 
   if (error) {
     return (
-      <main>
-        <h1>Founder Detail</h1>
-        <p role="alert" style={{ color: '#b00' }}>{error}</p>
+      <main className="container mx-auto max-w-7xl px-6 py-8 space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Detail</h1>
+        <p role="alert" className="text-danger">{error}</p>
       </main>
     );
   }
 
   if (!founder) {
     return (
-      <main>
-        <h1>Founder Detail</h1>
-        <p role="alert" style={{ color: '#b00' }}>Founder application not found.</p>
+      <main className="container mx-auto max-w-7xl px-6 py-8 space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Detail</h1>
+        <p role="alert" className="text-danger">Founder application not found.</p>
       </main>
     );
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>{founder.name}</h1>
-        <button type="button" onClick={() => router.push('/admin/founders')}>Back</button>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">{founder.name}</h1>
+        <Button color="default" variant="flat" onPress={() => router.push('/admin/founders')}>Back</Button>
       </div>
 
       <FounderDetailModal

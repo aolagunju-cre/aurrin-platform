@@ -70,11 +70,11 @@ describe('AdminEventsPage', () => {
       expect(screen.getByLabelText('Events Table')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('columnheader', { name: 'name' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'status' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'dates' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'judge count' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'founder count' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /name/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /dates/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /judge count/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /founder count/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create Event' })).toBeInTheDocument();
     expect(screen.getByText('Spring Pitch Day')).toBeInTheDocument();
     expect(screen.getByText('Live Finals')).toBeInTheDocument();

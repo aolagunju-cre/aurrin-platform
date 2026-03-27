@@ -77,22 +77,22 @@ export default function FounderProfilePage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Founder Profile</h1>
+    <section className="container mx-auto max-w-3xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Profile</h1>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading founder profile...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading founder profile...</p> : null}
 
       {!isLoading && profile ? (
         <>
-          <p style={{ margin: 0 }}>Email: {profile.email}</p>
+          <p className="text-sm text-default-500">Email: {profile.email}</p>
           {initialValues ? <ProfileForm initialValues={initialValues} onSubmit={handleSubmit} /> : null}
-          {saveMessage ? <p style={{ margin: 0 }}>{saveMessage}</p> : null}
+          {saveMessage ? <p className="text-sm text-green-400">{saveMessage}</p> : null}
         </>
       ) : null}
     </section>

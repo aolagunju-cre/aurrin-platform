@@ -62,8 +62,8 @@ export default async function PublicFounderPage({ params }: PublicFounderPagePro
   );
   if (founderResult.error) {
     return (
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p role="alert">Unable to load founder profile.</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p role="alert" className="py-12 text-center text-default-400">Unable to load founder profile.</p>
       </main>
     );
   }
@@ -71,8 +71,8 @@ export default async function PublicFounderPage({ params }: PublicFounderPagePro
   const founder = founderResult.data[0] ?? null;
   if (!founder) {
     return (
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p role="alert">Founder profile not found.</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p role="alert" className="py-12 text-center text-default-400">Founder profile not found.</p>
       </main>
     );
   }
@@ -96,33 +96,33 @@ export default async function PublicFounderPage({ params }: PublicFounderPagePro
     }));
 
   return (
-    <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>{founder.company_name ?? 'Founder Profile'}</h1>
-      <p style={{ margin: 0 }}>
+    <main className="container mx-auto max-w-3xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">{founder.company_name ?? 'Founder Profile'}</h1>
+      <p className="text-lg text-default-500">
         {founder.user?.name ? `${founder.user.name} · ` : ''}
         {founder.tagline ?? 'Startup founder'}
       </p>
-      {founder.bio ? <p style={{ margin: 0 }}>{founder.bio}</p> : null}
+      {founder.bio ? <p className="text-default-500">{founder.bio}</p> : null}
       {founder.website ? (
-        <p style={{ margin: 0 }}>
-          Website: <a href={founder.website}>{founder.website}</a>
+        <p className="text-default-500">
+          Website: <a href={founder.website} className="text-violet-400 hover:text-violet-300 transition-colors">{founder.website}</a>
         </p>
       ) : null}
 
-      <section aria-label="Founder Highlights" style={{ border: '1px solid #e3e3e3', padding: '0.75rem' }}>
-        <h2 style={{ marginTop: 0 }}>Highlights</h2>
+      <section aria-label="Founder Highlights" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+        <h2 className="text-xl font-semibold text-foreground mb-3">Highlights</h2>
         {highlights.length === 0 ? (
-          <p style={{ margin: 0 }}>No published highlights available yet.</p>
+          <p className="text-default-400">No published highlights available yet.</p>
         ) : (
-          <ul style={{ margin: 0, paddingInlineStart: '1.2rem', display: 'grid', gap: '0.75rem' }}>
+          <ul className="list-disc pl-5 space-y-3 text-default-500">
             {highlights.map((highlight) => (
               <li key={highlight.id}>
-                <p style={{ margin: 0 }}>
+                <p className="font-medium text-foreground">
                   <strong>{highlight.event_name}</strong> · Published {toDisplayDate(highlight.published_at)}
                 </p>
-                <p style={{ margin: 0 }}>Aggregate score: {highlight.score_aggregate ?? 'N/A'}</p>
+                <p className="text-default-500">Aggregate score: {highlight.score_aggregate ?? 'N/A'}</p>
                 {highlight.score_breakdown.length > 0 ? (
-                  <p style={{ margin: 0 }}>
+                  <p className="text-default-500">
                     Breakdown: {highlight.score_breakdown.map(([label, value]) => `${label}: ${value}`).join(', ')}
                   </p>
                 ) : null}

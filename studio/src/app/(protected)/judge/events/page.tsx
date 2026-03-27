@@ -83,46 +83,50 @@ export default function JudgeEventsPage(): React.ReactElement {
   }, []);
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Judge Events</h1>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Judge Events</h1>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading assigned events...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading assigned events...</p> : null}
 
       {!isLoading && !error && visibleEvents.length === 0 ? (
-        <p>No live or recent assigned events available.</p>
+        <p className="py-12 text-center text-default-400">No live or recent assigned events available.</p>
       ) : null}
 
       {!isLoading && !error && visibleEvents.length > 0 ? (
-        <table aria-label="Judge Events Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Event</th>
-              <th align="left">Status</th>
-              <th align="left">Dates</th>
-              <th align="left">Scoring Window</th>
-              <th align="left">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleEvents.map((event) => (
-              <tr key={event.id}>
-                <td>{event.name}</td>
-                <td>{toStatusLabel(event.status)}</td>
-                <td>{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
-                <td>{scoringStatusLabel(event)}</td>
-                <td>
-                  <a href={`/judge/events/${event.id}`}>View Founder Pitches</a>
-                </td>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Judge Events Table" className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Event</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Status</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Dates</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Scoring Window</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleEvents.map((event) => (
+                <tr key={event.id} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100 text-foreground">{event.name}</td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${event.status === 'live' ? 'bg-green-500/10 text-green-400' : event.status === 'upcoming' ? 'bg-violet-500/10 text-violet-400' : 'bg-default-100 text-default-500'}`}>{toStatusLabel(event.status)}</span>
+                  </td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{scoringStatusLabel(event)}</td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <a href={`/judge/events/${event.id}`} className="text-violet-400 hover:text-violet-300 transition-colors">View Founder Pitches</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

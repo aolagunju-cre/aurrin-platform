@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RubricDefinition, RubricSummary } from '../../../../lib/rubrics/types';
 import { RubricForm } from '../../../../components/admin/RubricForm';
+import { Button } from '@heroui/button';
 
 const starterDefinition: RubricDefinition = {
   categories: [
@@ -80,51 +81,55 @@ export default function AdminRubricsPage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>Rubrics</h1>
-        <button type="button" onClick={() => setShowCreate((current) => !current)} disabled={isCreating}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Rubrics</h1>
+        <Button color="secondary" onPress={() => setShowCreate((current) => !current)} isDisabled={isCreating}>
           Create Rubric
-        </button>
+        </Button>
       </div>
 
       {showCreate ? (
-        <RubricForm onSubmit={createRubric} submitLabel={isCreating ? 'Creating...' : 'Create Rubric'} />
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+          <RubricForm onSubmit={createRubric} submitLabel={isCreating ? 'Creating...' : 'Create Rubric'} />
+        </div>
       ) : null}
 
       {error ? (
-        <p role="alert" style={{ color: '#b00', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading rubrics...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading rubrics...</p> : null}
 
       {!isLoading ? (
-        <table aria-label="Rubrics Table" style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th align="left">Name</th>
-              <th align="left">Version</th>
-              <th align="left">Question Count</th>
-              <th align="left">Last Updated</th>
-              <th align="left">Builder</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orderedRubrics.map((rubric) => (
-              <tr key={rubric.id}>
-                <td>{rubric.name}</td>
-                <td>{rubric.version}</td>
-                <td>{rubric.question_count}</td>
-                <td>{new Date(rubric.last_updated).toLocaleString()}</td>
-                <td>
-                  <a href={`/admin/rubrics/${rubric.id}`}>Open Builder</a>
-                </td>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Rubrics Table" className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Name</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Version</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Question Count</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Last Updated</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Builder</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orderedRubrics.map((rubric) => (
+                <tr key={rubric.id} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100 text-foreground">{rubric.name}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{rubric.version}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{rubric.question_count}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(rubric.last_updated).toLocaleString()}</td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <a href={`/admin/rubrics/${rubric.id}`} className="text-violet-400 hover:text-violet-300 transition-colors">Open Builder</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

@@ -55,9 +55,7 @@ describe('public directory page', () => {
     expect(screen.getByText('Orbit Labs')).toBeInTheDocument();
     expect(screen.getByText('Aggregate score: 89.5')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View Profile' })).toHaveAttribute('href', '/public/directory/orbit-labs');
-    expect(screen.getByTestId('directory-grid')).toHaveStyle({
-      gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    });
+    expect(screen.getByTestId('directory-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3');
   });
 
   it('applies search and filter controls against the public directory API', async () => {

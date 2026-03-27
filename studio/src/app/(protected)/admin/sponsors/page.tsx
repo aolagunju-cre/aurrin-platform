@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { Button } from '@heroui/button';
 
 type SponsorTier = 'bronze' | 'silver' | 'gold';
 type SponsorScope = 'event' | 'site-wide';
@@ -126,16 +127,7 @@ export default function AdminSponsorsPage(): React.ReactElement {
       return;
     }
 
-    setDraft({
-      name: '',
-      logo: '',
-      website: '',
-      tier: 'bronze',
-      scope: 'site-wide',
-      event: '',
-      end_date: '',
-      pricing: '50000',
-    });
+    setDraft({ name: '', logo: '', website: '', tier: 'bronze', scope: 'site-wide', event: '', end_date: '', pricing: '50000' });
     await loadSponsors();
   }
 
@@ -172,9 +164,7 @@ export default function AdminSponsorsPage(): React.ReactElement {
     }
 
     setError(null);
-    const response = await fetch(`/api/admin/sponsors/${id}`, {
-      method: 'DELETE',
-    });
+    const response = await fetch(`/api/admin/sponsors/${id}`, { method: 'DELETE' });
     const payload = await response.json() as SponsorsResponse;
     if (!response.ok || !payload.success) {
       setError(payload.message ?? 'Could not delete sponsor.');
@@ -184,189 +174,94 @@ export default function AdminSponsorsPage(): React.ReactElement {
     await loadSponsors();
   }
 
+  const inputClass = "w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500";
+
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
       <header>
-        <h1 style={{ marginBottom: '0.25rem' }}>Sponsored Placements</h1>
-        <p style={{ margin: 0 }}>Admin-managed sponsorships by tier and scope.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Sponsored Placements</h1>
+        <p className="text-sm text-default-500 mt-1">Admin-managed sponsorships by tier and scope.</p>
       </header>
 
-      {error ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{error}</p> : null}
-      {loading ? <p>Loading sponsors...</p> : null}
+      {error ? <p role="alert" className="text-danger">{error}</p> : null}
+      {loading ? <p className="text-default-400">Loading sponsors...</p> : null}
 
-      <form onSubmit={(event) => void createSponsor(event)} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.5rem' }}>
-        <h2 style={{ margin: 0 }}>Create Sponsor</h2>
-        <input
-          aria-label="name"
-          placeholder="name"
-          value={draft.name}
-          onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-          required
-        />
-        <input
-          aria-label="logo"
-          placeholder="logo url"
-          value={draft.logo}
-          onChange={(event) => setDraft((current) => ({ ...current, logo: event.target.value }))}
-        />
-        <input
-          aria-label="website"
-          placeholder="website url"
-          value={draft.website}
-          onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))}
-        />
-        <select
-          aria-label="tier"
-          value={draft.tier}
-          onChange={(event) => {
-            const tier = event.target.value as SponsorTier;
-            const suggested = tierConfig.find((entry) => entry.tier === tier)?.pricing_cents ?? 0;
-            setDraft((current) => ({ ...current, tier, pricing: String(suggested) }));
-          }}
-        >
+      <form onSubmit={(event) => void createSponsor(event)} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
+        <h2 className="text-xl font-semibold text-foreground">Create Sponsor</h2>
+        <input aria-label="name" placeholder="name" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} required className={inputClass} />
+        <input aria-label="logo" placeholder="logo url" value={draft.logo} onChange={(event) => setDraft((current) => ({ ...current, logo: event.target.value }))} className={inputClass} />
+        <input aria-label="website" placeholder="website url" value={draft.website} onChange={(event) => setDraft((current) => ({ ...current, website: event.target.value }))} className={inputClass} />
+        <select aria-label="tier" value={draft.tier} onChange={(event) => { const tier = event.target.value as SponsorTier; const suggested = tierConfig.find((entry) => entry.tier === tier)?.pricing_cents ?? 0; setDraft((current) => ({ ...current, tier, pricing: String(suggested) })); }} className={inputClass}>
           <option value="bronze">bronze</option>
           <option value="silver">silver</option>
           <option value="gold">gold</option>
         </select>
-        <select
-          aria-label="scope"
-          value={draft.scope}
-          onChange={(event) => setDraft((current) => ({ ...current, scope: event.target.value as SponsorScope }))}
-        >
+        <select aria-label="scope" value={draft.scope} onChange={(event) => setDraft((current) => ({ ...current, scope: event.target.value as SponsorScope }))} className={inputClass}>
           <option value="site-wide">site-wide</option>
           <option value="event">event</option>
         </select>
-        <input
-          aria-label="event"
-          placeholder="event id (required when scope=event)"
-          value={draft.event}
-          onChange={(event) => setDraft((current) => ({ ...current, event: event.target.value }))}
-          disabled={draft.scope === 'site-wide'}
-        />
-        <input
-          aria-label="end_date"
-          type="date"
-          value={draft.end_date}
-          onChange={(event) => setDraft((current) => ({ ...current, end_date: event.target.value }))}
-          required
-        />
-        <input
-          aria-label="pricing"
-          type="number"
-          min={0}
-          value={draft.pricing}
-          onChange={(event) => setDraft((current) => ({ ...current, pricing: event.target.value }))}
-          required
-        />
-        <button type="submit">Create Sponsor</button>
+        <input aria-label="event" placeholder="event id (required when scope=event)" value={draft.event} onChange={(event) => setDraft((current) => ({ ...current, event: event.target.value }))} disabled={draft.scope === 'site-wide'} className={inputClass} />
+        <input aria-label="end_date" type="date" value={draft.end_date} onChange={(event) => setDraft((current) => ({ ...current, end_date: event.target.value }))} required className={inputClass} />
+        <input aria-label="pricing" type="number" min={0} value={draft.pricing} onChange={(event) => setDraft((current) => ({ ...current, pricing: event.target.value }))} required className={inputClass} />
+        <Button type="submit" color="secondary">Create Sponsor</Button>
       </form>
 
-      <table aria-label="Sponsors Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th align="left">name</th>
-            <th align="left">tier</th>
-            <th align="left">scope</th>
-            <th align="left">end_date</th>
-            <th align="left">pricing</th>
-            <th align="left">status</th>
-            <th align="left">actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sponsors.map((sponsor) => (
-            <tr key={sponsor.id}>
-              <td>
-                <input
-                  aria-label={`name ${sponsor.id}`}
-                  value={sponsor.name}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, name: value } : item)));
-                  }}
-                />
-              </td>
-              <td>
-                <select
-                  aria-label={`tier ${sponsor.id}`}
-                  value={sponsor.tier}
-                  onChange={(event) => {
-                    const tier = event.target.value as SponsorTier;
-                    const suggested = tierConfig.find((entry) => entry.tier === tier)?.pricing_cents ?? sponsor.pricing;
-                    setSponsors((current) => current.map((item) => (
-                      item.id === sponsor.id ? { ...item, tier, pricing: suggested } : item
-                    )));
-                  }}
-                >
-                  <option value="bronze">bronze</option>
-                  <option value="silver">silver</option>
-                  <option value="gold">gold</option>
-                </select>
-              </td>
-              <td>
-                <select
-                  aria-label={`scope ${sponsor.id}`}
-                  value={sponsor.scope}
-                  onChange={(event) => {
-                    const scope = event.target.value as SponsorScope;
-                    setSponsors((current) => current.map((item) => (
-                      item.id === sponsor.id ? { ...item, scope, event: scope === 'site-wide' ? null : item.event } : item
-                    )));
-                  }}
-                >
-                  <option value="site-wide">site-wide</option>
-                  <option value="event">event</option>
-                </select>
-              </td>
-              <td>
-                <input
-                  aria-label={`end_date ${sponsor.id}`}
-                  type="date"
-                  value={toDateInputValue(sponsor.end_date)}
-                  onChange={(event) => {
-                    const value = event.target.value ? `${event.target.value}T00:00:00.000Z` : null;
-                    setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, end_date: value } : item)));
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  aria-label={`pricing ${sponsor.id}`}
-                  type="number"
-                  min={0}
-                  value={sponsor.pricing}
-                  onChange={(event) => {
-                    const value = Number.parseInt(event.target.value, 10);
-                    setSponsors((current) => current.map((item) => (
-                      item.id === sponsor.id ? { ...item, pricing: Number.isFinite(value) ? value : 0 } : item
-                    )));
-                  }}
-                />
-                <div>{formatUsd(sponsor.pricing)}</div>
-              </td>
-              <td>
-                <select
-                  aria-label={`status ${sponsor.id}`}
-                  value={sponsor.status}
-                  onChange={(event) => {
-                    const value = event.target.value as SponsorStatus;
-                    setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, status: value } : item)));
-                  }}
-                >
-                  <option value="active">active</option>
-                  <option value="inactive">inactive</option>
-                </select>
-              </td>
-              <td>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={() => void saveSponsor(sponsor)}>Save</button>
-                  <button type="button" onClick={() => void deleteSponsor(sponsor.id)}>Delete</button>
-                </div>
-              </td>
+      <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+        <table aria-label="Sponsors Table" className="w-full text-sm">
+          <thead>
+            <tr>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Name</th>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Tier</th>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Scope</th>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">End Date</th>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Pricing</th>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Status</th>
+              <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sponsors.map((sponsor) => (
+              <tr key={sponsor.id} className="hover:bg-default-100/50 transition-colors">
+                <td className="px-4 py-3 border-b border-default-100">
+                  <input aria-label={`name ${sponsor.id}`} value={sponsor.name} onChange={(event) => { const value = event.target.value; setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, name: value } : item))); }} className="w-full rounded-lg border border-default-200 bg-default-100 px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                </td>
+                <td className="px-4 py-3 border-b border-default-100">
+                  <select aria-label={`tier ${sponsor.id}`} value={sponsor.tier} onChange={(event) => { const tier = event.target.value as SponsorTier; const suggested = tierConfig.find((entry) => entry.tier === tier)?.pricing_cents ?? sponsor.pricing; setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, tier, pricing: suggested } : item))); }} className="rounded-lg border border-default-200 bg-default-100 px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    <option value="bronze">bronze</option>
+                    <option value="silver">silver</option>
+                    <option value="gold">gold</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3 border-b border-default-100">
+                  <select aria-label={`scope ${sponsor.id}`} value={sponsor.scope} onChange={(event) => { const scope = event.target.value as SponsorScope; setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, scope, event: scope === 'site-wide' ? null : item.event } : item))); }} className="rounded-lg border border-default-200 bg-default-100 px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    <option value="site-wide">site-wide</option>
+                    <option value="event">event</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3 border-b border-default-100">
+                  <input aria-label={`end_date ${sponsor.id}`} type="date" value={toDateInputValue(sponsor.end_date)} onChange={(event) => { const value = event.target.value ? `${event.target.value}T00:00:00.000Z` : null; setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, end_date: value } : item))); }} className="rounded-lg border border-default-200 bg-default-100 px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                </td>
+                <td className="px-4 py-3 border-b border-default-100">
+                  <input aria-label={`pricing ${sponsor.id}`} type="number" min={0} value={sponsor.pricing} onChange={(event) => { const value = Number.parseInt(event.target.value, 10); setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, pricing: Number.isFinite(value) ? value : 0 } : item))); }} className="w-24 rounded-lg border border-default-200 bg-default-100 px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                  <div className="text-xs text-default-400 mt-1">{formatUsd(sponsor.pricing)}</div>
+                </td>
+                <td className="px-4 py-3 border-b border-default-100">
+                  <select aria-label={`status ${sponsor.id}`} value={sponsor.status} onChange={(event) => { const value = event.target.value as SponsorStatus; setSponsors((current) => current.map((item) => (item.id === sponsor.id ? { ...item, status: value } : item))); }} className="rounded-lg border border-default-200 bg-default-100 px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    <option value="active">active</option>
+                    <option value="inactive">inactive</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3 border-b border-default-100">
+                  <div className="flex gap-2">
+                    <Button size="sm" color="secondary" onPress={() => void saveSponsor(sponsor)}>Save</Button>
+                    <Button size="sm" color="danger" variant="flat" onPress={() => void deleteSponsor(sponsor.id)}>Delete</Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

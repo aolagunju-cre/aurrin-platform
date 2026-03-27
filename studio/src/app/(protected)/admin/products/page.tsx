@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 type BillingInterval = 'monthly' | 'yearly';
 
@@ -206,42 +207,45 @@ export default function AdminProductsPage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>Products</h1>
-        <button type="button" onClick={() => void syncFromStripe()}>Sync from Stripe</button>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Products</h1>
+        <Button color="secondary" onPress={() => void syncFromStripe()}>Sync from Stripe</Button>
       </div>
-      <p style={{ margin: 0 }}>Loaded {products.length} product(s) and {totalPrices} price(s).</p>
+      <p className="text-sm text-default-500">Loaded {products.length} product(s) and {totalPrices} price(s).</p>
 
-      {error ? <p role="alert" style={{ color: '#b00', margin: 0 }}>{error}</p> : null}
-      {isLoading ? <p>Loading products...</p> : null}
+      {error ? <p role="alert" className="text-danger">{error}</p> : null}
+      {isLoading ? <p className="text-default-400">Loading products...</p> : null}
 
-      <form onSubmit={(event) => void createProduct(event)} style={{ display: 'grid', gap: '0.5rem', border: '1px solid #ddd', padding: '1rem', borderRadius: 8 }}>
-        <h2 style={{ margin: 0 }}>Create Product</h2>
+      <form onSubmit={(event) => void createProduct(event)} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
+        <h2 className="text-xl font-semibold text-foreground">Create Product</h2>
         <input
           aria-label="Product name"
           placeholder="Name"
           value={newProduct.name}
           onChange={(event) => setNewProduct((prev) => ({ ...prev, name: event.target.value }))}
           required
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
         <input
           aria-label="Product description"
           placeholder="Description"
           value={newProduct.description}
           onChange={(event) => setNewProduct((prev) => ({ ...prev, description: event.target.value }))}
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
         <input
           aria-label="Stripe product id"
           placeholder="Stripe product ID"
           value={newProduct.stripe_product_id}
           onChange={(event) => setNewProduct((prev) => ({ ...prev, stripe_product_id: event.target.value }))}
+          className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
         />
-        <button type="submit">Create Product</button>
+        <Button type="submit" color="secondary">Create Product</Button>
       </form>
 
       {products.map((product) => (
-        <article key={product.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.5rem' }}>
+        <article key={product.id} className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
           <input
             aria-label={`Product name ${product.id}`}
             value={product.name}
@@ -249,6 +253,7 @@ export default function AdminProductsPage(): React.ReactElement {
               const value = event.target.value;
               setProducts((prev) => prev.map((row) => (row.id === product.id ? { ...row, name: value } : row)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
           <input
             aria-label={`Product description ${product.id}`}
@@ -257,6 +262,7 @@ export default function AdminProductsPage(): React.ReactElement {
               const value = event.target.value;
               setProducts((prev) => prev.map((row) => (row.id === product.id ? { ...row, description: value } : row)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
           <input
             aria-label={`Stripe product id ${product.id}`}
@@ -265,16 +271,17 @@ export default function AdminProductsPage(): React.ReactElement {
               const value = event.target.value;
               setProducts((prev) => prev.map((row) => (row.id === product.id ? { ...row, stripe_product_id: value } : row)));
             }}
+            className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => void updateProduct(product)}>Save Product</button>
-            <button type="button" onClick={() => void deleteProduct(product.id)}>Delete Product</button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" color="secondary" onPress={() => void updateProduct(product)}>Save Product</Button>
+            <Button size="sm" color="danger" variant="flat" onPress={() => void deleteProduct(product.id)}>Delete Product</Button>
           </div>
 
-          <h3 style={{ marginBottom: 0 }}>Prices</h3>
+          <h3 className="text-lg font-semibold text-foreground pt-2">Prices</h3>
           {product.prices.map((price) => (
-            <div key={price.id} style={{ display: 'grid', gap: '0.5rem', border: '1px solid #eee', borderRadius: 8, padding: '0.75rem' }}>
-              <p style={{ margin: 0 }}>{formatMoney(price.amount_cents, price.currency)} / {price.billing_interval}</p>
+            <div key={price.id} className="rounded-xl border border-default-100 bg-default-50/50 p-4 space-y-2">
+              <p className="text-sm text-default-500">{formatMoney(price.amount_cents, price.currency)} / {price.billing_interval}</p>
               <input
                 aria-label={`Price amount ${price.id}`}
                 value={String(price.amount_cents)}
@@ -288,6 +295,7 @@ export default function AdminProductsPage(): React.ReactElement {
                     )
                   );
                 }}
+                className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
               <select
                 aria-label={`Billing interval ${price.id}`}
@@ -302,6 +310,7 @@ export default function AdminProductsPage(): React.ReactElement {
                     )
                   );
                 }}
+                className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
               >
                 <option value="monthly">monthly</option>
                 <option value="yearly">yearly</option>
@@ -319,15 +328,16 @@ export default function AdminProductsPage(): React.ReactElement {
                     )
                   );
                 }}
+                className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => void updatePrice(price)}>Save Price</button>
-                <button type="button" onClick={() => void deletePrice(price.id)}>Delete Price</button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" color="secondary" onPress={() => void updatePrice(price)}>Save Price</Button>
+                <Button size="sm" color="danger" variant="flat" onPress={() => void deletePrice(price.id)}>Delete Price</Button>
               </div>
             </div>
           ))}
 
-          <div style={{ display: 'grid', gap: '0.5rem', borderTop: '1px dashed #ccc', paddingTop: '0.5rem' }}>
+          <div className="space-y-2 border-t border-dashed border-default-200 pt-4">
             <input
               aria-label={`New price amount ${product.id}`}
               placeholder="Amount cents"
@@ -343,6 +353,7 @@ export default function AdminProductsPage(): React.ReactElement {
                   },
                 }));
               }}
+              className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
             <select
               aria-label={`New billing interval ${product.id}`}
@@ -358,6 +369,7 @@ export default function AdminProductsPage(): React.ReactElement {
                   },
                 }));
               }}
+              className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
             >
               <option value="monthly">monthly</option>
               <option value="yearly">yearly</option>
@@ -377,8 +389,9 @@ export default function AdminProductsPage(): React.ReactElement {
                   },
                 }));
               }}
+              className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground placeholder:text-default-400 focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
-            <button type="button" onClick={() => void createPrice(product.id)}>Create Price</button>
+            <Button size="sm" color="secondary" onPress={() => void createPrice(product.id)}>Create Price</Button>
           </div>
         </article>
       ))}

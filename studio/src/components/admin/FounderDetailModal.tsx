@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 export interface FounderEventOption {
   id: string;
@@ -35,6 +36,16 @@ interface FounderDetailModalProps {
   onSaveStatus: (status: FounderDetailData['status_value'], assignedEventId: string | null) => Promise<void>;
   onSendConfirmation: () => Promise<void>;
 }
+
+const selectClass =
+  'w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500';
+
+const statusBadgeColors: Record<string, string> = {
+  Pending: 'bg-warning/10 text-warning',
+  Accepted: 'bg-success/10 text-success',
+  Assigned: 'bg-violet-500/10 text-violet-400',
+  Declined: 'bg-danger/10 text-danger',
+};
 
 export function FounderDetailModal({
   founder,
@@ -84,81 +95,119 @@ export function FounderDetailModal({
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem', border: '1px solid #ddd', padding: '0.75rem' }}>
-      <h2 style={{ margin: 0 }}>Founder Detail</h2>
+    <section className="grid gap-6 rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6">
+      <h2 className="text-xl font-bold text-foreground">Founder Detail</h2>
 
-      <div style={{ display: 'grid', gap: '0.25rem' }}>
-        <p style={{ margin: 0 }}><strong>Name:</strong> {founder.name}</p>
-        <p style={{ margin: 0 }}><strong>Email:</strong> {founder.email}</p>
-        <p style={{ margin: 0 }}><strong>Company:</strong> {founder.company_name ?? 'N/A'}</p>
-        <p style={{ margin: 0 }}><strong>Industry:</strong> {founder.industry ?? 'N/A'}</p>
-        <p style={{ margin: 0 }}><strong>Stage:</strong> {founder.stage ?? 'N/A'}</p>
-        <p style={{ margin: 0 }}><strong>Website:</strong> {founder.website ?? 'N/A'}</p>
-        <p style={{ margin: 0 }}><strong>Status:</strong> {founder.status}</p>
+      <div className="grid gap-2">
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Name:</span> {founder.name}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Email:</span> {founder.email}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Company:</span> {founder.company_name ?? 'N/A'}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Industry:</span> {founder.industry ?? 'N/A'}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Stage:</span> {founder.stage ?? 'N/A'}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Website:</span> {founder.website ?? 'N/A'}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Status:</span>{' '}
+          <span
+            className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+              statusBadgeColors[founder.status] ?? 'bg-default-100 text-default-500'
+            }`}
+          >
+            {founder.status}
+          </span>
+        </p>
       </div>
 
-      <label>
-        Application Status
-        <select
-          aria-label="Application Status"
-          value={status}
-          onChange={(event) => setStatus(event.target.value as FounderDetailData['status_value'])}
-          disabled={isLoading || isSaving}
-        >
-          <option value="pending">Pending</option>
-          <option value="accepted">Accepted</option>
-          <option value="assigned">Assigned</option>
-          <option value="declined">Declined</option>
-        </select>
-      </label>
+      <div className="grid gap-4">
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium text-default-600">Application Status</label>
+          <select
+            aria-label="Application Status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value as FounderDetailData['status_value'])}
+            disabled={isLoading || isSaving}
+            className={selectClass}
+          >
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="assigned">Assigned</option>
+            <option value="declined">Declined</option>
+          </select>
+        </div>
 
-      <label>
-        Assign to Event
-        <select
-          aria-label="Assign to Event"
-          value={assignedEventId}
-          onChange={(event) => setAssignedEventId(event.target.value)}
-          disabled={isLoading || isSaving}
-        >
-          <option value="">Unassigned</option>
-          {founder.events.map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium text-default-600">Assign to Event</label>
+          <select
+            aria-label="Assign to Event"
+            value={assignedEventId}
+            onChange={(event) => setAssignedEventId(event.target.value)}
+            disabled={isLoading || isSaving}
+            className={selectClass}
+          >
+            <option value="">Unassigned</option>
+            {founder.events.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => void handleSave()} disabled={isLoading || isSaving || !isDirty}>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="button"
+          color="primary"
+          onPress={() => void handleSave()}
+          isDisabled={isLoading || isSaving || !isDirty}
+        >
           {isSaving ? 'Saving...' : 'Save'}
-        </button>
-        <button type="button" onClick={() => void handleSendConfirmation()} disabled={isLoading || isSending}>
+        </Button>
+        <Button
+          type="button"
+          color="default"
+          variant="flat"
+          onPress={() => void handleSendConfirmation()}
+          isDisabled={isLoading || isSending}
+        >
           {isSending ? 'Sending...' : 'Send Confirmation'}
-        </button>
+        </Button>
       </div>
 
-      <div>
-        <h3 style={{ marginBottom: '0.5rem' }}>Submitted Application Data</h3>
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{JSON.stringify(founder.submitted_form_data, null, 2)}</pre>
+      <div className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-4">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Submitted Application Data</h3>
+        <pre className="whitespace-pre-wrap text-xs text-default-500 font-mono">
+          {JSON.stringify(founder.submitted_form_data, null, 2)}
+        </pre>
       </div>
 
-      <div>
-        <h3 style={{ marginBottom: '0.5rem' }}>Submitted Scores (Read-only)</h3>
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+      <div className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-4">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Submitted Scores (Read-only)</h3>
+        <pre className="whitespace-pre-wrap text-xs text-default-500 font-mono">
           {JSON.stringify(founder.submitted_scores ?? { message: 'No submitted scores yet.' }, null, 2)}
         </pre>
       </div>
 
-      <div>
-        <h3 style={{ marginBottom: '0.5rem' }}>Validation Results (Read-only)</h3>
-        <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+      <div className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-4">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Validation Results (Read-only)</h3>
+        <pre className="whitespace-pre-wrap text-xs text-default-500 font-mono">
           {JSON.stringify(founder.validation_results ?? { message: 'No validation results yet.' }, null, 2)}
         </pre>
       </div>
 
       {error ? (
-        <p role="alert" style={{ margin: 0, color: '#b00' }}>
+        <p role="alert" className="text-danger text-sm">
           {error}
         </p>
       ) : null}

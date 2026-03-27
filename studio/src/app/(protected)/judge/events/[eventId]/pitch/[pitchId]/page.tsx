@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 import { ScoringForm } from '../../../../../../../components/judge/ScoringForm';
 import { calculateTotals, type ScoreTotals, type ScoringResponses, type ScoringRubricVersion } from '../../../../../../../lib/scoring/calculate';
 
@@ -165,45 +166,46 @@ export default function JudgePitchScoringPage({ params }: JudgePitchScoringPageP
   }, [score]);
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Pitch Scoring</h1>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Pitch Scoring</h1>
 
       {pitch ? (
-        <p style={{ margin: 0 }}>
+        <p className="text-sm text-default-500">
           Founder: {pitch.founder?.user?.name ?? 'Founder'} ({pitch.founder?.company_name ?? 'Company'})
         </p>
       ) : null}
 
       {isReadOnly ? (
-        <p role="status" style={{ margin: 0 }}>
+        <p role="status" className="text-sm text-default-400">
           This score is {score?.state} and can no longer be edited.
         </p>
       ) : null}
 
       {conflictMessage ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {conflictMessage}
         </p>
       ) : null}
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading pitch scoring page...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading pitch scoring page...</p> : null}
 
       {!isLoading && !error && rubric ? (
         <>
-          <label style={{ display: 'grid', gap: '0.35rem' }}>
-            Global Comments
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-default-500">Global Comments</span>
             <textarea
               aria-label="Global Comments"
               rows={4}
               value={comments}
               onChange={(event) => setComments(event.target.value)}
               disabled={isReadOnly || isSaving}
+              className="w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
             />
           </label>
 
@@ -234,9 +236,9 @@ export default function JudgePitchScoringPage({ params }: JudgePitchScoringPageP
             }}
           />
 
-          <section aria-label="Revision Timeline" style={{ border: '1px solid #e3e3e3', padding: '0.75rem' }}>
-            <h2 style={{ marginTop: 0 }}>Revision History</h2>
-            <ul style={{ margin: 0 }}>
+          <section aria-label="Revision Timeline" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-3">Revision History</h2>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-default-500">
               {revisionRows.map((entry) => (
                 <li key={entry.label}>
                   {entry.label}: {formatTimestamp(entry.value)}
@@ -246,10 +248,10 @@ export default function JudgePitchScoringPage({ params }: JudgePitchScoringPageP
           </section>
 
           {liveTotals ? (
-            <section aria-label="Current Score Summary" style={{ border: '1px solid #e3e3e3', padding: '0.75rem' }}>
-              <h2 style={{ marginTop: 0 }}>Current Score Summary</h2>
-              <p style={{ margin: '0 0 0.5rem 0' }}>Total: {liveTotals.total}</p>
-              <ul style={{ margin: 0 }}>
+            <section aria-label="Current Score Summary" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-3">Current Score Summary</h2>
+              <p className="text-sm text-default-500 mb-2">Total: <span className="text-3xl font-bold text-violet-400">{liveTotals.total}</span></p>
+              <ul className="list-disc pl-5 space-y-1 text-sm text-default-500">
                 {liveTotals.breakdown.categories.map((category) => (
                   <li key={category.category}>
                     {category.category}: {category.weighted}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Button } from '@heroui/button';
 
 interface RubricFormProps {
   initialName?: string;
@@ -8,6 +9,9 @@ interface RubricFormProps {
   onSubmit: (payload: { name: string; description: string }) => Promise<void>;
   submitLabel?: string;
 }
+
+const inputClass =
+  'w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground placeholder:text-default-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500';
 
 export function RubricForm({
   initialName = '',
@@ -39,26 +43,39 @@ export function RubricForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem', maxWidth: 560 }}>
-      <label style={{ display: 'grid', gap: '0.25rem' }}>
-        Name
-        <input value={name} onChange={(event) => setName(event.target.value)} disabled={isSubmitting} />
-      </label>
+    <form onSubmit={handleSubmit} className="grid max-w-xl gap-4">
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Name</label>
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          disabled={isSubmitting}
+          className={inputClass}
+        />
+      </div>
 
-      <label style={{ display: 'grid', gap: '0.25rem' }}>
-        Description
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} disabled={isSubmitting} />
-      </label>
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Description</label>
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          disabled={isSubmitting}
+          className={`${inputClass} resize-none`}
+          rows={3}
+        />
+      </div>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00', margin: 0 }}>
+        <p role="alert" className="text-danger text-sm">
           {error}
         </p>
       ) : null}
 
-      <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving...' : submitLabel}
-      </button>
+      <div>
+        <Button type="submit" color="primary" isDisabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }

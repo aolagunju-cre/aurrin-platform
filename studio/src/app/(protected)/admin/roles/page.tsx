@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RoleAssignmentModal } from '../../../../components/admin/RoleAssignmentModal';
 import { toRoleLabel } from '../../../../lib/admin/roles';
+import { Button } from '@heroui/button';
 
 interface AssignmentUser {
   id: string;
@@ -103,12 +104,12 @@ export default function AdminRolesPage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>Roles</h1>
-        <button type="button" onClick={() => setShowAssignModal(true)} disabled={isAssigning}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Roles</h1>
+        <Button color="secondary" onPress={() => setShowAssignModal(true)} isDisabled={isAssigning}>
           Assign Role
-        </button>
+        </Button>
       </div>
 
       {showAssignModal ? (
@@ -120,46 +121,50 @@ export default function AdminRolesPage(): React.ReactElement {
       ) : null}
 
       {error ? (
-        <p role="alert" style={{ color: '#b00', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading role assignments...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading role assignments...</p> : null}
 
       {!isLoading ? (
-        <table aria-label="Role Assignments Table" style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th align="left">User</th>
-              <th align="left">Role</th>
-              <th align="left">Scope</th>
-              <th align="left">Assigned By</th>
-              <th align="left">Assigned At</th>
-              <th align="left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orderedAssignments.map((assignment) => (
-              <tr key={assignment.id}>
-                <td>{assignment.user ? `${assignment.user.name ?? 'Unknown'} (${assignment.user.email})` : 'Unknown user'}</td>
-                <td>{toRoleLabel(assignment.role)}</td>
-                <td>{assignment.scope === 'global' ? 'global' : `${assignment.scope}:${assignment.scoped_id ?? 'n/a'}`}</td>
-                <td>{assignment.assigned_by?.email ?? 'System'}</td>
-                <td>{new Date(assignment.assigned_at).toLocaleString()}</td>
-                <td>
-                  <button
-                    type="button"
-                    onClick={() => void revokeRole(assignment)}
-                    disabled={isRevokingId === assignment.id}
-                  >
-                    {isRevokingId === assignment.id ? 'Revoking...' : 'Revoke Role'}
-                  </button>
-                </td>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Role Assignments Table" className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">User</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Role</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Scope</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Assigned By</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Assigned At</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orderedAssignments.map((assignment) => (
+                <tr key={assignment.id} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100 text-foreground">{assignment.user ? `${assignment.user.name ?? 'Unknown'} (${assignment.user.email})` : 'Unknown user'}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{toRoleLabel(assignment.role)}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{assignment.scope === 'global' ? 'global' : `${assignment.scope}:${assignment.scoped_id ?? 'n/a'}`}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{assignment.assigned_by?.email ?? 'System'}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(assignment.assigned_at).toLocaleString()}</td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      onPress={() => void revokeRole(assignment)}
+                      isDisabled={isRevokingId === assignment.id}
+                    >
+                      {isRevokingId === assignment.id ? 'Revoking...' : 'Revoke Role'}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

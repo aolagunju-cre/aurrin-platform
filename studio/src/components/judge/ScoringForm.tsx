@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { calculateTotals, resolveQuestionId } from '../../lib/scoring/calculate';
 import type { ScoreTotals, ScoringResponses, ScoringRubricVersion } from '../../lib/scoring/calculate';
+import { Button } from '@heroui/button';
 import { RubricRenderer } from './RubricRenderer';
 
 interface ScoringFormProps {
@@ -132,21 +133,32 @@ export function ScoringForm({
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
-      <h1>Scoring Form</h1>
+    <div className="grid gap-4">
+      <h1 className="text-2xl font-bold text-foreground">Scoring Form</h1>
 
-      {isLoading ? <p>Loading scoring form...</p> : null}
-      {isSavingDraft ? <p>Saving draft...</p> : null}
-      {lastAutoSavedAt ? <p>Auto-saved at {new Date(lastAutoSavedAt).toLocaleTimeString()}</p> : null}
+      {isLoading ? <p className="text-default-400 text-sm">Loading scoring form...</p> : null}
+      {isSavingDraft ? <p className="text-default-400 text-sm animate-pulse">Saving draft...</p> : null}
+      {lastAutoSavedAt ? (
+        <p className="text-success text-sm">Auto-saved at {new Date(lastAutoSavedAt).toLocaleTimeString()}</p>
+      ) : null}
 
-      <p>Total Score: {totals.total}</p>
-      <ul aria-label="Category Breakdown" style={{ margin: 0 }}>
-        {totals.breakdown.categories.map((entry) => (
-          <li key={entry.category}>
-            {entry.category}: {entry.weighted}
-          </li>
-        ))}
-      </ul>
+      <div className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6 transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10">
+        <p className="text-default-600 mb-2">
+          Total Score:{' '}
+          <span className="text-2xl font-bold text-violet-400">{totals.total}</span>
+        </p>
+        <ul aria-label="Category Breakdown" className="m-0 list-none pl-0 space-y-1">
+          {totals.breakdown.categories.map((entry) => (
+            <li
+              key={entry.category}
+              className="flex items-center justify-between rounded-lg bg-default-100 px-3 py-1.5 text-sm"
+            >
+              <span className="text-default-600">{entry.category}</span>
+              <span className="font-semibold text-violet-400">{entry.weighted}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <RubricRenderer
         rubricVersion={rubricVersion}
@@ -157,27 +169,52 @@ export function ScoringForm({
       />
 
       {!readOnly ? (
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button type="button" onClick={handleSaveDraft} disabled={isLoading || isSubmitting || isSavingDraft || !onSaveDraft}>
+        <div className="flex gap-3">
+          <Button
+            color="default"
+            variant="bordered"
+            onPress={() => void handleSaveDraft()}
+            isDisabled={isLoading || isSubmitting || isSavingDraft || !onSaveDraft}
+            isLoading={isSavingDraft}
+          >
             Save Draft
-          </button>
-          <button type="button" onClick={handleSubmitRequest} disabled={isLoading || isSubmitting}>
+          </Button>
+          <Button
+            color="primary"
+            onPress={handleSubmitRequest}
+            isDisabled={isLoading || isSubmitting}
+            isLoading={isSubmitting}
+          >
             {isSubmitting ? 'Submitting...' : 'Submit Score'}
-          </button>
+          </Button>
         </div>
       ) : null}
 
       {isConfirmOpen ? (
-        <div role="dialog" aria-modal="true" aria-label="Submit Score confirmation">
-          <h2>Submit Score</h2>
-          <p>Confirm submission. This action should be treated as final in score workflows.</p>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button type="button" onClick={handleConfirmSubmit} disabled={isSubmitting}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Submit Score confirmation"
+          className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6"
+        >
+          <h2 className="text-lg font-semibold text-foreground mb-2">Submit Score</h2>
+          <p className="text-default-600 mb-4">Confirm submission. This action should be treated as final in score workflows.</p>
+          <div className="flex gap-3">
+            <Button
+              color="primary"
+              onPress={() => void handleConfirmSubmit()}
+              isDisabled={isSubmitting}
+            >
               Confirm Submit Score
-            </button>
-            <button type="button" onClick={() => setIsConfirmOpen(false)} disabled={isSubmitting}>
+            </Button>
+            <Button
+              color="default"
+              variant="bordered"
+              onPress={() => setIsConfirmOpen(false)}
+              isDisabled={isSubmitting}
+            >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}

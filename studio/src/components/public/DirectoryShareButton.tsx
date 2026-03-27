@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@heroui/button';
 
 interface DirectoryShareButtonProps {
   profileUrl: string;
@@ -33,12 +34,22 @@ export function DirectoryShareButton({ profileUrl }: DirectoryShareButtonProps) 
   };
 
   return (
-    <div style={{ display: 'grid', gap: '0.5rem' }}>
-      <button type="button" onClick={() => void onShare()} style={{ maxWidth: 220 }}>
+    <div className="grid gap-3">
+      <Button
+        type="button"
+        color="primary"
+        variant="bordered"
+        className="max-w-[220px] border-violet-500/50 text-violet-400 hover:bg-violet-500/10"
+        onPress={() => void onShare()}
+      >
         Share
-      </button>
-      {statusMessage ? <p style={{ margin: 0 }}>{statusMessage}</p> : null}
-      {statusMessage === 'Copy this URL to share:' ? <p style={{ margin: 0 }}>{profileUrl}</p> : null}
+      </Button>
+      {statusMessage ? (
+        <p className="text-sm text-default-500">{statusMessage}</p>
+      ) : null}
+      {statusMessage === 'Copy this URL to share:' ? (
+        <p className="text-sm text-violet-400 break-all">{profileUrl}</p>
+      ) : null}
     </div>
   );
 }

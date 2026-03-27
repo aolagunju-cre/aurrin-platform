@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FounderDashboardPage from '../src/app/(protected)/founder/page';
 import FounderProfilePage from '../src/app/(protected)/founder/profile/page';
@@ -50,16 +50,29 @@ describe('founder portal pages', () => {
 
     render(<FounderDashboardPage />);
 
+    const quickStats = screen.getByLabelText('Founder Quick Stats');
+    const applicationsCard = screen.getByText('Applications submitted').closest('div');
+    const activeEventsCard = screen.getByText('Active events').closest('div');
+    const completedEventsCard = screen.getByText('Completed events').closest('div');
+    const mentorMatchesCard = screen.getByText('Accepted mentor matches').closest('div');
+
+    expect(applicationsCard).not.toBeNull();
+    expect(activeEventsCard).not.toBeNull();
+    expect(completedEventsCard).not.toBeNull();
+    expect(mentorMatchesCard).not.toBeNull();
+
     await waitFor(() => {
-      expect(screen.getByText('Applications submitted: 2')).toBeInTheDocument();
+      expect(within(applicationsCard as HTMLElement).getByText('2')).toBeInTheDocument();
     });
 
     expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/founder/profile');
     expect(screen.getByRole('link', { name: 'Events' })).toHaveAttribute('href', '/founder/events');
     expect(screen.getByRole('link', { name: 'Reports' })).toHaveAttribute('href', '/founder/reports');
-    expect(screen.getByText('Active events: 1')).toBeInTheDocument();
-    expect(screen.getByText('Completed events: 1')).toBeInTheDocument();
-    expect(screen.getByText('Accepted mentor matches: 1')).toBeInTheDocument();
+    expect(within(quickStats).getByText('Applications submitted')).toBeInTheDocument();
+    expect(within(applicationsCard as HTMLElement).getByText('2')).toBeInTheDocument();
+    expect(within(activeEventsCard as HTMLElement).getByText('1')).toBeInTheDocument();
+    expect(within(completedEventsCard as HTMLElement).getByText('1')).toBeInTheDocument();
+    expect(within(mentorMatchesCard as HTMLElement).getByText('1')).toBeInTheDocument();
     expect(screen.getByText(/Mentor One/)).toBeInTheDocument();
   });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 interface FounderPitchSummary {
   id: string;
@@ -100,116 +101,112 @@ export default function FounderEventsPage(): React.ReactElement {
   );
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Founder Events</h1>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Events</h1>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading assigned events...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading assigned events...</p> : null}
 
       {!isLoading && !error && currentEvents.length === 0 ? (
-        <p>No active assigned events available.</p>
+        <p className="py-12 text-center text-default-400">No active assigned events available.</p>
       ) : null}
 
       {!isLoading && !error && currentEvents.length > 0 ? (
         <>
-          <table aria-label="Founder Events Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th align="left">Event</th>
-                <th align="left">Status</th>
-                <th align="left">Dates</th>
-                <th align="left">Scoring Status</th>
-                <th align="left">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentEvents.map((event) => (
-                <tr key={event.id}>
-                  <td>{event.name}</td>
-                  <td>{event.status}</td>
-                  <td>{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
-                  <td>{toScoringStatusLabel(event)}</td>
-                  <td>
-                    <a href={`/founder/events/${event.id}/pitch`}>View Pitch Detail</a>
-                  </td>
+          <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+            <table aria-label="Founder Events Table" className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Event</th>
+                  <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Status</th>
+                  <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Dates</th>
+                  <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Scoring Status</th>
+                  <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentEvents.map((event) => (
+                  <tr key={event.id} className="hover:bg-default-100/50 transition-colors">
+                    <td className="px-4 py-3 border-b border-default-100 text-foreground">{event.name}</td>
+                    <td className="px-4 py-3 border-b border-default-100">
+                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${event.status === 'live' ? 'bg-green-500/10 text-green-400' : 'bg-violet-500/10 text-violet-400'}`}>{event.status}</span>
+                    </td>
+                    <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 border-b border-default-100 text-default-500">{toScoringStatusLabel(event)}</td>
+                    <td className="px-4 py-3 border-b border-default-100">
+                      <a href={`/founder/events/${event.id}/pitch`} className="text-violet-400 hover:text-violet-300 transition-colors">View Pitch Detail</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {selectedEvent ? (
-            <section aria-label="Founder Event Detail" style={{ border: '1px solid #e3e3e3', padding: '0.75rem' }}>
-              <h2 style={{ marginTop: 0 }}>{selectedEvent.name}</h2>
-              <p style={{ margin: '0 0 0.5rem 0' }}>{toScoringStatusLabel(selectedEvent)}</p>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                Assigned judges: {selectedEvent.assigned_judges.length}
-              </p>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                Score progress: {selectedEvent.pitch?.score_progress.submitted ?? 0}/{selectedEvent.pitch?.score_progress.total ?? selectedEvent.assigned_judges.length}
-              </p>
-              <p style={{ margin: '0 0 0.5rem 0' }}>
-                Pitch details: {selectedEvent.pitch?.pitch_deck_url ? 'Pitch deck submitted.' : 'No pitch deck uploaded.'}
-              </p>
+            <section aria-label="Founder Event Detail" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
+              <h2 className="text-xl font-semibold text-foreground">{selectedEvent.name}</h2>
+              <p className="text-sm text-default-500">{toScoringStatusLabel(selectedEvent)}</p>
+              <p className="text-sm text-default-500">Assigned judges: {selectedEvent.assigned_judges.length}</p>
+              <p className="text-sm text-default-500">Score progress: {selectedEvent.pitch?.score_progress.submitted ?? 0}/{selectedEvent.pitch?.score_progress.total ?? selectedEvent.assigned_judges.length}</p>
+              <p className="text-sm text-default-500">Pitch details: {selectedEvent.pitch?.pitch_deck_url ? 'Pitch deck submitted.' : 'No pitch deck uploaded.'}</p>
 
               {!selectedEvent.scores_published ? (
-                <p style={{ margin: '0 0 0.5rem 0' }}>
-                  Scores will be published on {formatDateLabel(selectedEvent.publishing_start)}
-                </p>
+                <p className="text-sm text-default-400">Scores will be published on {formatDateLabel(selectedEvent.publishing_start)}</p>
               ) : (
                 <>
-                  <p style={{ margin: '0 0 0.5rem 0' }}>
-                    Aggregated score: {selectedEvent.pitch?.score_aggregate ?? 'N/A'}
-                  </p>
-                  <pre aria-label="Score Breakdown" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                  <p className="text-sm text-default-500">Aggregated score: <span className="text-3xl font-bold text-violet-400">{selectedEvent.pitch?.score_aggregate ?? 'N/A'}</span></p>
+                  <pre aria-label="Score Breakdown" className="text-xs text-default-400 bg-default-100 rounded-lg p-4 whitespace-pre-wrap">
                     {JSON.stringify(selectedEvent.pitch?.score_breakdown ?? {}, null, 2)}
                   </pre>
                 </>
               )}
 
-              <button type="button" disabled>
+              <Button isDisabled>
                 Edit Pitch
-              </button>
-              <p style={{ margin: '0.5rem 0 0 0' }}>Pitch submission is finalized and cannot be edited.</p>
+              </Button>
+              <p className="text-xs text-default-400">Pitch submission is finalized and cannot be edited.</p>
             </section>
           ) : null}
         </>
       ) : null}
 
       {!isLoading && !error && (
-        <section aria-label="Founder Archive" style={{ display: 'grid', gap: '0.5rem' }}>
-          <h2 style={{ margin: 0 }}>Archive</h2>
+        <section aria-label="Founder Archive" className="space-y-4">
+          <h2 className="text-xl font-semibold text-foreground">Archive</h2>
           {archivedEvents.length === 0 ? (
-            <p style={{ margin: 0 }}>No archived pitches yet.</p>
+            <p className="py-12 text-center text-default-400">No archived pitches yet.</p>
           ) : (
-            <table aria-label="Founder Archive Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th align="left">Event</th>
-                  <th align="left">Event Date</th>
-                  <th align="left">Score</th>
-                  <th align="left">Validation</th>
-                  <th align="left">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {archivedEvents.map((event) => (
-                  <tr key={event.id}>
-                    <td>{event.name}</td>
-                    <td>{new Date(event.end_date).toLocaleDateString()}</td>
-                    <td>{event.scores_published ? (event.pitch?.score_aggregate ?? 'N/A') : 'Pending publish'}</td>
-                    <td>{event.scores_published ? 'Summary available' : 'Pending publish'}</td>
-                    <td>
-                      <a href={`/founder/events/${event.id}/pitch`}>View Pitch Detail</a>
-                    </td>
+            <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+              <table aria-label="Founder Archive Table" className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Event</th>
+                    <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Event Date</th>
+                    <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Score</th>
+                    <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Validation</th>
+                    <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {archivedEvents.map((event) => (
+                    <tr key={event.id} className="hover:bg-default-100/50 transition-colors">
+                      <td className="px-4 py-3 border-b border-default-100 text-foreground">{event.name}</td>
+                      <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(event.end_date).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 border-b border-default-100 text-default-500">{event.scores_published ? (event.pitch?.score_aggregate ?? 'N/A') : 'Pending publish'}</td>
+                      <td className="px-4 py-3 border-b border-default-100 text-default-500">{event.scores_published ? 'Summary available' : 'Pending publish'}</td>
+                      <td className="px-4 py-3 border-b border-default-100">
+                        <a href={`/founder/events/${event.id}/pitch`} className="text-violet-400 hover:text-violet-300 transition-colors">View Pitch Detail</a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       )}

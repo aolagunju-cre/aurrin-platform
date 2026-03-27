@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
+import { Button } from '@heroui/button';
+import { Progress } from '@heroui/progress';
 
 export type SupportedBucket = 'pitch-decks' | 'generated-reports' | 'social-assets' | 'exports';
 
@@ -150,6 +152,18 @@ export function FileUpload({
   const isSuccess = state.status === 'success';
   const isError = state.status === 'error';
 
+  const dropzoneClasses = [
+    'rounded-2xl border-2 border-dashed p-8 text-center transition-colors select-none',
+    disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+    isDragOver
+      ? 'border-violet-500 bg-violet-500/5'
+      : isError
+        ? 'border-danger'
+        : isSuccess
+          ? 'border-success'
+          : 'border-default-300 hover:border-violet-500',
+  ].join(' ');
+
   return (
     <div
       role="button"
@@ -162,66 +176,67 @@ export function FileUpload({
       onDragLeave={handleDragLeave}
       onClick={handleClick}
       onKeyDown={(e) => e.key === 'Enter' && handleClick()}
-      style={{
-        border: `2px dashed ${isDragOver ? '#0070f3' : isError ? '#e00' : isSuccess ? '#0a0' : '#ccc'}`,
-        borderRadius: 8,
-        padding: 32,
-        textAlign: 'center',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        userSelect: 'none',
-      }}
+      className={dropzoneClasses}
     >
       <input
         ref={inputRef}
         type="file"
         accept={resolvedAccept}
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={handleInputChange}
         data-testid="file-upload-input"
         disabled={disabled}
       />
 
       {isUploading && (
-        <div data-testid="file-upload-progress">
-          <p>Uploading… {state.progress}%</p>
-          <progress value={state.progress} max={100} style={{ width: '100%' }} />
+        <div data-testid="file-upload-progress" className="space-y-3">
+          <p className="text-sm text-default-600">Uploading... {state.progress}%</p>
+          <Progress
+            aria-label="Upload progress"
+            value={state.progress}
+            color="secondary"
+            className="w-full"
+          />
         </div>
       )}
 
       {isSuccess && state.result && (
-        <div data-testid="file-upload-success">
-          <p>✅ Upload complete!</p>
-          <p style={{ fontSize: 12, color: '#555', wordBreak: 'break-all' }}>
+        <div data-testid="file-upload-success" className="space-y-2">
+          <p className="text-success text-sm font-medium">Upload complete!</p>
+          <p className="text-xs text-default-400 break-all">
             Path: {state.result.path}
           </p>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            style={{ marginTop: 8 }}
+          <Button
+            size="sm"
+            color="default"
+            variant="bordered"
+            onPress={(e) => { handleReset(); }}
+            className="mt-2"
           >
             Upload another
-          </button>
+          </Button>
         </div>
       )}
 
       {isError && (
-        <div data-testid="file-upload-error">
-          <p style={{ color: '#e00' }}>❌ {state.errorMessage}</p>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); handleReset(); }}
-            style={{ marginTop: 8 }}
+        <div data-testid="file-upload-error" className="space-y-2">
+          <p className="text-danger text-sm">{state.errorMessage}</p>
+          <Button
+            size="sm"
+            color="danger"
+            variant="bordered"
+            onPress={() => { handleReset(); }}
+            className="mt-2"
           >
             Try again
-          </button>
+          </Button>
         </div>
       )}
 
       {!isUploading && !isSuccess && !isError && (
-        <div data-testid="file-upload-idle">
-          <p>{label}</p>
-          <p style={{ fontSize: 12, color: '#888' }}>
+        <div data-testid="file-upload-idle" className="space-y-1">
+          <p className="text-sm text-default-600">{label}</p>
+          <p className="text-xs text-default-400">
             Max size: {resolvedMaxMB} MB
           </p>
         </div>

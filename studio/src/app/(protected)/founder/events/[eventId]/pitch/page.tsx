@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 import ScoreBreakdownCard from '../../../../../../components/founder/ScoreBreakdownCard';
 import ValidationSummary from '../../../../../../components/founder/ValidationSummary';
 
@@ -175,26 +176,28 @@ export default function FounderPitchDetailPage({ params }: PitchPageProps): Reac
   }, [pitchData]);
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Founder Pitch Detail</h1>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Pitch Detail</h1>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading pitch detail...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading pitch detail...</p> : null}
 
       {!isLoading && pitchData ? (
         <>
-          <p style={{ margin: 0 }}>Event: {pitchData.event.name}</p>
-          <p style={{ margin: 0 }}>
-            Pitch deck: {pitchData.pitch.pitch_deck_url ? <a href={pitchData.pitch.pitch_deck_url}>Download deck</a> : 'No deck uploaded'}
-          </p>
-          <p style={{ margin: 0 }}>
-            Assigned judges: {pitchData.pitch.score_progress.total} ({pitchData.pitch.score_progress.submitted} submitted)
-          </p>
+          <div className="space-y-2 text-sm text-default-500">
+            <p>Event: <span className="text-foreground">{pitchData.event.name}</span></p>
+            <p>
+              Pitch deck: {pitchData.pitch.pitch_deck_url ? <a href={pitchData.pitch.pitch_deck_url} className="text-violet-400 hover:text-violet-300 transition-colors">Download deck</a> : 'No deck uploaded'}
+            </p>
+            <p>
+              Assigned judges: {pitchData.pitch.score_progress.total} ({pitchData.pitch.score_progress.submitted} submitted)
+            </p>
+          </div>
 
           <ScoreBreakdownCard
             statusText={scoringStatusText}
@@ -210,29 +213,30 @@ export default function FounderPitchDetailPage({ params }: PitchPageProps): Reac
               byQuestion={validationData.summary.by_question}
             />
           ) : (
-            <section aria-label="Validation Summary" style={{ border: '1px solid #e3e3e3', padding: '0.75rem' }}>
-              <h2 style={{ marginTop: 0 }}>Validation Summary</h2>
-              <p>{scoringStatusText === 'Scores published' ? 'Validation data unavailable.' : scoringStatusText}</p>
+            <section aria-label="Validation Summary" className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6">
+              <h2 className="text-xl font-semibold text-foreground mb-3">Validation Summary</h2>
+              <p className="text-default-400">{scoringStatusText === 'Scores published' ? 'Validation data unavailable.' : scoringStatusText}</p>
             </section>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => {
+          <div className="flex gap-3">
+            <Button
+              color="secondary"
+              onPress={() => {
                 window.location.href = `/founder/reports?eventId=${eventId}&pitchId=${pitchData.pitch.id}`;
               }}
             >
               Download Report
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+            </Button>
+            <Button
+              color="default"
+              variant="flat"
+              onPress={() => {
                 window.location.href = `/public/founders/${pitchData.pitch.founder_id}`;
               }}
             >
               Share Profile
-            </button>
+            </Button>
           </div>
         </>
       ) : null}

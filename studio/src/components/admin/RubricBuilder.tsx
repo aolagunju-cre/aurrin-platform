@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 import type { RubricDefinition, RubricTemplateRecord, RubricVersionRecord } from '../../lib/rubrics/types';
 import { totalCategoryWeight } from '../../lib/rubrics/validation';
 import { RubricForm } from './RubricForm';
@@ -11,6 +12,9 @@ interface RubricBuilderProps {
   onSave: (payload: { name: string; description: string; definition: RubricDefinition }) => Promise<void>;
   onClone: () => Promise<void>;
 }
+
+const inputClass =
+  'w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground placeholder:text-default-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500';
 
 function defaultQuestion() {
   return {
@@ -142,109 +146,170 @@ export function RubricBuilder({ rubric, latestVersion, onSave, onClone }: Rubric
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
-      <h1>Rubric Builder</h1>
-      <p>Current version: {latestVersion.version}</p>
+    <div className="grid gap-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Rubric Builder</h1>
+        <p className="mt-1 text-sm text-default-500">Current version: {latestVersion.version}</p>
+      </div>
 
-      <RubricForm
-        initialName={name}
-        initialDescription={description}
-        onSubmit={async ({ name: nextName, description: nextDescription }) => {
-          setName(nextName);
-          setDescription(nextDescription);
-        }}
-        submitLabel="Update Metadata"
-      />
+      <div className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Metadata</h2>
+        <RubricForm
+          initialName={name}
+          initialDescription={description}
+          onSubmit={async ({ name: nextName, description: nextDescription }) => {
+            setName(nextName);
+            setDescription(nextDescription);
+          }}
+          submitLabel="Update Metadata"
+        />
+      </div>
 
-      <section aria-label="Rubric Categories" style={{ display: 'grid', gap: '1rem' }}>
+      <section aria-label="Rubric Categories" className="grid gap-4">
         {definition.categories.map((category, categoryIndex) => (
-          <article key={`category-${categoryIndex}`} style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
-            <label style={{ display: 'grid', gap: '0.25rem', marginBottom: '0.5rem' }}>
-              Category Name
-              <input
-                value={category.name}
-                onChange={(event) => updateCategoryName(categoryIndex, event.target.value)}
-                disabled={isSaving}
-              />
-            </label>
+          <article
+            key={`category-${categoryIndex}`}
+            className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6"
+          >
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium text-default-600">Category Name</label>
+                <input
+                  value={category.name}
+                  onChange={(event) => updateCategoryName(categoryIndex, event.target.value)}
+                  disabled={isSaving}
+                  className={inputClass}
+                />
+              </div>
 
-            <label style={{ display: 'grid', gap: '0.25rem', marginBottom: '0.75rem' }}>
-              Weight %
-              <input
-                type="number"
-                value={category.weight}
-                onChange={(event) => updateCategoryWeight(categoryIndex, Number(event.target.value))}
-                disabled={isSaving}
-              />
-            </label>
+              <div className="grid gap-1.5">
+                <label className="text-sm font-medium text-default-600">Weight %</label>
+                <input
+                  type="number"
+                  value={category.weight}
+                  onChange={(event) => updateCategoryWeight(categoryIndex, Number(event.target.value))}
+                  disabled={isSaving}
+                  className={inputClass}
+                />
+              </div>
+            </div>
 
-            <div style={{ display: 'grid', gap: '0.5rem' }}>
+            <div className="grid gap-3">
               {category.questions.map((question, questionIndex) => (
-                <div key={`question-${categoryIndex}-${questionIndex}`} style={{ border: '1px dashed #ddd', padding: '0.5rem' }}>
-                  <label style={{ display: 'grid', gap: '0.25rem', marginBottom: '0.5rem' }}>
-                    Question Text
-                    <input
-                      value={question.text}
-                      onChange={(event) => updateQuestion(categoryIndex, questionIndex, 'text', event.target.value)}
-                      disabled={isSaving}
-                    />
-                  </label>
+                <div
+                  key={`question-${categoryIndex}-${questionIndex}`}
+                  className="rounded-xl border border-dashed border-default-200 bg-default-100/50 p-4"
+                >
+                  <div className="grid gap-3">
+                    <div className="grid gap-1.5">
+                      <label className="text-sm font-medium text-default-600">Question Text</label>
+                      <input
+                        value={question.text}
+                        onChange={(event) => updateQuestion(categoryIndex, questionIndex, 'text', event.target.value)}
+                        disabled={isSaving}
+                        className={inputClass}
+                      />
+                    </div>
 
-                  <label style={{ display: 'grid', gap: '0.25rem' }}>
-                    Response Type
-                    <input
-                      value={question.response_type}
-                      onChange={(event) => updateQuestion(categoryIndex, questionIndex, 'response_type', event.target.value)}
-                      disabled={isSaving}
-                    />
-                  </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-1.5">
+                        <label className="text-sm font-medium text-default-600">Response Type</label>
+                        <input
+                          value={question.response_type}
+                          onChange={(event) =>
+                            updateQuestion(categoryIndex, questionIndex, 'response_type', event.target.value)
+                          }
+                          disabled={isSaving}
+                          className={inputClass}
+                        />
+                      </div>
 
-                  <label style={{ display: 'grid', gap: '0.25rem', marginTop: '0.5rem' }}>
-                    Scale (comma separated)
-                    <input
-                      value={question.scale.join(',')}
-                      onChange={(event) => updateQuestionScale(categoryIndex, questionIndex, event.target.value)}
-                      disabled={isSaving}
-                    />
-                  </label>
+                      <div className="grid gap-1.5">
+                        <label className="text-sm font-medium text-default-600">Scale (comma separated)</label>
+                        <input
+                          value={question.scale.join(',')}
+                          onChange={(event) => updateQuestionScale(categoryIndex, questionIndex, event.target.value)}
+                          disabled={isSaving}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                  <button type="button" onClick={() => removeQuestion(categoryIndex, questionIndex)} disabled={isSaving || category.questions.length === 1}>
-                    Remove Question
-                  </button>
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      type="button"
+                      color="danger"
+                      variant="light"
+                      size="sm"
+                      onPress={() => removeQuestion(categoryIndex, questionIndex)}
+                      isDisabled={isSaving || category.questions.length === 1}
+                    >
+                      Remove Question
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-              <button type="button" onClick={() => addQuestion(categoryIndex)} disabled={isSaving}>
+            <div className="mt-4 flex gap-3">
+              <Button
+                type="button"
+                color="default"
+                variant="flat"
+                size="sm"
+                onPress={() => addQuestion(categoryIndex)}
+                isDisabled={isSaving}
+              >
                 Add Question
-              </button>
-              <button type="button" onClick={() => removeCategory(categoryIndex)} disabled={isSaving || definition.categories.length === 1}>
+              </Button>
+              <Button
+                type="button"
+                color="danger"
+                variant="flat"
+                size="sm"
+                onPress={() => removeCategory(categoryIndex)}
+                isDisabled={isSaving || definition.categories.length === 1}
+              >
                 Delete Category
-              </button>
+              </Button>
             </div>
           </article>
         ))}
       </section>
 
-      <button type="button" onClick={addCategory} disabled={isSaving}>
-        Add Category
-      </button>
+      <div>
+        <Button type="button" color="default" variant="bordered" onPress={addCategory} isDisabled={isSaving}>
+          Add Category
+        </Button>
+      </div>
 
-      <p>Weight Total: {weightTotal}%</p>
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-default-500">
+          Weight Total:{' '}
+          <span
+            className={`font-semibold ${
+              Math.abs(weightTotal - 100) < 0.0001 ? 'text-success' : 'text-danger'
+            }`}
+          >
+            {weightTotal}%
+          </span>
+        </span>
+      </div>
+
       {error ? (
-        <p role="alert" style={{ color: '#b00', margin: 0 }}>
+        <p role="alert" className="text-danger text-sm">
           {error}
         </p>
       ) : null}
 
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <button type="button" onClick={handleSave} disabled={isSaving}>
+      <div className="flex gap-3">
+        <Button type="button" color="primary" onPress={() => void handleSave()} isDisabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save New Version'}
-        </button>
-        <button type="button" onClick={handleClone} disabled={isCloning}>
+        </Button>
+        <Button type="button" color="default" variant="flat" onPress={() => void handleClone()} isDisabled={isCloning}>
           {isCloning ? 'Cloning...' : 'Clone Rubric'}
-        </button>
+        </Button>
       </div>
     </div>
   );

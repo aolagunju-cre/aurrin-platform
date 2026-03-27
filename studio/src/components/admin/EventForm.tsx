@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 export interface EventFormValues {
   name: string;
@@ -20,6 +21,12 @@ interface EventFormProps {
   onCancel: () => void;
   submitLabel: string;
 }
+
+const inputClass =
+  'w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground placeholder:text-default-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500';
+
+const selectClass =
+  'w-full rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500';
 
 export function EventForm({ initialValues, onSubmit, onCancel, submitLabel }: EventFormProps): React.ReactElement {
   const [values, setValues] = useState<EventFormValues>(initialValues);
@@ -62,116 +69,132 @@ export function EventForm({ initialValues, onSubmit, onCancel, submitLabel }: Ev
   }
 
   return (
-    <form onSubmit={(event) => void handleSubmit(event)} style={{ display: 'grid', gap: '0.75rem' }}>
-      <label>
-        Name
+    <form
+      onSubmit={(event) => void handleSubmit(event)}
+      className="grid gap-4 rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6"
+    >
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Name</label>
         <input
           aria-label="Event Name"
           value={values.name}
           onChange={(event) => updateValue('name', event.target.value)}
           required
+          className={inputClass}
         />
-      </label>
+      </div>
 
-      <label>
-        Start Date
-        <input
-          aria-label="Start Date"
-          type="datetime-local"
-          value={values.start_date}
-          onChange={(event) => updateValue('start_date', event.target.value)}
-          required
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium text-default-600">Start Date</label>
+          <input
+            aria-label="Start Date"
+            type="datetime-local"
+            value={values.start_date}
+            onChange={(event) => updateValue('start_date', event.target.value)}
+            required
+            className={inputClass}
+          />
+        </div>
 
-      <label>
-        End Date
-        <input
-          aria-label="End Date"
-          type="datetime-local"
-          value={values.end_date}
-          onChange={(event) => updateValue('end_date', event.target.value)}
-          required
-        />
-      </label>
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium text-default-600">End Date</label>
+          <input
+            aria-label="End Date"
+            type="datetime-local"
+            value={values.end_date}
+            onChange={(event) => updateValue('end_date', event.target.value)}
+            required
+            className={inputClass}
+          />
+        </div>
+      </div>
 
-      <label>
-        Description
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Description</label>
         <textarea
           aria-label="Description"
           value={values.description}
           onChange={(event) => updateValue('description', event.target.value)}
           rows={4}
+          className={`${inputClass} resize-none`}
         />
-      </label>
+      </div>
 
-      <label>
-        Max Judges
-        <input
-          aria-label="Max Judges"
-          type="number"
-          min={0}
-          value={values.max_judges}
-          onChange={(event) => updateValue('max_judges', Number(event.target.value))}
-        />
-      </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium text-default-600">Max Judges</label>
+          <input
+            aria-label="Max Judges"
+            type="number"
+            min={0}
+            value={values.max_judges}
+            onChange={(event) => updateValue('max_judges', Number(event.target.value))}
+            className={inputClass}
+          />
+        </div>
 
-      <label>
-        Max Founders
-        <input
-          aria-label="Max Founders"
-          type="number"
-          min={0}
-          value={values.max_founders}
-          onChange={(event) => updateValue('max_founders', Number(event.target.value))}
-        />
-      </label>
+        <div className="grid gap-1.5">
+          <label className="text-sm font-medium text-default-600">Max Founders</label>
+          <input
+            aria-label="Max Founders"
+            type="number"
+            min={0}
+            value={values.max_founders}
+            onChange={(event) => updateValue('max_founders', Number(event.target.value))}
+            className={inputClass}
+          />
+        </div>
+      </div>
 
-      <label>
-        Rubric Id
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Rubric Id</label>
         <input
           aria-label="Rubric Id"
           value={values.rubric_id}
           onChange={(event) => updateValue('rubric_id', event.target.value)}
+          className={inputClass}
         />
-      </label>
+      </div>
 
-      <label>
-        Status
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Status</label>
         <select
           aria-label="Status"
           value={values.status}
           onChange={(event) => updateValue('status', event.target.value as EventFormValues['status'])}
+          className={selectClass}
         >
           <option>Upcoming</option>
           <option>Live</option>
           <option>Archived</option>
         </select>
-      </label>
+      </div>
 
-      <label>
-        Config (JSON)
+      <div className="grid gap-1.5">
+        <label className="text-sm font-medium text-default-600">Config (JSON)</label>
         <textarea
           aria-label="Config JSON"
           value={values.config}
           onChange={(event) => updateValue('config', event.target.value)}
           rows={6}
+          className={`${inputClass} resize-none font-mono text-sm`}
         />
-      </label>
+      </div>
 
       {error ? (
-        <p role="alert" style={{ margin: 0, color: '#b00' }}>
+        <p role="alert" className="text-danger text-sm">
           {error}
         </p>
       ) : null}
 
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button type="submit" disabled={isSaving || !isDirty}>
+      <div className="flex gap-3 pt-2">
+        <Button type="submit" color="primary" isDisabled={isSaving || !isDirty}>
           {isSaving ? 'Saving...' : submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} disabled={isSaving}>
+        </Button>
+        <Button type="button" color="default" variant="flat" onPress={onCancel} isDisabled={isSaving}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

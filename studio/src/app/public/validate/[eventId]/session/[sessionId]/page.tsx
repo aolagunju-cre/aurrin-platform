@@ -140,33 +140,33 @@ export default function ValidateSessionPage({ params }: ValidateSessionPageProps
 
   if (isLoading) {
     return (
-      <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p>Loading validation session...</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p className="text-default-400">Loading validation session...</p>
       </main>
     );
   }
 
   if (error || !eventDetails || !eventId || !sessionId) {
     return (
-      <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p role="alert">{error || 'Unable to load validation session.'}</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p role="alert" className="py-12 text-center text-danger">{error || 'Unable to load validation session.'}</p>
       </main>
     );
   }
 
   return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>{eventDetails.name}</h1>
-      <p style={{ margin: 0 }}>
+    <main className="container mx-auto max-w-3xl px-6 py-8 space-y-4">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">{eventDetails.name}</h1>
+      <p className="text-lg text-default-500">
         Event date: {formatEventDateRange(eventDetails.start_date, eventDetails.end_date)}
       </p>
 
       {!hasRenderableQuestions ? (
-        <p role="alert">No validation questions are currently configured for this event.</p>
+        <p role="alert" className="py-12 text-center text-default-400">No validation questions are currently configured for this event.</p>
       ) : null}
 
       {founderPitches.length === 0 ? (
-        <p role="alert">No founder pitches are available for this event yet.</p>
+        <p role="alert" className="py-12 text-center text-default-400">No founder pitches are available for this event yet.</p>
       ) : null}
 
       {hasRenderableQuestions && founderPitches.length > 0 ? (

@@ -80,23 +80,27 @@ export default function RubricBuilderPage(): React.ReactElement {
   }
 
   if (isLoading) {
-    return <p>Loading rubric builder...</p>;
+    return (
+      <div className="container mx-auto max-w-7xl px-6 py-8">
+        <p className="text-default-400">Loading rubric builder...</p>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <main>
-        <h1>Rubric Builder</h1>
-        <p role="alert" style={{ color: '#b00' }}>{error}</p>
+      <main className="container mx-auto max-w-7xl px-6 py-8 space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Rubric Builder</h1>
+        <p role="alert" className="text-danger">{error}</p>
       </main>
     );
   }
 
   if (!template || !latest) {
     return (
-      <main>
-        <h1>Rubric Builder</h1>
-        <p role="alert" style={{ color: '#b00' }}>Rubric data is unavailable.</p>
+      <main className="container mx-auto max-w-7xl px-6 py-8 space-y-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Rubric Builder</h1>
+        <p role="alert" className="text-danger">Rubric data is unavailable.</p>
       </main>
     );
   }

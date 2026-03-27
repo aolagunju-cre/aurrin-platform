@@ -6,17 +6,15 @@ interface AdminHeaderProps {
 
 export function AdminHeader({ userEmail }: AdminHeaderProps): React.ReactElement {
   return (
-    <header
-      style={{
-        borderBottom: '1px solid #ddd',
-        padding: '0.75rem 1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}
-    >
-      <div>Signed in as {userEmail}</div>
-      <a href="/public/apply" aria-label="Logout">
+    <header className="h-14 border-b border-default-200 bg-background/80 backdrop-blur-md px-6 flex items-center justify-between">
+      <div className="text-sm text-default-500">
+        Signed in as <span className="font-medium text-foreground">{userEmail}</span>
+      </div>
+      <a
+        href="/public/apply"
+        aria-label="Logout"
+        className="text-sm text-default-500 hover:text-foreground transition-colors"
+      >
         Logout
       </a>
     </header>

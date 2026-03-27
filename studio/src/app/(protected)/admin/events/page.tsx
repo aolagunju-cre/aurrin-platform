@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 interface EventListItem {
   id: string;
@@ -108,22 +109,29 @@ export default function AdminEventsPage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: 0 }}>Events</h1>
-        <button type="button" onClick={() => setShowCreate((current) => !current)}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Events</h1>
+        <Button color="secondary" onPress={() => setShowCreate((current) => !current)}>
           Create Event
-        </button>
+        </Button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => setStatusFilter('Upcoming')}>Upcoming</button>
-        <button type="button" onClick={() => setStatusFilter('Live')}>Live</button>
-        <button type="button" onClick={() => setStatusFilter('Archived')}>Archived</button>
-        <button type="button" onClick={() => setStatusFilter('All')}>All</button>
-        <label>
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        {(['Upcoming', 'Live', 'Archived', 'All'] as const).map((filter) => (
+          <Button
+            key={filter}
+            size="sm"
+            variant={statusFilter === filter ? 'solid' : 'flat'}
+            color={statusFilter === filter ? 'secondary' : 'default'}
+            onPress={() => setStatusFilter(filter)}
+          >
+            {filter}
+          </Button>
+        ))}
+        <label className="flex items-center gap-2 text-sm text-default-500">
           Sort
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as EventSort)} aria-label="Sort Events">
+          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as EventSort)} aria-label="Sort Events" className="rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500">
             <option value="date">date</option>
             <option value="name">name</option>
             <option value="status">status</option>
@@ -132,69 +140,80 @@ export default function AdminEventsPage(): React.ReactElement {
       </div>
 
       {showCreate ? (
-        <div style={{ display: 'grid', gap: '0.5rem', border: '1px solid #ddd', padding: '0.75rem' }}>
-          <label>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 space-y-3">
+          <label className="block text-sm text-default-500">
             Event Name
             <input
               value={createPayload.name}
               onChange={(event) => setCreatePayload((current) => ({ ...current, name: event.target.value }))}
+              className="mt-1 w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </label>
-          <label>
+          <label className="block text-sm text-default-500">
             Start Date
             <input
               type="datetime-local"
               value={createPayload.start_date}
               onChange={(event) => setCreatePayload((current) => ({ ...current, start_date: event.target.value }))}
+              className="mt-1 w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </label>
-          <label>
+          <label className="block text-sm text-default-500">
             End Date
             <input
               type="datetime-local"
               value={createPayload.end_date}
               onChange={(event) => setCreatePayload((current) => ({ ...current, end_date: event.target.value }))}
+              className="mt-1 w-full rounded-lg border border-default-200 bg-default-100 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </label>
-          <button type="button" onClick={() => void handleCreate()} disabled={isCreating}>
+          <Button color="secondary" onPress={() => void handleCreate()} isDisabled={isCreating}>
             {isCreating ? 'Creating...' : 'Create Event'}
-          </button>
+          </Button>
         </div>
       ) : null}
 
       {error ? (
-        <p role="alert" style={{ color: '#b00', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading events...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading events...</p> : null}
 
       {!isLoading ? (
-        <table aria-label="Events Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">name</th>
-              <th align="left">status</th>
-              <th align="left">dates</th>
-              <th align="left">judge count</th>
-              <th align="left">founder count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleEvents.map((event) => (
-              <tr key={event.id}>
-                <td>
-                  <a href={`/admin/events/${event.id}`}>{event.name}</a>
-                </td>
-                <td>{event.status}</td>
-                <td>{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
-                <td>{event.judge_count}</td>
-                <td>{event.founder_count}</td>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Events Table" className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Name</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Status</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Dates</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Judge count</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Founder count</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {visibleEvents.map((event) => (
+                <tr key={event.id} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <a href={`/admin/events/${event.id}`} className="text-violet-400 hover:text-violet-300 transition-colors">{event.name}</a>
+                  </td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                      event.status === 'Live' ? 'bg-green-500/10 text-green-400' :
+                      event.status === 'Upcoming' ? 'bg-violet-500/10 text-violet-400' :
+                      'bg-default-100 text-default-500'
+                    }`}>{event.status}</span>
+                  </td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{event.judge_count}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{event.founder_count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

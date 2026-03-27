@@ -23,27 +23,27 @@ export default async function ValidateEntryPage({ params }: ValidateEntryPagePro
 
   if (eventResult.error) {
     return (
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p role="alert">Unable to load event details.</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p role="alert" className="py-12 text-center text-default-400">Unable to load event details.</p>
       </main>
     );
   }
 
   if (!eventResult.data) {
     return (
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem' }}>
-        <p role="alert">Event not found.</p>
+      <main className="container mx-auto max-w-3xl px-6 py-8">
+        <p role="alert" className="py-12 text-center text-default-400">Event not found.</p>
       </main>
     );
   }
 
   return (
-    <main style={{ maxWidth: 760, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>{eventResult.data.name}</h1>
-      <p style={{ margin: 0 }}>
+    <main className="container mx-auto max-w-3xl px-6 py-8 space-y-4">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">{eventResult.data.name}</h1>
+      <p className="text-lg text-default-500">
         Event date: {formatEventDateRange(eventResult.data.start_date, eventResult.data.end_date)}
       </p>
-      <p style={{ margin: 0 }}>
+      <p className="text-sm text-default-400">
         By continuing, you consent to submit validation feedback for this event. Your responses are used for evaluation and may be reviewed by organizers.
       </p>
       <StartValidationPanel eventId={eventId} />

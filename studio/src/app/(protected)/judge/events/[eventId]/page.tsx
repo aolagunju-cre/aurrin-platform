@@ -57,54 +57,56 @@ export default function JudgeEventPitchesPage({ params }: JudgeEventPitchesPageP
   }, [params]);
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Founder Pitches</h1>
-      {eventId ? <p style={{ margin: 0 }}>Event: {eventId}</p> : null}
-      <p style={{ margin: 0 }}>
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Founder Pitches</h1>
+      {eventId ? <p className="text-sm text-default-500">Event: {eventId}</p> : null}
+      <p className="text-sm text-default-500">
         {scoringWindowOpen && scoringEnd ? `Scoring open until ${new Date(scoringEnd).toLocaleString()}` : 'Scoring closed'}
       </p>
 
       {error ? (
-        <p role="alert" style={{ color: '#b00020', margin: 0 }}>
+        <p role="alert" className="text-danger">
           {error}
         </p>
       ) : null}
 
-      {isLoading ? <p>Loading assigned pitches...</p> : null}
+      {isLoading ? <p className="text-default-400">Loading assigned pitches...</p> : null}
 
       {!isLoading && !error && pitches.length === 0 ? (
-        <p>No assigned pitches found for this event.</p>
+        <p className="py-12 text-center text-default-400">No assigned pitches found for this event.</p>
       ) : null}
 
       {!isLoading && !error && pitches.length > 0 ? (
-        <table aria-label="Judge Event Pitches Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Founder</th>
-              <th align="left">Company</th>
-              <th align="left">Email</th>
-              <th align="left">Pitch Order</th>
-              <th align="left">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pitches.map((pitch) => (
-              <tr key={pitch.id}>
-                <td>{pitch.founder_name ?? 'Founder'}</td>
-                <td>{pitch.company_name ?? 'N/A'}</td>
-                <td>{pitch.founder_email ?? 'N/A'}</td>
-                <td>{pitch.pitch_order ?? 'N/A'}</td>
-                <td>
-                  {scoringWindowOpen ? (
-                    <a href={`/judge/events/${pitch.event_id}/pitch/${pitch.id}`}>Score Pitch</a>
-                  ) : (
-                    <span>Scoring closed</span>
-                  )}
-                </td>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Judge Event Pitches Table" className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Founder</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Company</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Email</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Pitch Order</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pitches.map((pitch) => (
+                <tr key={pitch.id} className="hover:bg-default-100/50 transition-colors">
+                  <td className="px-4 py-3 border-b border-default-100 text-foreground">{pitch.founder_name ?? 'Founder'}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{pitch.company_name ?? 'N/A'}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{pitch.founder_email ?? 'N/A'}</td>
+                  <td className="px-4 py-3 border-b border-default-100 text-default-500">{pitch.pitch_order ?? 'N/A'}</td>
+                  <td className="px-4 py-3 border-b border-default-100">
+                    {scoringWindowOpen ? (
+                      <a href={`/judge/events/${pitch.event_id}/pitch/${pitch.id}`} className="text-violet-400 hover:text-violet-300 transition-colors">Score Pitch</a>
+                    ) : (
+                      <span className="text-default-400">Scoring closed</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

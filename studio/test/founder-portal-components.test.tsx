@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ProfileForm from '../src/components/founder/ProfileForm';
 import ScoreBreakdownCard from '../src/components/founder/ScoreBreakdownCard';
@@ -57,9 +57,15 @@ describe('founder portal components', () => {
     );
 
     expect(screen.getByText('Scores published')).toBeInTheDocument();
-    expect(screen.getByText('Aggregate score: 88.4')).toBeInTheDocument();
-    expect(screen.getByText('Team: 90')).toBeInTheDocument();
-    expect(screen.getByText('Judge One: 89 - Strong execution')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === 'Aggregate score: 88.4')).toBeInTheDocument();
+
+    const teamRow = screen.getByText('Team').closest('li');
+    const judgeRow = screen.getByText('Judge One').closest('li');
+
+    expect(teamRow).not.toBeNull();
+    expect(judgeRow).not.toBeNull();
+    expect(within(teamRow as HTMLElement).getByText('90')).toBeInTheDocument();
+    expect(judgeRow as HTMLElement).toHaveTextContent('Judge One: 89 - Strong execution');
   });
 
   it('renders validation summary with question percentages and text', () => {
@@ -79,8 +85,8 @@ describe('founder portal components', () => {
       />
     );
 
-    expect(screen.getByText('42 audience members provided feedback')).toBeInTheDocument();
-    expect(screen.getByText('Aggregate audience score: 4.2')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === '42 audience members provided feedback')).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === 'Aggregate audience score: 4.2')).toBeInTheDocument();
     expect(screen.getByText('yes 80%, maybe 20%')).toBeInTheDocument();
     expect(screen.getByText(/Great team, needs more traction/)).toBeInTheDocument();
   });

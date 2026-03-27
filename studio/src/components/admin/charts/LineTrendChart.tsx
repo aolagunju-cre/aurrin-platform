@@ -24,11 +24,16 @@ export function LineTrendChart({ title, yAxisLabel, points }: LineTrendChartProp
   const maxValue = useMemo(() => Math.max(1, ...points.map((point) => point.value)), [points]);
   const selected = points.find((point) => point.id === selectedId) ?? null;
 
+  const gridColsClass = `grid-cols-[repeat(${Math.max(1, points.length)},minmax(60px,1fr))]`;
+
   return (
-    <article style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.75rem' }}>
-      <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h2>
-      <p style={{ margin: 0, color: '#555' }}>{yAxisLabel}</p>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, points.length)}, minmax(60px, 1fr))`, gap: '0.5rem' }}>
+    <article className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6 grid gap-3 transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10">
+      <h2 className="m-0 text-lg font-semibold text-foreground">{title}</h2>
+      <p className="m-0 text-sm text-default-500">{yAxisLabel}</p>
+      <div
+        className="grid gap-2 items-end"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, points.length)}, minmax(60px, 1fr))` }}
+      >
         {points.map((point) => (
           <button
             key={point.id}
@@ -36,33 +41,30 @@ export function LineTrendChart({ title, yAxisLabel, points }: LineTrendChartProp
             title={`${point.label} (${point.date}): ${toPercent(point.value)}`}
             aria-label={`Trend point ${point.label}`}
             onClick={() => setSelectedId(point.id)}
-            style={{
-              border: selectedId === point.id ? '2px solid #147a00' : '1px solid #bbb',
-              borderRadius: 6,
-              padding: '0.25rem',
-              background: '#fff',
-              display: 'grid',
-              gap: '0.25rem',
-            }}
+            className={`grid gap-1 rounded-xl p-1.5 transition-all duration-300 cursor-pointer border-2 ${
+              selectedId === point.id
+                ? 'border-violet-500 bg-violet-500/10 shadow-md shadow-violet-500/10'
+                : 'border-default-200 bg-default-100 hover:border-violet-500/50'
+            }`}
           >
             <span
+              className="block rounded-t-lg bg-violet-500 transition-all duration-300 hover:bg-violet-400"
               style={{
                 height: `${Math.max(8, Math.round((point.value / maxValue) * 96))}px`,
-                background: '#147a00',
-                borderRadius: 4,
-                display: 'block',
               }}
             />
-            <span style={{ fontSize: '0.75rem' }}>{point.label}</span>
+            <span className="text-xs text-default-600">{point.label}</span>
           </button>
         ))}
       </div>
       {selected ? (
-        <p style={{ margin: 0 }}>
-          Drill-down: <strong>{selected.label}</strong> on <strong>{selected.date}</strong> is <strong>{toPercent(selected.value)}</strong>.
+        <p className="m-0 text-sm text-default-600">
+          Drill-down: <strong className="text-foreground">{selected.label}</strong> on{' '}
+          <strong className="text-foreground">{selected.date}</strong> is{' '}
+          <strong className="text-2xl font-bold text-violet-400">{toPercent(selected.value)}</strong>.
         </p>
       ) : (
-        <p style={{ margin: 0 }}>Tip: click a point to inspect an event snapshot.</p>
+        <p className="m-0 text-sm text-default-400">Tip: click a point to inspect an event snapshot.</p>
       )}
     </article>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 interface Subscription {
   id: string;
@@ -128,51 +129,61 @@ export default function SubscriberPage(): React.ReactElement {
   }
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
-      <h1 style={{ margin: 0 }}>Subscriber Dashboard</h1>
-      {error ? <p role="alert" style={{ color: '#b00', margin: 0 }}>{error}</p> : null}
-      {isLoading ? <p>Loading subscriptions...</p> : null}
+    <section className="container mx-auto max-w-7xl px-6 py-8 space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Subscriber Dashboard</h1>
+      {error ? <p role="alert" className="text-danger">{error}</p> : null}
+      {isLoading ? <p className="text-default-400">Loading subscriptions...</p> : null}
 
-      {!isLoading && !hasSubscriptions ? <p>No active subscriptions found.</p> : null}
+      {!isLoading && !hasSubscriptions ? <p className="py-12 text-center text-default-400">No active subscriptions found.</p> : null}
 
       {!isLoading && hasSubscriptions ? (
-        <table aria-label="Subscriptions Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th align="left">Product</th>
-              <th align="left">Price</th>
-              <th align="left">Next billing date</th>
-              <th align="left">Status</th>
-              <th align="left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subscriptions.map((subscription) => {
-              const details = subscription.price_id ? detailsByPriceId[subscription.price_id] : undefined;
-              const isBusy = busyId === subscription.id;
-              return (
-                <tr key={subscription.id}>
-                  <td>{details?.product?.name ?? 'Subscription'}</td>
-                  <td>
-                    {details
-                      ? formatCurrency(details.price.amount_cents, details.price.currency)
-                      : 'N/A'}
-                  </td>
-                  <td>{subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString() : 'N/A'}</td>
-                  <td>{subscription.status}</td>
-                  <td style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" disabled={isBusy} onClick={() => void manageSubscription(subscription.id)}>
-                      Manage
-                    </button>
-                    <button type="button" disabled={isBusy} onClick={() => void cancelSubscription(subscription.id)}>
-                      Cancel Subscription
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="rounded-2xl border border-default-200 bg-default-50 dark:bg-default-50/5 p-6 overflow-x-auto">
+          <table aria-label="Subscriptions Table" className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Product</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Price</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Next billing date</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Status</th>
+                <th className="text-left text-default-500 font-medium px-4 py-3 border-b border-default-200">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subscriptions.map((subscription) => {
+                const details = subscription.price_id ? detailsByPriceId[subscription.price_id] : undefined;
+                const isBusy = busyId === subscription.id;
+                return (
+                  <tr key={subscription.id} className="hover:bg-default-100/50 transition-colors">
+                    <td className="px-4 py-3 border-b border-default-100 text-foreground">{details?.product?.name ?? 'Subscription'}</td>
+                    <td className="px-4 py-3 border-b border-default-100 text-default-500">
+                      {details
+                        ? formatCurrency(details.price.amount_cents, details.price.currency)
+                        : 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 border-b border-default-100 text-default-500">{subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString() : 'N/A'}</td>
+                    <td className="px-4 py-3 border-b border-default-100">
+                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                        subscription.status === 'active' ? 'bg-green-500/10 text-green-400' :
+                        subscription.status === 'past_due' ? 'bg-yellow-500/10 text-yellow-400' :
+                        'bg-red-500/10 text-red-400'
+                      }`}>{subscription.status}</span>
+                    </td>
+                    <td className="px-4 py-3 border-b border-default-100">
+                      <div className="flex gap-2">
+                        <Button size="sm" color="secondary" isDisabled={isBusy} onPress={() => void manageSubscription(subscription.id)}>
+                          Manage
+                        </Button>
+                        <Button size="sm" color="danger" variant="flat" isDisabled={isBusy} onPress={() => void cancelSubscription(subscription.id)}>
+                          Cancel Subscription
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

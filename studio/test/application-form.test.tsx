@@ -14,7 +14,7 @@ describe('ApplicationForm', () => {
   it('shows pitch summary validation on blur', async () => {
     render(<ApplicationForm />);
 
-    const pitchSummary = screen.getByLabelText('Pitch summary (100-1000 chars)');
+    const pitchSummary = screen.getByLabelText(/Pitch summary \(100-1000 chars\)/i);
     fireEvent.change(pitchSummary, { target: { value: 'Too short' } });
     fireEvent.blur(pitchSummary);
 
@@ -32,10 +32,10 @@ describe('ApplicationForm', () => {
     fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByLabelText('Company name'), { target: { value: 'Acme Inc' } });
-    fireEvent.change(screen.getByLabelText('Pitch summary (100-1000 chars)'), { target: { value: 'A'.repeat(120) } });
+    fireEvent.change(screen.getByLabelText(/Pitch summary \(100-1000 chars\)/i), { target: { value: 'A'.repeat(120) } });
     fireEvent.change(screen.getByLabelText('Industry'), { target: { value: 'Fintech' } });
     fireEvent.change(screen.getByLabelText('Stage'), { target: { value: 'Seed' } });
-    fireEvent.change(screen.getByLabelText('Pitch deck (PDF, max 50MB)'), {
+    fireEvent.change(screen.getByLabelText(/Pitch deck \(PDF, max 50MB\)/i), {
       target: { files: [new File(['pdf'], 'deck.pdf', { type: 'application/pdf' })] },
     });
 

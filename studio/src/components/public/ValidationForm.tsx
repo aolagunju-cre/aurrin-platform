@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
 
 export type ValidationQuestionType = 'rating' | 'yes_no' | 'text';
 
@@ -124,30 +125,43 @@ export function ValidationForm({ eventId, sessionId, questions, founderPitches }
   };
 
   return (
-    <section style={{ display: 'grid', gap: '1rem' }}>
+    <section className="grid gap-6">
       {sortedPitches.map((pitch) => {
         const pitchState = submitStateByPitch[pitch.id] || { isSubmitting: false, success: false, error: '' };
         const pitchAnswers = answersByPitch[pitch.id] || {};
 
         return (
-          <article key={pitch.id} style={{ border: '1px solid #d9d9d9', borderRadius: 8, padding: '1rem' }}>
-            <h2 style={{ marginTop: 0 }}>{pitch.company_name || 'Founder Pitch'}</h2>
+          <article
+            key={pitch.id}
+            className="rounded-2xl border border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 p-6 transition-all duration-300 hover:border-violet-500/50 hover:shadow-xl hover:shadow-violet-500/10"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              {pitch.company_name || 'Founder Pitch'}
+            </h2>
 
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <div className="grid gap-5">
               {questions.map((question) => (
-                <fieldset key={question.id} style={{ border: 0, padding: 0, margin: 0 }}>
-                  <legend style={{ fontWeight: 600 }}>{question.prompt}</legend>
+                <fieldset key={question.id} className="border-0 p-0 m-0">
+                  <legend className="font-semibold text-foreground mb-2">{question.prompt}</legend>
 
                   {question.type === 'rating' ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                    <div className="flex gap-3 flex-wrap mt-1">
                       {[1, 2, 3, 4, 5].map((value) => (
-                        <label key={value} style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                        <label
+                          key={value}
+                          className={`inline-flex items-center justify-center w-10 h-10 rounded-xl border cursor-pointer transition-all duration-200 text-sm font-medium ${
+                            pitchAnswers[question.id] === String(value)
+                              ? 'border-violet-500 bg-violet-500/20 text-violet-400'
+                              : 'border-default-200 dark:border-gray-700 bg-default-100 text-default-600 hover:border-violet-500/50'
+                          }`}
+                        >
                           <input
                             type="radio"
                             name={`${pitch.id}-${question.id}`}
                             value={value}
                             checked={pitchAnswers[question.id] === String(value)}
                             onChange={(event) => setAnswer(pitch.id, question.id, event.target.value)}
+                            className="sr-only"
                           />
                           {value}
                         </label>
@@ -156,15 +170,23 @@ export function ValidationForm({ eventId, sessionId, questions, founderPitches }
                   ) : null}
 
                   {question.type === 'yes_no' ? (
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
+                    <div className="flex gap-3 mt-1">
                       {['yes', 'no'].map((value) => (
-                        <label key={value} style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                        <label
+                          key={value}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl border cursor-pointer transition-all duration-200 text-sm font-medium ${
+                            pitchAnswers[question.id] === value
+                              ? 'border-violet-500 bg-violet-500/20 text-violet-400'
+                              : 'border-default-200 dark:border-gray-700 bg-default-100 text-default-600 hover:border-violet-500/50'
+                          }`}
+                        >
                           <input
                             type="radio"
                             name={`${pitch.id}-${question.id}`}
                             value={value}
                             checked={pitchAnswers[question.id] === value}
                             onChange={(event) => setAnswer(pitch.id, question.id, event.target.value)}
+                            className="sr-only"
                           />
                           {value === 'yes' ? 'Yes' : 'No'}
                         </label>
@@ -178,24 +200,32 @@ export function ValidationForm({ eventId, sessionId, questions, founderPitches }
                       value={pitchAnswers[question.id] || ''}
                       onChange={(event) => setAnswer(pitch.id, question.id, event.target.value)}
                       rows={4}
-                      style={{ width: '100%', marginTop: '0.25rem' }}
+                      className="w-full mt-1 rounded-xl border border-default-200 bg-default-100 px-4 py-2 text-foreground placeholder:text-default-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 resize-y"
                     />
                   ) : null}
                 </fieldset>
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => void submitPitch(pitch.id)}
-              disabled={pitchState.isSubmitting}
-              style={{ marginTop: '1rem' }}
-            >
-              {pitchState.isSubmitting ? 'Submitting...' : 'Submit feedback'}
-            </button>
+            <div className="mt-5">
+              <Button
+                type="button"
+                color="primary"
+                isDisabled={pitchState.isSubmitting}
+                isLoading={pitchState.isSubmitting}
+                onPress={() => void submitPitch(pitch.id)}
+                className="bg-violet-600 hover:bg-violet-700"
+              >
+                {pitchState.isSubmitting ? 'Submitting...' : 'Submit feedback'}
+              </Button>
+            </div>
 
-            {pitchState.success ? <p role="status" style={{ marginBottom: 0 }}>{SUCCESS_MESSAGE}</p> : null}
-            {pitchState.error ? <p role="alert" style={{ marginBottom: 0, color: '#b00020' }}>{pitchState.error}</p> : null}
+            {pitchState.success ? (
+              <p role="status" className="mt-3 text-green-400 text-sm font-medium">{SUCCESS_MESSAGE}</p>
+            ) : null}
+            {pitchState.error ? (
+              <p role="alert" className="mt-3 text-danger text-sm">{pitchState.error}</p>
+            ) : null}
           </article>
         );
       })}
