@@ -41,6 +41,7 @@ printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-dedupe-create-
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-frontend-agent.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-pipeline-watchdog.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-classify-pipeline-pr.sh" >/dev/null
+printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-detect-dependency-cycles.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-duplicate-code-detector.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-extract-child-issue-numbers.sh" >/dev/null
 printf '%s\n' "$DEFAULT_CALLS" | grep -F "bash scripts/tests/test-extract-issue-dependencies.sh" >/dev/null

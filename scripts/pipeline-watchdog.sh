@@ -7,6 +7,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REPO="${REPO:?REPO environment variable is required}"
 PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"
 STATE_MARKER='<!-- ci-repair-state:v1'
+DEPENDENCY_CYCLE_MARKER='<!-- dependency-cycle:v1'
 STALE_THRESHOLD=1200
 ESCALATE_THRESHOLD=7200
 MAX_REPAIR_ATTEMPTS=2
@@ -164,6 +165,26 @@ render_incident_body() {
     '```' \
     "" \
     "> This escalation was created automatically by the Pipeline Watchdog workflow."
+}
+
+render_dependency_cycle_body() {
+  local issue_number=$1
+  local cycle_chain=$2
+  printf '%s\n' \
+    "${DEPENDENCY_CYCLE_MARKER}" \
+    "status=detected" \
+    "issue_number=${issue_number}" \
+    "cycle=${cycle_chain}" \
+    "updated_at=${NOW_ISO}" \
+    "-->" \
+    "## Dependency Cycle Detected" \
+    "" \
+    "- **Issue**: #${issue_number}" \
+    "- **Cycle**: ${cycle_chain}" \
+    "- **Detected By**: Pipeline Watchdog" \
+    "- **Updated At**: ${NOW_ISO}" \
+    "" \
+    "This issue is part of a circular dependency. The queue will stay blocked until one dependency edge in the cycle is removed."
 }
 
 create_or_update_incident_issue() {
@@ -329,6 +350,27 @@ PIPELINE_PRS=$(gh pr list --repo "$REPO" --state open --json number,title,update
 OPEN_ISSUES_JSON=$(gh issue list --repo "$REPO" --state open --limit 500 --json number 2>/dev/null || echo '[]')
 PIPELINE_ISSUES=$(gh issue list --repo "$REPO" --label pipeline --state open --json number,title,updatedAt,labels,body)
 OPEN_PIPELINE_PR_COUNT=$(printf '%s' "$PIPELINE_PRS" | jq 'length')
+
+echo ""
+echo "=== Checking for dependency cycles ==="
+DEPENDENCY_CYCLE_JSON=$(printf '%s' "$PIPELINE_ISSUES" | bash "$SCRIPT_DIR/detect-dependency-cycles.sh")
+DEPENDENCY_CYCLE_COUNT=$(printf '%s' "$DEPENDENCY_CYCLE_JSON" | jq '.cycles | length')
+if [ "$DEPENDENCY_CYCLE_COUNT" -gt 0 ]; then
+  while IFS= read -r CYCLE_ROW; do
+    [ -z "$CYCLE_ROW" ] && continue
+    CYCLE_CHAIN=$(printf '%s' "$CYCLE_ROW" | jq -r '[.issues[] | "#" + tostring] | join(" -> ")')
+    echo "Dependency cycle detected: ${CYCLE_CHAIN}"
+    while IFS= read -r CYCLE_ISSUE; do
+      [ -z "$CYCLE_ISSUE" ] && continue
+      EXISTING_CYCLE_COMMENT=$(find_marker_comment "$CYCLE_ISSUE" "$DEPENDENCY_CYCLE_MARKER")
+      EXISTING_CYCLE_COMMENT_ID=$(printf '%s' "$EXISTING_CYCLE_COMMENT" | jq -r '.id // empty')
+      CYCLE_BODY=$(render_dependency_cycle_body "$CYCLE_ISSUE" "$CYCLE_CHAIN")
+      upsert_comment "$CYCLE_ISSUE" "$EXISTING_CYCLE_COMMENT_ID" "$CYCLE_BODY"
+    done < <(printf '%s' "$CYCLE_ROW" | jq -r '.issues[]')
+  done < <(printf '%s' "$DEPENDENCY_CYCLE_JSON" | jq -c '.cycles[]')
+else
+  echo "No dependency cycles detected."
+fi
 
 echo ""
 echo "=== Checking MVP merge candidates ==="
