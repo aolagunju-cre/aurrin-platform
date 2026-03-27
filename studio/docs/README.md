@@ -29,6 +29,7 @@ This hub is the canonical entrypoint for platform documentation under `studio/do
 - Troubleshoot jobs, metrics, and logs: [Background Jobs](./JOBS.md), [Observability Guide](./OBSERVABILITY.md)
 - Work with file uploads and retention: [Storage Guide](./STORAGE.md)
 - Generate and share branded social cards: [Social Assets Guide](./SOCIAL_ASSETS.md)
+- Run and verify public founder discovery workflows: [Public Directory Guide](./PUBLIC_DIRECTORY.md)
 - Resolve platform questions quickly: [FAQ](./FAQ.md)
 
 ## Documentation Map
@@ -49,6 +50,7 @@ This hub is the canonical entrypoint for platform documentation under `studio/do
 - [Background Jobs](./JOBS.md)
 - [Storage Guide](./STORAGE.md)
 - [Social Assets Guide](./SOCIAL_ASSETS.md)
+- [Public Directory Guide](./PUBLIC_DIRECTORY.md)
 - [Email Guide](./EMAIL.md)
 - [Analytics Guide](./ANALYTICS.md)
 - [Payments Guide](./PAYMENTS.md)
