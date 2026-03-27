@@ -145,6 +145,27 @@ describe('mentor matches routes', () => {
         data: { id: 'user-founder-1', email: 'founder@example.com', name: 'Founder One' },
         error: null,
       }),
+      insertOutboxJob: jest.fn().mockResolvedValue({
+        data: {
+          id: 'job-mentor-match',
+          job_type: 'mentor_match',
+          aggregate_id: 'match-1',
+          aggregate_type: 'mentor_match',
+          payload: { match_id: 'match-1', reason: 'mutual_acceptance' },
+          state: 'pending',
+          retry_count: 0,
+          max_retries: 3,
+          last_error: null,
+          email_id: null,
+          error_message: null,
+          scheduled_at: null,
+          started_at: null,
+          completed_at: null,
+          created_at: '2026-03-27T00:00:00.000Z',
+          updated_at: '2026-03-27T00:00:00.000Z',
+        },
+        error: null,
+      }),
     };
 
     mockedGetSupabaseClient.mockReturnValue({
@@ -220,6 +241,12 @@ describe('mentor matches routes', () => {
     expect(payload.success).toBe(true);
     expect(payload.data).toEqual({ status: 'accepted', mutual_acceptance: true });
     expect(mockDb.updateMentorMatchById).toHaveBeenCalledTimes(1);
+    expect(mockDb.insertOutboxJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        job_type: 'mentor_match',
+        payload: expect.objectContaining({ match_id: 'match-1', reason: 'mutual_acceptance' }),
+      })
+    );
   });
 
   it('is idempotent when repeating the same accepted action', async () => {

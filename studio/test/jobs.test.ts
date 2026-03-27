@@ -508,12 +508,111 @@ describe('handleAssetJob', () => {
 });
 
 describe('handleMentorMatchJob', () => {
-  it('returns success with valid payload', async () => {
-    const result = await handleMentorMatchJob({ event_id: 'e1', founder_id: 'f1' });
-    expect(result.success).toBe(true);
+  afterEach(() => {
+    resetSupabaseClient();
   });
 
-  it('returns failure when required fields missing', async () => {
+  it('enqueues mentor/founder notifications and 7-day reminders when pending and publishing is open', async () => {
+    const createdAt = '2026-03-20T10:00:00.000Z';
+    const match = {
+      id: 'match-1',
+      mentor_id: 'mentor-1',
+      founder_id: 'founder-1',
+      event_id: 'event-1',
+      mentor_status: 'pending',
+      founder_status: 'pending',
+      created_at: createdAt,
+    };
+
+    const client = makeClient({
+      getMentorMatchById: jest.fn().mockResolvedValue({ data: match, error: null }),
+      getUserById: jest.fn()
+        .mockResolvedValueOnce({ data: { id: 'mentor-1', email: 'mentor@example.com', name: 'Mentor Max' }, error: null })
+        .mockResolvedValueOnce({ data: { id: 'founder-user-1', email: 'founder@example.com', name: 'Founder One' }, error: null }),
+      queryTable: jest.fn().mockResolvedValue({ data: [{ id: 'founder-1', user_id: 'founder-user-1', company_name: 'Acme' }], error: null }),
+      getEventById: jest.fn().mockResolvedValue({ data: { id: 'event-1', publishing_start: '2026-03-01T00:00:00.000Z' }, error: null }),
+      insertOutboxJob: jest.fn().mockImplementation(async (job) => ({ data: makeJob({ job_type: job.job_type, payload: job.payload }), error: null })),
+    });
+    setSupabaseClient(client);
+
+    const result = await handleMentorMatchJob({ match_id: 'match-1', reason: 'match_created' });
+
+    expect(result.success).toBe(true);
+    expect(client.db.insertOutboxJob).toHaveBeenCalledTimes(4);
+
+    const insertCalls = (client.db.insertOutboxJob as jest.Mock).mock.calls.map((call) => call[0]);
+    const reminderJobs = insertCalls.filter((job) => job.payload.template_name === 'match_reminder');
+    expect(reminderJobs).toHaveLength(2);
+    for (const reminderJob of reminderJobs) {
+      expect(reminderJob.scheduled_at).toBe('2026-03-27T10:00:00.000Z');
+    }
+  });
+
+  it('does not enqueue founder notifications before publishing opens', async () => {
+    const client = makeClient({
+      getMentorMatchById: jest.fn().mockResolvedValue({
+        data: {
+          id: 'match-2',
+          mentor_id: 'mentor-1',
+          founder_id: 'founder-1',
+          event_id: 'event-1',
+          mentor_status: 'pending',
+          founder_status: 'pending',
+          created_at: '2026-03-20T10:00:00.000Z',
+        },
+        error: null,
+      }),
+      getUserById: jest.fn()
+        .mockResolvedValueOnce({ data: { id: 'mentor-1', email: 'mentor@example.com', name: 'Mentor Max' }, error: null })
+        .mockResolvedValueOnce({ data: { id: 'founder-user-1', email: 'founder@example.com', name: 'Founder One' }, error: null }),
+      queryTable: jest.fn().mockResolvedValue({ data: [{ id: 'founder-1', user_id: 'founder-user-1', company_name: 'Acme' }], error: null }),
+      getEventById: jest.fn().mockResolvedValue({ data: { id: 'event-1', publishing_start: '2099-01-01T00:00:00.000Z' }, error: null }),
+      insertOutboxJob: jest.fn().mockImplementation(async (job) => ({ data: makeJob({ job_type: job.job_type, payload: job.payload }), error: null })),
+    });
+    setSupabaseClient(client);
+
+    const result = await handleMentorMatchJob({ match_id: 'match-2' });
+    expect(result.success).toBe(true);
+
+    const insertCalls = (client.db.insertOutboxJob as jest.Mock).mock.calls.map((call) => call[0]);
+    const founderJobs = insertCalls.filter((job) => job.payload.to === 'founder@example.com');
+    expect(founderJobs).toHaveLength(0);
+  });
+
+  it('enqueues intro emails for mutual acceptance', async () => {
+    const client = makeClient({
+      getMentorMatchById: jest.fn().mockResolvedValue({
+        data: {
+          id: 'match-3',
+          mentor_id: 'mentor-1',
+          founder_id: 'founder-1',
+          event_id: 'event-1',
+          mentor_status: 'accepted',
+          founder_status: 'accepted',
+          created_at: '2026-03-20T10:00:00.000Z',
+        },
+        error: null,
+      }),
+      getUserById: jest.fn()
+        .mockResolvedValueOnce({ data: { id: 'mentor-1', email: 'mentor@example.com', name: 'Mentor Max' }, error: null })
+        .mockResolvedValueOnce({ data: { id: 'founder-user-1', email: 'founder@example.com', name: 'Founder One' }, error: null }),
+      queryTable: jest.fn().mockResolvedValue({ data: [{ id: 'founder-1', user_id: 'founder-user-1', company_name: 'Acme' }], error: null }),
+      getEventById: jest.fn().mockResolvedValue({ data: { id: 'event-1', publishing_start: '2026-03-01T00:00:00.000Z' }, error: null }),
+      insertOutboxJob: jest.fn().mockImplementation(async (job) => ({ data: makeJob({ job_type: job.job_type, payload: job.payload }), error: null })),
+    });
+    setSupabaseClient(client);
+
+    const result = await handleMentorMatchJob({ match_id: 'match-3', reason: 'mutual_acceptance' });
+    expect(result.success).toBe(true);
+
+    const insertCalls = (client.db.insertOutboxJob as jest.Mock).mock.calls.map((call) => call[0]);
+    expect(insertCalls).toHaveLength(2);
+    for (const job of insertCalls) {
+      expect(job.payload.template_name).toBe('match_accepted');
+    }
+  });
+
+  it('returns failure when required fields are missing', async () => {
     const result = await handleMentorMatchJob({ event_id: 'e1' });
     expect(result.success).toBe(false);
   });

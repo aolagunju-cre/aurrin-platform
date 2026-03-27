@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../../../../../../lib/auth/admin';
 import { auditLog } from '../../../../../../../lib/audit/log';
 import { MentorMatchStatus, getSupabaseClient } from '../../../../../../../lib/db/client';
+import { enqueueJob } from '../../../../../../../lib/jobs/enqueue';
 
 interface RouteParams {
   params: Promise<{ eventId: string }>;
@@ -101,6 +102,12 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   if (!insertResult.data) {
     return NextResponse.json({ message: 'Failed to create mentor match.' }, { status: 500 });
   }
+
+  await enqueueJob(
+    'mentor_match',
+    { match_id: insertResult.data.id, reason: 'match_created' },
+    { aggregate_id: insertResult.data.id, aggregate_type: 'mentor_match' }
+  );
 
   await auditLog(
     'mentor_match_created_manual',

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { canAccessMentorEvent, requireMentor } from '../../../../../lib/auth/mentor';
 import { getSupabaseClient, type MentorMatchRecord, type MentorMatchStatus } from '../../../../../lib/db/client';
+import { enqueueJob } from '../../../../../lib/jobs/enqueue';
 
 interface RouteParams {
   params: Promise<{ matchId: string }>;
@@ -182,6 +183,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
   }
   if (!updateResult.data) {
     return NextResponse.json({ success: false, message: 'Match not found.' }, { status: 404 });
+  }
+
+  if (updateResult.data.mentor_status === 'accepted' && updateResult.data.founder_status === 'accepted') {
+    await enqueueJob(
+      'mentor_match',
+      { match_id: updateResult.data.id, reason: 'mutual_acceptance' },
+      { aggregate_id: updateResult.data.id, aggregate_type: 'mentor_match' }
+    );
   }
 
   return NextResponse.json({ success: true, data: toResponsePayload(updateResult.data) }, { status: 200 });

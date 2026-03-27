@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../../../../../../lib/auth/admin';
 import { auditLog } from '../../../../../../../lib/audit/log';
 import { getSupabaseClient } from '../../../../../../../lib/db/client';
+import { enqueueJob } from '../../../../../../../lib/jobs/enqueue';
 import { buildMentorMatches } from '../../../../../../../lib/mentoring/matching';
 
 interface RouteParams {
@@ -104,6 +105,11 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
 
     if (insertResult.data) {
       createdCount += 1;
+      await enqueueJob(
+        'mentor_match',
+        { match_id: insertResult.data.id, reason: 'match_created' },
+        { aggregate_id: insertResult.data.id, aggregate_type: 'mentor_match' }
+      );
     }
   }
 

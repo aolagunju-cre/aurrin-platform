@@ -7,6 +7,10 @@ describe('email template registry', () => {
     expect(Object.keys(emailTemplateRegistry).sort()).toEqual([
       'email_verification',
       'founder_approved',
+      'founder_match_created',
+      'match_accepted',
+      'match_reminder',
+      'mentor_match_created',
       'mentor_matched',
       'mentor_matched_intro',
       'password_reset',
@@ -46,5 +50,45 @@ describe('email template registry', () => {
     expect(rendered.text).toContain('Orbit Labs');
     expect(rendered.text).toContain('https://example.com/reports/1');
     expect(rendered.text).toContain('Your scores are now available');
+  });
+
+  it('renders mentor match creation semantics', () => {
+    const rendered = renderEmailTemplate('mentor_match_created', {
+      founder_name: 'Founder One',
+      link: 'https://example.com/mentor/matches/match-1',
+    });
+
+    expect(rendered.subject).toContain("You've been paired with Founder One! Accept to connect.");
+    expect(rendered.text).toContain("You've been paired with Founder One! Accept to connect.");
+  });
+
+  it('renders reminder semantics for mentor and founder recipients', () => {
+    const mentorReminder = renderEmailTemplate('match_reminder', {
+      recipient_role: 'mentor',
+      founder_name: 'Founder One',
+      link: 'https://example.com/mentor/matches/match-1',
+    });
+    expect(mentorReminder.text).toContain("Don't forget to respond to your match with Founder One");
+
+    const founderReminder = renderEmailTemplate('match_reminder', {
+      recipient_role: 'founder',
+      mentor_name: 'Mentor Max',
+      link: 'https://example.com/founder',
+    });
+    expect(founderReminder.text).toContain('Mentor Mentor Max is waiting for your response');
+  });
+
+  it('renders mutual acceptance intro semantics with both contacts', () => {
+    const rendered = renderEmailTemplate('match_accepted', {
+      mentor_name: 'Mentor Max',
+      mentor_email: 'mentor@example.com',
+      founder_name: 'Founder One',
+      founder_email: 'founder@example.com',
+      link: 'https://example.com/founder',
+    });
+
+    expect(rendered.subject).toContain('Mentor Mentor Max, meet Founder Founder One');
+    expect(rendered.text).toContain('Mentor contact: mentor@example.com');
+    expect(rendered.text).toContain('Founder contact: founder@example.com');
   });
 });
