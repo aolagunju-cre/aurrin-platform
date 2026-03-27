@@ -250,6 +250,49 @@ export interface JudgeScoreUpsert {
   locked_at?: string | null;
 }
 
+export interface FounderPitchRecord {
+  id: string;
+  founder_id: string;
+  event_id: string;
+  pitch_order: number | null;
+  pitch_deck_url: string | null;
+  score_aggregate: number | null;
+  score_breakdown: Record<string, unknown> | null;
+  validation_summary: Record<string, unknown> | null;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JudgeEventPitchRecord extends FounderPitchRecord {
+  founder: {
+    id: string;
+    company_name: string | null;
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+    } | null;
+  } | null;
+}
+
+export interface JudgePitchDetailRecord extends FounderPitchRecord {
+  founder: {
+    id: string;
+    company_name: string | null;
+    tagline: string | null;
+    bio: string | null;
+    website: string | null;
+    pitch_deck_url: string | null;
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+    } | null;
+  } | null;
+}
+
 export interface UserSearchRecord {
   id: string;
   email: string;
@@ -505,9 +548,19 @@ export interface SupabaseDBClient {
   insertRoleAssignment(record: RoleAssignmentInsert): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
   deleteRoleAssignment(id: string): Promise<{ data: RoleAssignmentRecord | null; error: Error | null }>;
   listEvents(): Promise<{ data: EventRecord[]; error: Error | null }>;
+  listEventsByIds(ids: string[]): Promise<{ data: EventRecord[]; error: Error | null }>;
   getEventById(id: string): Promise<{ data: EventRecord | null; error: Error | null }>;
   insertEvent(record: EventInsert): Promise<{ data: EventRecord | null; error: Error | null }>;
   updateEvent(id: string, updates: EventUpdate): Promise<{ data: EventRecord | null; error: Error | null }>;
+  listFounderPitchesByEventId(eventId: string): Promise<{ data: JudgeEventPitchRecord[]; error: Error | null }>;
+  getFounderPitchById(id: string): Promise<{ data: JudgePitchDetailRecord | null; error: Error | null }>;
+  getLatestRubricVersionByEventId(eventId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
+  getJudgeScoreByJudgeAndPitch(
+    judgeId: string,
+    founderPitchId: string
+  ): Promise<{ data: JudgeScoreRecord | null; error: Error | null }>;
+  insertJudgeScore(record: JudgeScoreUpsert): Promise<{ data: JudgeScoreRecord | null; error: Error | null }>;
+  updateJudgeScore(id: string, updates: Partial<JudgeScoreUpsert>): Promise<{ data: JudgeScoreRecord | null; error: Error | null }>;
   listSponsors(): Promise<{ data: SponsorRecord[]; error: Error | null }>;
   getSponsorById(id: string): Promise<{ data: SponsorRecord | null; error: Error | null }>;
   insertSponsor(record: SponsorInsert): Promise<{ data: SponsorRecord | null; error: Error | null }>;
@@ -589,9 +642,16 @@ export function getSupabaseClient(): SupabaseClient {
         insertRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         deleteRoleAssignment: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listEvents: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listEventsByIds: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getEventById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         updateEvent: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listFounderPitchesByEventId: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getFounderPitchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getLatestRubricVersionByEventId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getJudgeScoreByJudgeAndPitch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertJudgeScore: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateJudgeScore: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         listSponsors: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getSponsorById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertSponsor: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1153,6 +1213,27 @@ export function getSupabaseClient(): SupabaseClient {
       }
     },
 
+    async listEventsByIds(ids) {
+      if (ids.length === 0) {
+        return { data: [], error: null };
+      }
+
+      const encodedIds = ids.map((id) => `"${id.replace(/"/g, '\\"')}"`).join(',');
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/events?id=in.(${encodeURIComponent(encodedIds)})&select=*&order=starts_at.desc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Events query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as EventRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
     async getEventById(id) {
       try {
         const response = await fetch(
@@ -1207,6 +1288,131 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Event update failed: ${response.statusText}`) };
         }
         const rows = await response.json() as EventRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listFounderPitchesByEventId(eventId) {
+      const select = [
+        '*',
+        'founder:founders!founder_pitches_founder_id_fkey(',
+        'id,company_name,',
+        'user:users!founders_user_id_fkey(id,email,name)',
+        ')',
+      ].join('');
+
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founder_pitches?event_id=eq.${encodeURIComponent(eventId)}&select=${encodeURIComponent(select)}&order=pitch_order.asc.nullslast,created_at.asc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Founder pitches query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as JudgeEventPitchRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getFounderPitchById(id) {
+      const select = [
+        '*',
+        'founder:founders!founder_pitches_founder_id_fkey(',
+        'id,company_name,tagline,bio,website,pitch_deck_url,',
+        'user:users!founders_user_id_fkey(id,email,name)',
+        ')',
+      ].join('');
+
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/founder_pitches?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(select)}&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder pitch query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as JudgePitchDetailRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getLatestRubricVersionByEventId(eventId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/rubric_versions?event_id=eq.${encodeURIComponent(eventId)}&select=*&order=version.desc&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Rubric version query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as RubricVersionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getJudgeScoreByJudgeAndPitch(judgeId, founderPitchId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/judge_scores?judge_id=eq.${encodeURIComponent(judgeId)}&founder_pitch_id=eq.${encodeURIComponent(founderPitchId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Judge score query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as JudgeScoreRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertJudgeScore(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/judge_scores`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...record,
+            comments: record.comments ?? null,
+            category_scores: record.category_scores ?? {},
+            total_score: record.total_score ?? null,
+            state: record.state ?? 'draft',
+            submitted_at: record.submitted_at ?? null,
+            locked_at: record.locked_at ?? null,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Judge score insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as JudgeScoreRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateJudgeScore(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/judge_scores?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Judge score update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as JudgeScoreRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
