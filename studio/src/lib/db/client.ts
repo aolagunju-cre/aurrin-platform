@@ -282,6 +282,15 @@ export interface AudienceSessionRecord {
   expires_at: string | null;
 }
 
+export interface AudienceSessionInsert {
+  event_id: string;
+  session_token: string;
+  ip_address?: string | null;
+  email?: string | null;
+  consent_given?: boolean;
+  expires_at?: string | null;
+}
+
 export interface AudienceResponseRecord {
   id: string;
   audience_session_id: string;
@@ -289,6 +298,13 @@ export interface AudienceResponseRecord {
   responses: Record<string, unknown>;
   submitted_at: string | null;
   created_at: string;
+}
+
+export interface AudienceResponseInsert {
+  audience_session_id: string;
+  founder_pitch_id: string;
+  responses: Record<string, unknown>;
+  submitted_at?: string | null;
 }
 
 export interface FounderPitchRecord {
@@ -562,6 +578,27 @@ export interface SupabaseDBClient {
   deleteFile(fileId: string): Promise<{ error: Error | null }>;
   getExpiredFiles(beforeDate: Date): Promise<{ data: FileRecord[]; error: Error | null }>;
   deleteExpiredAudienceSessions(beforeDate: Date): Promise<{ deleted: number; error: Error | null }>;
+  insertAudienceSession(record: AudienceSessionInsert): Promise<{ data: AudienceSessionRecord | null; error: Error | null }>;
+  getAudienceSessionById(id: string): Promise<{ data: AudienceSessionRecord | null; error: Error | null }>;
+  listAudienceSessionsByEventAndIp(
+    eventId: string,
+    ipAddress: string,
+    excludeSessionId?: string
+  ): Promise<{ data: AudienceSessionRecord[]; error: Error | null }>;
+  listAudienceSessionsByEventAndEmail(
+    eventId: string,
+    email: string,
+    excludeSessionId?: string
+  ): Promise<{ data: AudienceSessionRecord[]; error: Error | null }>;
+  getAudienceResponseBySessionAndFounderPitch(
+    sessionId: string,
+    founderPitchId: string
+  ): Promise<{ data: AudienceResponseRecord | null; error: Error | null }>;
+  listAudienceResponsesByFounderPitchAndSessionIds(
+    founderPitchId: string,
+    sessionIds: string[]
+  ): Promise<{ data: AudienceResponseRecord[]; error: Error | null }>;
+  insertAudienceResponse(record: AudienceResponseInsert): Promise<{ data: AudienceResponseRecord | null; error: Error | null }>;
   insertAuditLog(log: AuditLogInsert): Promise<{ error: Error | null }>;
   insertOutboxJob(job: OutboxJobInsert): Promise<{ data: OutboxJob | null; error: Error | null }>;
   fetchPendingJobs(limit: number): Promise<{ data: OutboxJob[]; error: Error | null }>;
@@ -669,6 +706,13 @@ export function getSupabaseClient(): SupabaseClient {
           deleted: 0,
           error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set'),
         }),
+        insertAudienceSession: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getAudienceSessionById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listAudienceSessionsByEventAndIp: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listAudienceSessionsByEventAndEmail: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        getAudienceResponseBySessionAndFounderPitch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        listAudienceResponsesByFounderPitchAndSessionIds: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        insertAudienceResponse: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertAuditLog: async () => ({ error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertOutboxJob: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         fetchPendingJobs: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -903,6 +947,143 @@ export function getSupabaseClient(): SupabaseClient {
         return { deleted: rows.length, error: null };
       } catch (err) {
         return { deleted: 0, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertAudienceSession(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/audience_sessions`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            event_id: record.event_id,
+            session_token: record.session_token,
+            ip_address: record.ip_address ?? null,
+            email: record.email ?? null,
+            consent_given: record.consent_given ?? false,
+            expires_at: record.expires_at ?? null,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Audience session insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceSessionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getAudienceSessionById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/audience_sessions?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Audience session query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceSessionRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listAudienceSessionsByEventAndIp(eventId, ipAddress, excludeSessionId) {
+      try {
+        const filter = excludeSessionId
+          ? `event_id=eq.${encodeURIComponent(eventId)}&ip_address=eq.${encodeURIComponent(ipAddress)}&id=neq.${encodeURIComponent(excludeSessionId)}`
+          : `event_id=eq.${encodeURIComponent(eventId)}&ip_address=eq.${encodeURIComponent(ipAddress)}`;
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/audience_sessions?${filter}&select=*`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Audience sessions query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceSessionRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listAudienceSessionsByEventAndEmail(eventId, email, excludeSessionId) {
+      try {
+        const filter = excludeSessionId
+          ? `event_id=eq.${encodeURIComponent(eventId)}&email=eq.${encodeURIComponent(email)}&id=neq.${encodeURIComponent(excludeSessionId)}`
+          : `event_id=eq.${encodeURIComponent(eventId)}&email=eq.${encodeURIComponent(email)}`;
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/audience_sessions?${filter}&select=*`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Audience sessions query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceSessionRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getAudienceResponseBySessionAndFounderPitch(sessionId, founderPitchId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/audience_responses?audience_session_id=eq.${encodeURIComponent(sessionId)}&founder_pitch_id=eq.${encodeURIComponent(founderPitchId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Audience response query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceResponseRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listAudienceResponsesByFounderPitchAndSessionIds(founderPitchId, sessionIds) {
+      if (sessionIds.length === 0) {
+        return { data: [], error: null };
+      }
+
+      try {
+        const inClause = `(${sessionIds.map((id) => encodeURIComponent(id)).join(',')})`;
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/audience_responses?founder_pitch_id=eq.${encodeURIComponent(founderPitchId)}&audience_session_id=in.${inClause}&select=*`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Audience responses query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceResponseRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertAudienceResponse(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/audience_responses`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            audience_session_id: record.audience_session_id,
+            founder_pitch_id: record.founder_pitch_id,
+            responses: record.responses,
+            submitted_at: record.submitted_at ?? new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Audience response insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as AudienceResponseRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
 
