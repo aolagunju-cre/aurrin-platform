@@ -1,0 +1,12 @@
+{
+  "colors": {
+    "background": "#0F172A",
+    "foreground": "#F8FAFC",
+    "accent": "#22D3EE"
+  },
+  "logo_url": "https://aurrin.com/assets/logo-mark.png",
+  "fonts": {
+    "headline": "Inter",
+    "body": "Inter"
+  }
+}

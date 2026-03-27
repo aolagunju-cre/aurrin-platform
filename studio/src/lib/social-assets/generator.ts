@@ -10,6 +10,7 @@ import {
   type SocialAssetFormat,
   type SocialAssetType,
 } from './types';
+import { loadBrandingConfig } from './branding';
 
 export interface GenerateSocialAssetInput {
   asset_type: unknown;
@@ -152,10 +153,14 @@ function createPng(width: number, height: number, color: [number, number, number
 
 export async function generateSocialAssetPng(input: GenerateSocialAssetInput): Promise<{ buffer: Buffer; width: number; height: number }> {
   const parsed = parseInput(input);
+  const branding = await loadBrandingConfig();
   const { width, height } = SOCIAL_ASSET_DIMENSIONS[parsed.format];
 
-  // Seed is deterministic and derived only from template selection + structured payload.
-  const seed = templateFingerprint(parsed);
+  // Seed is deterministic and includes branding so updated config changes later renders.
+  const seed = JSON.stringify({
+    template: templateFingerprint(parsed),
+    branding: branding.config,
+  });
   const color = hashToRgb(seed);
 
   return {
