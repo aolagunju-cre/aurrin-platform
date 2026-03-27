@@ -10,6 +10,7 @@ interface ScoringFormProps {
   initialResponses?: ScoringResponses;
   isLoading?: boolean;
   isSubmitting?: boolean;
+  readOnly?: boolean;
   onSaveDraft?: (responses: ScoringResponses) => Promise<void> | void;
   onAutoSaveDraft?: (responses: ScoringResponses) => Promise<void> | void;
   onSubmitScore: (responses: ScoringResponses, totals: ScoreTotals) => Promise<void> | void;
@@ -45,6 +46,7 @@ export function ScoringForm({
   initialResponses = {},
   isLoading = false,
   isSubmitting = false,
+  readOnly = false,
   onSaveDraft,
   onAutoSaveDraft,
   onSubmitScore,
@@ -65,7 +67,7 @@ export function ScoringForm({
   }, [onResponsesChange, responses, totals]);
 
   useEffect(() => {
-    if (!onAutoSaveDraft || isLoading || isSubmitting) {
+    if (!onAutoSaveDraft || isLoading || isSubmitting || readOnly) {
       return undefined;
     }
 
@@ -82,7 +84,7 @@ export function ScoringForm({
     return () => {
       window.clearInterval(timer);
     };
-  }, [onAutoSaveDraft, responses, isLoading, isSubmitting]);
+  }, [onAutoSaveDraft, responses, isLoading, isSubmitting, readOnly]);
 
   function handleResponseChange(questionId: string, value: unknown): void {
     setResponses((current) => ({
@@ -102,7 +104,7 @@ export function ScoringForm({
   }
 
   async function handleSaveDraft(): Promise<void> {
-    if (!onSaveDraft) {
+    if (!onSaveDraft || readOnly) {
       return;
     }
 
@@ -150,18 +152,20 @@ export function ScoringForm({
         rubricVersion={rubricVersion}
         responses={responses}
         errors={errors}
-        disabled={isLoading || isSubmitting}
+        disabled={isLoading || isSubmitting || readOnly}
         onResponseChange={handleResponseChange}
       />
 
-      <div style={{ display: 'flex', gap: '0.75rem' }}>
-        <button type="button" onClick={handleSaveDraft} disabled={isLoading || isSubmitting || isSavingDraft || !onSaveDraft}>
-          Save Draft
-        </button>
-        <button type="button" onClick={handleSubmitRequest} disabled={isLoading || isSubmitting}>
-          {isSubmitting ? 'Submitting...' : 'Submit Score'}
-        </button>
-      </div>
+      {!readOnly ? (
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button type="button" onClick={handleSaveDraft} disabled={isLoading || isSubmitting || isSavingDraft || !onSaveDraft}>
+            Save Draft
+          </button>
+          <button type="button" onClick={handleSubmitRequest} disabled={isLoading || isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Score'}
+          </button>
+        </div>
+      ) : null}
 
       {isConfirmOpen ? (
         <div role="dialog" aria-modal="true" aria-label="Submit Score confirmation">

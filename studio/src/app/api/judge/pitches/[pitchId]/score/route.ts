@@ -87,6 +87,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
           ...buildScoreResponse(scoreResult.data),
           comments: scoreResult.data.comments,
           responses: scoreResult.data.responses,
+          created_at: scoreResult.data.created_at,
+          submitted_at: scoreResult.data.submitted_at,
+          locked_at: scoreResult.data.locked_at,
           updated_at: scoreResult.data.updated_at,
         }
         : null,
