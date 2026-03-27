@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoDirectoryProfiles, demoEvents } from '@/src/lib/demo/data';
 import { canAccessEvent, requireJudge } from '../../../../../../lib/auth/judge';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
@@ -22,6 +23,35 @@ function isScoringWindowOpen(scoringStart: string | null, scoringEnd: string | n
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { eventId } = await params;
+    const event = demoEvents.find((e) => e.id === eventId);
+    if (!event) {
+      return NextResponse.json({ success: false, message: 'Event not found.' }, { status: 404 });
+    }
+    const pitches = demoDirectoryProfiles
+      .filter((p) => p.event.id === eventId)
+      .map((p, idx) => ({
+        id: `pitch-${eventId}-${idx}`,
+        event_id: eventId,
+        founder_id: p.founder_slug,
+        pitch_order: idx + 1,
+        company_name: p.company,
+        founder_name: p.founder_name,
+        founder_email: null,
+        created_at: event.created_at,
+        updated_at: event.updated_at,
+      }));
+    return NextResponse.json(
+      {
+        success: true,
+        meta: { scoring_window_open: event.status === 'live', scoring_end: event.scoring_end },
+        data: pitches,
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireJudge(request);
   if (authResult instanceof NextResponse) {
     return authResult;

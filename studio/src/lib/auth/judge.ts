@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient, type RoleAssignmentRecord } from '../db/client';
-import { extractTokenFromHeader, type JWTPayload, verifyJWT } from './jwt';
+import { type JWTPayload } from './jwt';
+import { createDemoRoleAssignments, resolveAuthIdentityFromRequest, resolveAuthIdentityFromStores, toAuthPayload } from './request-auth';
 
 export interface JudgeContext {
   userId: string;
@@ -15,19 +16,17 @@ interface JudgeAuthResult {
   context?: JudgeContext;
 }
 
-export async function verifyJudgeFromAuthHeader(authHeader: string | null): Promise<JudgeAuthResult> {
-  const token = extractTokenFromHeader(authHeader);
-  if (!token) {
-    return { ok: false, status: 401, message: 'Unauthorized' };
-  }
-
-  const auth = await verifyJWT(token);
-  if (!auth?.sub) {
+async function verifyJudgeIdentity(
+  identity: Awaited<ReturnType<typeof resolveAuthIdentityFromRequest>>
+): Promise<JudgeAuthResult> {
+  if (!identity) {
     return { ok: false, status: 401, message: 'Unauthorized' };
   }
 
   const client = getSupabaseClient();
-  const rolesResult = await client.db.getRoleAssignmentsByUserId(auth.sub);
+  const rolesResult = identity.demoSession
+    ? { data: createDemoRoleAssignments(identity), error: null }
+    : await client.db.getRoleAssignmentsByUserId(identity.userId);
   if (rolesResult.error) {
     return { ok: false, status: 500, message: 'Could not verify judge authorization' };
   }
@@ -35,7 +34,7 @@ export async function verifyJudgeFromAuthHeader(authHeader: string | null): Prom
   const roleAssignments = rolesResult.data;
   const hasJudgeRole = roleAssignments.some(
     (assignment) =>
-      assignment.role === 'judge' && (assignment.scope === 'global' || assignment.scope === 'event')
+      assignment.role.toLowerCase() === 'judge' && (assignment.scope === 'global' || assignment.scope === 'event')
   );
 
   if (!hasJudgeRole) {
@@ -45,15 +44,31 @@ export async function verifyJudgeFromAuthHeader(authHeader: string | null): Prom
   return {
     ok: true,
     context: {
-      userId: auth.sub,
-      auth,
+      userId: identity.userId,
+      auth: toAuthPayload(identity),
       roleAssignments,
     },
   };
 }
 
+export async function verifyJudgeFromAuthHeader(authHeader: string | null): Promise<JudgeAuthResult> {
+  const identity = await resolveAuthIdentityFromStores(
+    {
+      get(name: string) {
+        if (name.toLowerCase() === 'authorization') {
+          return authHeader;
+        }
+        return null;
+      },
+    },
+    { get() { return undefined; } }
+  );
+
+  return verifyJudgeIdentity(identity);
+}
+
 export async function requireJudge(request: NextRequest): Promise<JudgeContext | NextResponse> {
-  const authResult = await verifyJudgeFromAuthHeader(request.headers.get('authorization'));
+  const authResult = await verifyJudgeIdentity(await resolveAuthIdentityFromRequest(request));
   if (!authResult.ok) {
     return NextResponse.json({ success: false, message: authResult.message }, { status: authResult.status });
   }
@@ -64,7 +79,7 @@ export async function requireJudge(request: NextRequest): Promise<JudgeContext |
 export function canAccessEvent(roleAssignments: RoleAssignmentRecord[], eventId: string): boolean {
   return roleAssignments.some(
     (assignment) =>
-      assignment.role === 'judge' &&
+      assignment.role.toLowerCase() === 'judge' &&
       (assignment.scope === 'global' || (assignment.scope === 'event' && assignment.scoped_id === eventId))
   );
 }

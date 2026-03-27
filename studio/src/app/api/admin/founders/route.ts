@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoFounderApplications } from '@/src/lib/demo/data';
 import { requireAdmin } from '../../../../lib/auth/admin';
 import { getSupabaseClient } from '../../../../lib/db/client';
 
@@ -24,6 +25,30 @@ function toUiStatus(status: FounderStatus): 'Pending' | 'Accepted' | 'Assigned' 
 const validStatuses: FounderStatus[] = ['pending', 'accepted', 'assigned', 'declined'];
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const statusFilter = request.nextUrl.searchParams.get('status');
+    let filtered = demoFounderApplications;
+    if (statusFilter && validStatuses.includes(statusFilter as FounderStatus)) {
+      filtered = filtered.filter((f) => f.status === statusFilter);
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        data: filtered.map((f) => ({
+          id: f.id,
+          name: f.full_name || f.name,
+          email: f.email,
+          application_status: f.status.charAt(0).toUpperCase() + f.status.slice(1),
+          application_status_value: f.status,
+          assigned_event: f.assigned_event_id,
+          assigned_event_id: f.assigned_event_id,
+          submission_date: f.created_at,
+        })),
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

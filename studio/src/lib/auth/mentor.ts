@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient, type RoleAssignmentRecord } from '../db/client';
-import { extractTokenFromHeader, type JWTPayload, verifyJWT } from './jwt';
+import { type JWTPayload } from './jwt';
+import { createDemoRoleAssignments, resolveAuthIdentityFromRequest, resolveAuthIdentityFromStores, toAuthPayload } from './request-auth';
 
 export interface MentorAuthContext {
   userId: string;
@@ -17,7 +18,7 @@ interface MentorAuthResult {
 
 export function hasMentorRole(roleAssignments: RoleAssignmentRecord[]): boolean {
   return roleAssignments.some(
-    (assignment) => assignment.role === 'mentor' && (assignment.scope === 'global' || assignment.scope === 'event')
+    (assignment) => assignment.role.toLowerCase() === 'mentor' && (assignment.scope === 'global' || assignment.scope === 'event')
   );
 }
 
@@ -25,26 +26,25 @@ export function canAccessMentorEvent(roleAssignments: RoleAssignmentRecord[], ev
   if (!eventId) {
     return true;
   }
+
   return roleAssignments.some(
     (assignment) =>
-      assignment.role === 'mentor' &&
+      assignment.role.toLowerCase() === 'mentor' &&
       (assignment.scope === 'global' || (assignment.scope === 'event' && assignment.scoped_id === eventId))
   );
 }
 
-export async function verifyMentorFromAuthHeader(authHeader: string | null): Promise<MentorAuthResult> {
-  const token = extractTokenFromHeader(authHeader);
-  if (!token) {
-    return { ok: false, status: 401, message: 'Unauthorized' };
-  }
-
-  const auth = await verifyJWT(token);
-  if (!auth?.sub) {
+async function verifyMentorIdentity(
+  identity: Awaited<ReturnType<typeof resolveAuthIdentityFromRequest>>
+): Promise<MentorAuthResult> {
+  if (!identity) {
     return { ok: false, status: 401, message: 'Unauthorized' };
   }
 
   const client = getSupabaseClient();
-  const rolesResult = await client.db.getRoleAssignmentsByUserId(auth.sub);
+  const rolesResult = identity.demoSession
+    ? { data: createDemoRoleAssignments(identity), error: null }
+    : await client.db.getRoleAssignmentsByUserId(identity.userId);
   if (rolesResult.error) {
     return { ok: false, status: 500, message: 'Could not verify mentor authorization' };
   }
@@ -56,15 +56,31 @@ export async function verifyMentorFromAuthHeader(authHeader: string | null): Pro
   return {
     ok: true,
     context: {
-      userId: auth.sub,
-      auth,
+      userId: identity.userId,
+      auth: toAuthPayload(identity),
       roleAssignments: rolesResult.data,
     },
   };
 }
 
+export async function verifyMentorFromAuthHeader(authHeader: string | null): Promise<MentorAuthResult> {
+  const identity = await resolveAuthIdentityFromStores(
+    {
+      get(name: string) {
+        if (name.toLowerCase() === 'authorization') {
+          return authHeader;
+        }
+        return null;
+      },
+    },
+    { get() { return undefined; } }
+  );
+
+  return verifyMentorIdentity(identity);
+}
+
 export async function requireMentor(request: NextRequest): Promise<MentorAuthContext | NextResponse> {
-  const authResult = await verifyMentorFromAuthHeader(request.headers.get('authorization'));
+  const authResult = await verifyMentorIdentity(await resolveAuthIdentityFromRequest(request));
   if (!authResult.ok) {
     return NextResponse.json({ success: false, message: authResult.message }, { status: authResult.status });
   }

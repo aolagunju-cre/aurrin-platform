@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoEvents } from '@/src/lib/demo/data';
 import { requireAdmin } from '../../../../lib/auth/admin';
 import { auditLog } from '../../../../lib/audit/log';
 import { EventStatus, getSupabaseClient } from '../../../../lib/db/client';
@@ -62,6 +63,10 @@ function sanitizeEventPayload(payload: EventPayload): { valid: boolean; message?
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: demoEvents }, { status: 200 });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;
@@ -130,6 +135,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: { id: 'demo-evt-new' } }, { status: 201 });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

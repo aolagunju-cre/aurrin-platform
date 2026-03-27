@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractTokenFromHeader, verifyJWT } from '../../../../lib/auth/jwt';
 import { getSupabaseClient } from '../../../../lib/db/client';
 import { hasEntitlement } from '../../../../lib/payments/entitlements';
+import { resolveAuthIdentityFromRequest } from '../../../../lib/auth/request-auth';
 
 export async function GET(
   request: NextRequest,
@@ -20,14 +20,13 @@ export async function GET(
 
   const content = contentResult.data;
   if (content.requires_subscription) {
-    const token = extractTokenFromHeader(request.headers.get('authorization'));
-    const auth = token ? await verifyJWT(token) : null;
+    const identity = await resolveAuthIdentityFromRequest(request);
 
-    if (!auth?.sub || !content.product_id) {
+    if (!identity?.userId || !content.product_id) {
       return NextResponse.json({ success: false, message: 'Subscription required' }, { status: 403 });
     }
 
-    const entitled = await hasEntitlement(auth.sub, content.product_id);
+    const entitled = await hasEntitlement(identity.userId, content.product_id);
     if (!entitled) {
       return NextResponse.json({ success: false, message: 'Subscription required' }, { status: 403 });
     }

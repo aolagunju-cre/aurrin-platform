@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractTokenFromHeader, verifyJWT } from '../../../../../../../../lib/auth/jwt';
 import { getSupabaseClient } from '../../../../../../../../lib/db/client';
+import { resolveAuthIdentityFromRequest } from '../../../../../../../../lib/auth/request-auth';
 
 interface RouteParams {
   params: Promise<{ eventId: string; pitchId: string }>;
@@ -151,19 +151,14 @@ function buildLiveSummary(rows: AudienceResponseRow[]): {
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   const { eventId, pitchId } = await params;
 
-  const token = extractTokenFromHeader(request.headers.get('authorization'));
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-  }
-
-  const auth = await verifyJWT(token);
-  if (!auth?.sub) {
+  const identity = await resolveAuthIdentityFromRequest(request);
+  if (!identity) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   const client = getSupabaseClient();
 
-  const rolesResult = await client.db.getRoleAssignmentsByUserId(auth.sub);
+  const rolesResult = await client.db.getRoleAssignmentsByUserId(identity.userId);
   if (rolesResult.error) {
     return NextResponse.json({ success: false, message: rolesResult.error.message }, { status: 500 });
   }
@@ -196,7 +191,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   const publishingOpen = publishingStart ? now >= publishingStart : false;
 
   if (!isAdmin && hasFounderRole) {
-    const founderResult = await client.db.getFounderByUserId(auth.sub);
+    const founderResult = await client.db.getFounderByUserId(identity.userId);
     if (founderResult.error) {
       return NextResponse.json({ success: false, message: founderResult.error.message }, { status: 500 });
     }

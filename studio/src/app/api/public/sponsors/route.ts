@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoSponsors } from '@/src/lib/demo/data';
 import { SponsorRecord, SponsorTier, getSupabaseClient } from '../../../../lib/db/client';
 import { getSponsorTierConfig } from '../../../../lib/sponsors/tier-config';
 
@@ -66,6 +67,15 @@ function isActiveForDisplay(record: SponsorRecord): boolean {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const eventId = request.nextUrl.searchParams.get('event_id')?.trim() || null;
+    let filtered = demoSponsors.filter((s) => s.status === 'active');
+    if (eventId) {
+      filtered = filtered.filter((s) => s.scope === 'site-wide' || (s.scope === 'event' && s.event_id === eventId));
+    }
+    return NextResponse.json({ success: true, data: filtered }, { status: 200 });
+  }
+
   const eventId = request.nextUrl.searchParams.get('event_id')?.trim() || null;
 
   const sponsorsResult = await getSupabaseClient().db.listSponsors();

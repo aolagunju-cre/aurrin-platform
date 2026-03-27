@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractTokenFromHeader, verifyJWT } from '../../../../../../lib/auth/jwt';
+import { DEMO_MODE } from '@/src/lib/demo/data';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 import { getStripeClient } from '../../../../../../lib/payments/stripe-client';
+import { requireSubscriber } from '../../../../../../lib/auth/subscriber';
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const token = extractTokenFromHeader(request.headers.get('authorization'));
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  const auth = await requireSubscriber(request);
+  if (auth instanceof NextResponse) {
+    return auth;
   }
 
-  const auth = await verifyJWT(token);
-  if (!auth?.sub) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  if (DEMO_MODE) {
+    const { id } = await context.params;
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          url: `${new URL(request.url).origin}/subscriber?demoPortal=${encodeURIComponent(id)}`,
+        },
+      },
+      { status: 200 }
+    );
   }
 
   const { id } = await context.params;
@@ -25,7 +34,7 @@ export async function POST(
   if (!subscription.data) {
     return NextResponse.json({ success: false, message: 'Subscription not found' }, { status: 404 });
   }
-  if (subscription.data.user_id !== auth.sub) {
+  if (subscription.data.user_id !== auth.userId) {
     return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
   }
   if (!subscription.data.stripe_customer_id) {

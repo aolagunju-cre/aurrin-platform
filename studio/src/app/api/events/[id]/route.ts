@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '../../../../lib/db/client';
-import { extractTokenFromHeader, verifyJWT } from '../../../../lib/auth/jwt';
+import { resolveAuthIdentityFromRequest } from '../../../../lib/auth/request-auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,19 +28,14 @@ function hasFounderEventScopedRole(
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
-  const token = extractTokenFromHeader(request.headers.get('authorization'));
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-  }
-
-  const auth = await verifyJWT(token);
-  if (!auth?.sub) {
+  const identity = await resolveAuthIdentityFromRequest(request);
+  if (!identity) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   const { id } = await params;
   const client = getSupabaseClient();
-  const rolesResult = await client.db.getRoleAssignmentsByUserId(auth.sub);
+  const rolesResult = await client.db.getRoleAssignmentsByUserId(identity.userId);
   if (rolesResult.error) {
     return NextResponse.json({ success: false, message: rolesResult.error.message }, { status: 500 });
   }
@@ -51,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   let isFounderForEvent = hasFounderEventScopedRole(roleAssignments, id);
 
   if (!isFounderForEvent && roleAssignments.some((assignment) => assignment.role === 'founder')) {
-    const founderResult = await client.db.getFounderByUserId(auth.sub);
+    const founderResult = await client.db.getFounderByUserId(identity.userId);
     if (founderResult.error) {
       return NextResponse.json({ success: false, message: founderResult.error.message }, { status: 500 });
     }

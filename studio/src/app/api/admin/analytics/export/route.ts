@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoAnalytics } from '@/src/lib/demo/data';
 import {
   getCohortAggregates,
   getEventTimeSeries,
@@ -31,6 +32,29 @@ function buildExportFilename(type: ExportType, exportedAt: string): string {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const type = parseExportType(request.nextUrl.searchParams);
+    if (!type) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid export type. Supported values: csv, json.' },
+        { status: 400 }
+      );
+    }
+    const exportedAt = new Date().toISOString();
+    const demoExport = { summary: demoAnalytics, exportedAt };
+    if (type === 'json') {
+      return NextResponse.json({ success: true, exportedAt, data: demoExport }, { status: 200 });
+    }
+    const csv = `metric,value\ntotal_events,${demoAnalytics.total_events}\ntotal_founders,${demoAnalytics.total_founders}\ntotal_pitches,${demoAnalytics.total_pitches}\ntotal_judges,${demoAnalytics.total_judges}\nactive_subscribers,${demoAnalytics.active_subscribers}\navg_score,${demoAnalytics.avg_score}\n`;
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="analytics-export-demo.csv"`,
+      },
+    });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

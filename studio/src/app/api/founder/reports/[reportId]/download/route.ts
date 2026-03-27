@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
@@ -66,6 +67,17 @@ function splitStoragePath(storagePath: string): { bucket: string; relativePath: 
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { reportId } = await params;
+    return NextResponse.json(
+      {
+        success: true,
+        data: { report_id: reportId, url: '#demo-download', expires_in: 604800 },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

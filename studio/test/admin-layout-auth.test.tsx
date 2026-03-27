@@ -2,27 +2,23 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AdminLayout from '../src/app/(protected)/admin/layout';
-import { verifyAdminFromAuthHeader } from '../src/lib/auth/admin';
-
-jest.mock('next/headers', () => ({
-  headers: jest.fn(async () => ({
-    get: () => 'Bearer token',
-  })),
-}));
+import { verifyAdminForServerComponent } from '../src/lib/auth/admin';
 
 jest.mock('../src/lib/auth/admin', () => ({
-  verifyAdminFromAuthHeader: jest.fn(),
+  verifyAdminForServerComponent: jest.fn(),
 }));
 
-const mockedVerifyAdminFromAuthHeader = verifyAdminFromAuthHeader as jest.MockedFunction<typeof verifyAdminFromAuthHeader>;
+const mockedVerifyAdminForServerComponent = verifyAdminForServerComponent as jest.MockedFunction<
+  typeof verifyAdminForServerComponent
+>;
 
 describe('Admin layout auth', () => {
   beforeEach(() => {
-    mockedVerifyAdminFromAuthHeader.mockReset();
+    mockedVerifyAdminForServerComponent.mockReset();
   });
 
   it('renders admin shell links and logout for authorized admins', async () => {
-    mockedVerifyAdminFromAuthHeader.mockResolvedValue({
+    mockedVerifyAdminForServerComponent.mockResolvedValue({
       ok: true,
       context: {
         userId: 'admin-1',
@@ -50,7 +46,7 @@ describe('Admin layout auth', () => {
   });
 
   it('blocks unauthenticated users', async () => {
-    mockedVerifyAdminFromAuthHeader.mockResolvedValue({
+    mockedVerifyAdminForServerComponent.mockResolvedValue({
       ok: false,
       status: 401,
       message: 'Unauthorized',
@@ -64,7 +60,7 @@ describe('Admin layout auth', () => {
   });
 
   it('blocks authenticated non-admin users', async () => {
-    mockedVerifyAdminFromAuthHeader.mockResolvedValue({
+    mockedVerifyAdminForServerComponent.mockResolvedValue({
       ok: false,
       status: 403,
       message: 'Forbidden',

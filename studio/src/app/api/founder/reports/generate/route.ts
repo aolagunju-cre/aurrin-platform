@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../../lib/db/client';
 import { enqueueJob } from '../../../../../lib/jobs/enqueue';
@@ -25,6 +26,17 @@ function parseString(value: unknown): string | null {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json(
+      {
+        success: true,
+        data: { job_id: 'demo-job-001', status_url: '/api/founder/reports/demo-job-001/status' },
+        message: "Your report is being generated. You'll receive an email when ready.",
+      },
+      { status: 202 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

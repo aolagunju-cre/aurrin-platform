@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoFounderProfile } from '@/src/lib/demo/data';
 import { requireFounderOrAdmin } from '../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../lib/db/client';
 
@@ -66,6 +67,28 @@ function statusFromJobState(state: ReportJobRow['state'], hasFile: boolean): 'ge
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json(
+      {
+        success: true,
+        data: demoFounderProfile.reports.map((r) => ({
+          report_id: r.id,
+          founder_id: demoFounderProfile.id,
+          event_id: 'evt-002',
+          event_name: r.event_name,
+          pitch_id: 'pitch-001',
+          report_type: r.type,
+          status: 'ready',
+          created_at: r.generated_at,
+          completed_at: r.generated_at,
+          download_url: `/api/founder/reports/${r.id}/download`,
+          error: null,
+        })),
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

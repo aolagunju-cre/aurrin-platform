@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { getRuntimeEnv } from '../../../lib/config/env';
 
 interface HealthCheck {
   status: 'ok' | 'degraded' | 'error';
@@ -23,8 +24,9 @@ interface HealthResponse {
 }
 
 async function checkDatabase(): Promise<HealthCheck> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const runtimeEnv = getRuntimeEnv();
+  const supabaseUrl = runtimeEnv.supabaseUrl;
+  const supabaseKey = runtimeEnv.supabaseServiceRoleKey ?? runtimeEnv.supabaseAnonKey;
 
   if (!supabaseUrl || !supabaseKey) {
     return { status: 'error' };
@@ -47,8 +49,9 @@ async function checkDatabase(): Promise<HealthCheck> {
 }
 
 async function checkStorage(): Promise<HealthCheck> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const runtimeEnv = getRuntimeEnv();
+  const supabaseUrl = runtimeEnv.supabaseUrl;
+  const supabaseKey = runtimeEnv.supabaseServiceRoleKey ?? runtimeEnv.supabaseAnonKey;
 
   if (!supabaseUrl || !supabaseKey) {
     return { status: 'error' };

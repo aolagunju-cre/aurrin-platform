@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE } from '@/src/lib/demo/data';
 import { canAccessEvent, requireJudge } from '../../../../../../lib/auth/judge';
 import { getSupabaseClient, type JudgeScoreRecord, type JudgeScoreState } from '../../../../../../lib/db/client';
 import { ensureScoringWindowOpen } from '../../../../../../lib/events/lifecycle';
@@ -55,6 +56,10 @@ function sameScorePayload(
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: null }, { status: 200 });
+  }
+
   const authResult = await requireJudge(request);
   if (authResult instanceof NextResponse) {
     return authResult;
@@ -100,6 +105,17 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { pitchId } = await params;
+    return NextResponse.json(
+      {
+        success: true,
+        data: { score_id: 'demo-score-001', total_score: 75, breakdown: {}, state: 'submitted' },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireJudge(request);
   if (authResult instanceof NextResponse) {
     return authResult;

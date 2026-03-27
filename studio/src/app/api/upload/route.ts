@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile, SupportedBucket, UploadError } from '../../../lib/storage/upload';
 import { getSignedUrl, SignedUrlError } from '../../../lib/storage/signedUrl';
-import { extractTokenFromHeader, verifyJWT } from '../../../lib/auth/jwt';
+import { resolveAuthIdentityFromRequest } from '../../../lib/auth/request-auth';
 
 const VALID_BUCKETS: SupportedBucket[] = [
   'pitch-decks',
@@ -24,15 +24,9 @@ const VALID_BUCKETS: SupportedBucket[] = [
 ];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const authHeader = request.headers.get('authorization');
-  const token = extractTokenFromHeader(authHeader);
-  if (!token) {
+  const identity = await resolveAuthIdentityFromRequest(request);
+  if (!identity) {
     return NextResponse.json({ error: 'Unauthorized: missing or invalid token' }, { status: 401 });
-  }
-
-  const payload = await verifyJWT(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Unauthorized: invalid or expired token' }, { status: 401 });
   }
 
   // Parse multipart body
@@ -62,10 +56,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const uploadResult = await uploadFile(file, bucket as SupportedBucket, payload.sub);
+    const uploadResult = await uploadFile(file, bucket as SupportedBucket, identity.userId);
 
     // Generate a signed URL immediately so the client can use the file right away
-    const signedUrl = await getSignedUrl(uploadResult.file_id, payload.sub);
+    const signedUrl = await getSignedUrl(uploadResult.file_id, identity.userId);
 
     return NextResponse.json({
       file_id: uploadResult.file_id,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoDirectoryProfiles } from '@/src/lib/demo/data';
 import { getSupabaseClient } from '../../../../lib/db/client';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -135,6 +136,43 @@ function matchesEqualsFilter(filterValue: string | null, sourceValue: string | n
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const search = normalizeText(request.nextUrl.searchParams.get('search'));
+    const industry = normalizeText(request.nextUrl.searchParams.get('industry'));
+    const stage = normalizeText(request.nextUrl.searchParams.get('stage'));
+    const eventId = normalizeText(request.nextUrl.searchParams.get('event'));
+
+    let filtered = demoDirectoryProfiles;
+    if (search) {
+      const term = search.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          (p.company?.toLowerCase().includes(term)) ||
+          (p.founder_name?.toLowerCase().includes(term)) ||
+          (p.summary?.toLowerCase().includes(term))
+      );
+    }
+    if (industry) {
+      filtered = filtered.filter((p) => p.industry?.toLowerCase() === industry.toLowerCase());
+    }
+    if (stage) {
+      filtered = filtered.filter((p) => p.stage?.toLowerCase() === stage.toLowerCase());
+    }
+    if (eventId) {
+      filtered = filtered.filter((p) => p.event.id === eventId);
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: filtered,
+        pagination: { page: 1, page_size: 20, total: filtered.length, total_pages: Math.ceil(filtered.length / 20) || 0 },
+        applied_filters: { search, industry, stage, event: eventId, minScore: 0, maxScore: 100 },
+      },
+      { status: 200 }
+    );
+  }
+
   const search = normalizeText(request.nextUrl.searchParams.get('search'));
   const industry = normalizeText(request.nextUrl.searchParams.get('industry'));
   const stage = normalizeText(request.nextUrl.searchParams.get('stage'));

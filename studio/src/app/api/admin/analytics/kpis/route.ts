@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoAnalytics } from '@/src/lib/demo/data';
 import { requireAdmin } from '../../../../../lib/auth/admin';
 import { getKpiBaseAggregates } from '../../../../../lib/analytics/queries';
 
@@ -9,6 +10,24 @@ function parseDateRange(searchParams: URLSearchParams): { startDate?: string; en
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          totalEvents: demoAnalytics.total_events,
+          totalFounders: demoAnalytics.total_founders,
+          totalJudges: demoAnalytics.total_judges,
+          totalScoresSubmitted: demoAnalytics.total_pitches,
+          totalValidationResponses: demoAnalytics.total_audience_sessions,
+          activeSubscriptions: demoAnalytics.active_subscribers,
+          mrr: demoAnalytics.total_revenue_cents,
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

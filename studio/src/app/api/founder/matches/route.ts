@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoMentorMatches } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../lib/db/client';
 
@@ -47,6 +48,33 @@ function isPublishingOpen(value: string | null): boolean {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          matches: demoMentorMatches.map((m) => ({
+            id: m.id,
+            event_id: null,
+            created_at: m.matched_at,
+            mentor_accepted_at: m.matched_at,
+            founder_accepted_at: m.matched_at,
+            mentor: {
+              id: m.id,
+              name: 'Demo Mentor',
+              title: null,
+              bio: null,
+              expertise_areas: [m.industry],
+              contact: { email: null },
+            },
+            event: null,
+          })),
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

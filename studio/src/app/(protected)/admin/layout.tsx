@@ -1,11 +1,9 @@
 import React from 'react';
-import { headers } from 'next/headers';
 import { AdminShell } from '../../../components/admin/AdminShell';
-import { verifyAdminFromAuthHeader } from '../../../lib/auth/admin';
+import { verifyAdminForServerComponent } from '../../../lib/auth/admin';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }): Promise<React.ReactElement> {
-  const headerStore = await headers();
-  const authResult = await verifyAdminFromAuthHeader(headerStore.get('authorization'));
+  const authResult = await verifyAdminForServerComponent();
 
   if (!authResult.ok) {
     const title = authResult.status === 403 ? 'Forbidden' : 'Unauthorized';
@@ -17,5 +15,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  return <AdminShell userEmail={authResult.context?.auth.email ?? 'admin'}>{children}</AdminShell>;
+  return <AdminShell userEmail={authResult.context?.email ?? authResult.context?.auth.email ?? 'admin'}>{children}</AdminShell>;
 }

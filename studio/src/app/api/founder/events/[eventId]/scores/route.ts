@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoFounderProfile } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
@@ -47,6 +48,28 @@ function parseDate(value: string | null): Date | null {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { eventId } = await params;
+    const pitch = demoFounderProfile.pitches.find((p) => p.event_id === eventId);
+    if (!pitch) {
+      return NextResponse.json({ success: false, message: 'Founder pitch not found for event.' }, { status: 404 });
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          founder_id: demoFounderProfile.id,
+          event_id: eventId,
+          publishing_start: null,
+          published: pitch.status === 'published',
+          aggregate: { total_score: pitch.score, category_breakdown: null },
+          per_judge: [],
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

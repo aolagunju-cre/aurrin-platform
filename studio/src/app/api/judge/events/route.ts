@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoJudgeEvents } from '@/src/lib/demo/data';
 import { requireJudge } from '../../../../lib/auth/judge';
 import { getSupabaseClient } from '../../../../lib/db/client';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: demoJudgeEvents }, { status: 200 });
+  }
+
   const authResult = await requireJudge(request);
   if (authResult instanceof NextResponse) {
     return authResult;

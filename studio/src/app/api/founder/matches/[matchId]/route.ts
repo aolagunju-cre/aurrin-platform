@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoMentorMatches } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../../lib/auth/founder';
 import { getSupabaseClient, type MentorMatchRecord } from '../../../../../lib/db/client';
 
@@ -53,6 +54,29 @@ async function loadFounderMatchOrError(matchId: string): Promise<{ match: Mentor
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { matchId } = await params;
+    const match = demoMentorMatches.find((m) => m.id === matchId);
+    if (!match) {
+      return NextResponse.json({ success: false, message: 'Match not found.' }, { status: 404 });
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          id: match.id,
+          event_id: null,
+          created_at: match.matched_at,
+          mentor_accepted_at: match.matched_at,
+          founder_accepted_at: match.matched_at,
+          mentor: { id: match.id, name: 'Demo Mentor', title: null, bio: null, expertise_areas: [match.industry], contact: { email: null } },
+          event: null,
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

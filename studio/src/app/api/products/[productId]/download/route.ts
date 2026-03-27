@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractTokenFromHeader, verifyJWT } from '../../../../../lib/auth/jwt';
 import { getSupabaseClient } from '../../../../../lib/db/client';
 import { hasEntitlement } from '../../../../../lib/payments/entitlements';
 import { SignedUrlError, getSignedUrlForEntitlement } from '../../../../../lib/storage/signedUrl';
+import { resolveAuthIdentityFromRequest } from '../../../../../lib/auth/request-auth';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ productId: string }> }
 ): Promise<NextResponse> {
-  const token = extractTokenFromHeader(request.headers.get('authorization'));
-  const auth = token ? await verifyJWT(token) : null;
+  const identity = await resolveAuthIdentityFromRequest(request);
 
-  if (!auth?.sub) {
+  if (!identity?.userId) {
     return NextResponse.json({ success: false, message: 'Authentication required.' }, { status: 401 });
   }
 
@@ -26,7 +25,7 @@ export async function GET(
     return NextResponse.json({ success: false, message: 'Product download not available.' }, { status: 404 });
   }
 
-  const entitled = await hasEntitlement(auth.sub, productId);
+  const entitled = await hasEntitlement(identity.userId, productId);
   if (!entitled) {
     return NextResponse.json({ success: false, message: 'Entitlement required.' }, { status: 403 });
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoFounderProfile } from '@/src/lib/demo/data';
 import { requireFounderOrAdmin } from '../../../../lib/auth/founder';
 import { getSupabaseClient, type FounderUpdate, type UserUpdate } from '../../../../lib/db/client';
 
@@ -64,6 +65,26 @@ function toProfilePayload(founder: {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          founder_id: demoFounderProfile.id,
+          user_id: demoFounderProfile.id,
+          name: demoFounderProfile.name,
+          email: demoFounderProfile.email,
+          company_name: demoFounderProfile.company,
+          pitch_summary: demoFounderProfile.bio,
+          deck_url: null,
+          website: demoFounderProfile.website,
+          contact_preferences: null,
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;
@@ -96,6 +117,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: { id: demoFounderProfile.id } }, { status: 200 });
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

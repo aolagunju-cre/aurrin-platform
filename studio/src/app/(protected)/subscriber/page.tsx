@@ -44,7 +44,7 @@ export default function SubscriberPage(): React.ReactElement {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/subscriber/subscriptions', { headers: { authorization: '' } });
+      const response = await fetch('/api/subscriber/subscriptions');
       const payload = await response.json() as { success: boolean; data?: Subscription[]; message?: string };
       if (!response.ok || !payload.success) {
         throw new Error(payload.message ?? 'Failed to load subscriptions');
@@ -89,7 +89,6 @@ export default function SubscriberPage(): React.ReactElement {
     try {
       const response = await fetch(`/api/subscriber/subscriptions/${subscriptionId}/portal`, {
         method: 'POST',
-        headers: { authorization: '' },
       });
       const payload = await response.json() as { success: boolean; data?: { url: string }; message?: string };
       if (!response.ok || !payload.success || !payload.data?.url) {
@@ -114,7 +113,6 @@ export default function SubscriberPage(): React.ReactElement {
     try {
       const response = await fetch(`/api/subscriber/subscriptions/${subscriptionId}/cancel`, {
         method: 'POST',
-        headers: { authorization: '' },
       });
       const payload = await response.json() as { success: boolean; message?: string };
       if (!response.ok || !payload.success) {

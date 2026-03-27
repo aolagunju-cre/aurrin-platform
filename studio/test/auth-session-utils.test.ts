@@ -1,26 +1,44 @@
 /** @jest-environment node */
 
 import { getCurrentUser, resetSessionContext } from '../src/lib/auth/session';
-import { headers } from 'next/headers';
-import { extractTokenFromHeader, verifyJWT } from '../src/lib/auth/jwt';
+import { cookies, headers } from 'next/headers';
+import { verifyJWT } from '../src/lib/auth/jwt';
+import { getSupabaseClient } from '../src/lib/db/client';
 
 jest.mock('next/headers', () => ({
   headers: jest.fn(),
+  cookies: jest.fn(),
 }));
 
 jest.mock('../src/lib/auth/jwt', () => ({
-  extractTokenFromHeader: jest.fn(),
   verifyJWT: jest.fn(),
 }));
 
+jest.mock('../src/lib/db/client', () => ({
+  getSupabaseClient: jest.fn(),
+}));
+
 const mockedHeaders = headers as jest.MockedFunction<typeof headers>;
-const mockedExtractTokenFromHeader = extractTokenFromHeader as jest.MockedFunction<typeof extractTokenFromHeader>;
+const mockedCookies = cookies as jest.MockedFunction<typeof cookies>;
 const mockedVerifyJWT = verifyJWT as jest.MockedFunction<typeof verifyJWT>;
+const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof getSupabaseClient>;
 
 describe('auth session utilities', () => {
   beforeEach(() => {
     resetSessionContext();
     jest.clearAllMocks();
+    mockedCookies.mockResolvedValue({
+      get: () => undefined,
+    } as unknown as Awaited<ReturnType<typeof cookies>>);
+    mockedGetSupabaseClient.mockReturnValue({
+      db: {
+        getRoleAssignmentsByUserId: jest.fn().mockResolvedValue({
+          data: [],
+          error: null,
+        }),
+      } as never,
+      storage: {} as never,
+    });
   });
 
   it('returns current user payload when token is valid', async () => {
@@ -29,7 +47,6 @@ describe('auth session utilities', () => {
         authorization: 'Bearer valid-token',
       }) as unknown as Awaited<ReturnType<typeof headers>>
     );
-    mockedExtractTokenFromHeader.mockReturnValueOnce('valid-token');
     mockedVerifyJWT.mockResolvedValueOnce({
       sub: 'user-123',
       email: 'user@example.com',
@@ -54,7 +71,6 @@ describe('auth session utilities', () => {
         authorization: 'Bearer invalid-token',
       }) as unknown as Awaited<ReturnType<typeof headers>>
     );
-    mockedExtractTokenFromHeader.mockReturnValueOnce('invalid-token');
     mockedVerifyJWT.mockResolvedValueOnce(null);
 
     await expect(getCurrentUser()).resolves.toBeNull();

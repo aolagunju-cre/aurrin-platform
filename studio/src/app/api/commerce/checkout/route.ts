@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE } from '@/src/lib/demo/data';
 import { getStripeClient } from '../../../../lib/payments/stripe-client';
 
 interface CheckoutPayload {
@@ -79,6 +80,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       },
       { status: 400 }
+    );
+  }
+
+  if (DEMO_MODE) {
+    const successUrl = new URL(body.success_url);
+    successUrl.searchParams.set('demo_checkout', body.price_id);
+    return NextResponse.json(
+      {
+        success: true,
+        sessionId: `demo-session-${body.price_id}`,
+        checkoutUrl: successUrl.toString(),
+      },
+      { status: 200 }
     );
   }
 

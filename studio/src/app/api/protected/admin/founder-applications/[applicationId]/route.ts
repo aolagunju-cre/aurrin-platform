@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '../../../../../../lib/email/send';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
-import { extractTokenFromHeader, verifyJWT } from '../../../../../../lib/auth/jwt';
+import { requireAdmin } from '../../../../../../lib/auth/admin';
 
 type ApplicationStatus = 'accepted' | 'assigned' | 'declined';
 
@@ -19,29 +19,14 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ applicationId: string }> }
 ): Promise<NextResponse> {
-  const authHeader = request.headers.get('authorization');
-  const token = extractTokenFromHeader(authHeader);
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  const admin = await requireAdmin(request);
+  if (admin instanceof NextResponse) {
+    return admin;
   }
 
-  const authPayload = await verifyJWT(token);
-  if (!authPayload?.sub) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
-  }
-
-  const actorId = authPayload.sub;
+  const actorId = admin.userId;
 
   const client = getSupabaseClient();
-  const rolesResult = await client.db.getRoleAssignmentsByUserId(actorId);
-  if (rolesResult.error) {
-    return NextResponse.json({ success: false, message: 'Could not verify admin authorization' }, { status: 500 });
-  }
-  const hasAdminRole = rolesResult.data.some((assignment) => assignment.role === 'admin' && assignment.scope === 'global');
-  if (!hasAdminRole) {
-    return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
-  }
-
   let payload: { status?: ApplicationStatus; assigned_event_id?: string | null };
   try {
     payload = await request.json() as { status?: ApplicationStatus; assigned_event_id?: string | null };

@@ -1,9 +1,10 @@
-import { headers } from 'next/headers';
-import { JWTPayload, verifyJWT, extractTokenFromHeader } from './jwt';
+import { cookies, headers } from 'next/headers';
+import { getSupabaseClient } from '../db/client';
+import { createDemoRoleAssignments, normalizeRole, resolveAuthIdentityFromStores } from './request-auth';
 
 export interface RoleAssignment {
   user_id: string;
-  role: 'Admin' | 'Judge' | 'Founder' | 'Mentor' | 'Subscriber' | 'Audience';
+  role: string;
   scope: 'global' | 'event' | 'founder' | 'subscriber';
   scoped_id: string | null;
   created_at: string;
@@ -29,33 +30,42 @@ export interface SessionContext {
 
 let sessionContext: SessionContext | null = null;
 
+function mapRoleAssignments(
+  assignments: Array<{
+    user_id: string;
+    role: string;
+    scope: string;
+    scoped_id: string | null;
+    created_at: string;
+  }>
+): RoleAssignment[] {
+  return assignments.map((assignment) => ({
+    user_id: assignment.user_id,
+    role: assignment.role,
+    scope: assignment.scope as RoleAssignment['scope'],
+    scoped_id: assignment.scoped_id,
+    created_at: assignment.created_at,
+  }));
+}
+
 export async function getCurrentUser(): Promise<SessionUser | null> {
   try {
-    const headersList = await headers();
-    const authHeader = headersList.get('authorization');
-    const token = extractTokenFromHeader(authHeader);
-
-    if (!token) {
+    const [headersList, cookieStore] = await Promise.all([headers(), cookies()]);
+    const identity = await resolveAuthIdentityFromStores(headersList, cookieStore);
+    if (!identity) {
       return null;
     }
 
-    const payload = await verifyJWT(token);
-    if (!payload) {
-      return null;
-    }
+    const roleAssignments = identity.demoSession
+      ? mapRoleAssignments(createDemoRoleAssignments(identity))
+      : await fetchUserRoleAssignments(identity.userId);
 
-    // Fetch role assignments from database
-    // This would call the Supabase API or your Next.js API
-    const roleAssignments = await fetchUserRoleAssignments(payload.sub);
-
-    const user: SessionUser = {
-      id: payload.sub,
-      email: payload.email,
-      emailConfirmed: !!payload.email_confirmed_at,
-      roleAssignments: roleAssignments || [],
+    return {
+      id: identity.userId,
+      email: identity.email,
+      emailConfirmed: Boolean(identity.jwt?.email_confirmed_at) || identity.kind === 'demo-session',
+      roleAssignments: roleAssignments ?? [],
     };
-
-    return user;
   } catch (error) {
     console.error('Error getting current user:', error);
     return null;
@@ -71,50 +81,39 @@ export function hasRole(
     return false;
   }
 
-  // Admin has all permissions
-  const adminRole = roleAssignments.find((ra) => ra.role === 'Admin' && ra.scope === 'global');
+  const requestedRole = normalizeRole(role) ?? role.trim().toLowerCase();
+  const adminRole = roleAssignments.find((assignment) => normalizeRole(assignment.role) === 'admin' && assignment.scope === 'global');
   if (adminRole) {
     return true;
   }
 
-  // Check for specific role
-  const roleMatch = roleAssignments.find((ra) => ra.role === role);
+  const roleMatch = roleAssignments.find((assignment) => normalizeRole(assignment.role) === requestedRole);
   if (!roleMatch) {
     return false;
   }
 
-  // If scope is not specified, any role assignment matches
   if (!scope) {
     return true;
   }
 
-  // Check scope matching
   if (roleMatch.scope === 'global') {
     return true;
   }
 
-  if (roleMatch.scope === scope.type && roleMatch.scoped_id === scope.id) {
-    return true;
-  }
-
-  return false;
+  return roleMatch.scope === scope.type && roleMatch.scoped_id === scope.id;
 }
 
 export function getEffectiveRoles(
   roleAssignments: RoleAssignment[]
 ): Array<{ role: string; scope: string; scoped_id: string | null }> {
-  return roleAssignments.map((ra) => ({
-    role: ra.role,
-    scope: ra.scope,
-    scoped_id: ra.scoped_id,
+  return roleAssignments.map((assignment) => ({
+    role: assignment.role,
+    scope: assignment.scope,
+    scoped_id: assignment.scoped_id,
   }));
 }
 
 export async function getSessionContext(): Promise<SessionContext> {
-  if (sessionContext) {
-    return sessionContext;
-  }
-
   const user = await getCurrentUser();
 
   sessionContext = {
@@ -130,18 +129,18 @@ export async function getSessionContext(): Promise<SessionContext> {
 
 async function fetchUserRoleAssignments(userId: string): Promise<RoleAssignment[] | null> {
   try {
-    // This would fetch from your Supabase database
-    // For now, return empty array
-    // Implementation would use createClient from '@supabase/supabase-js'
-    // and query the role_assignments table
-    return [];
+    const result = await getSupabaseClient().db.getRoleAssignmentsByUserId(userId);
+    if (result.error) {
+      return null;
+    }
+
+    return mapRoleAssignments(result.data);
   } catch (error) {
     console.error('Error fetching role assignments:', error);
     return null;
   }
 }
 
-// Reset session context (useful for testing)
 export function resetSessionContext(): void {
   sessionContext = null;
 }

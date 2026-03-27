@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { DEMO_MODE, demoDirectoryProfiles, demoEvents } from '@/src/lib/demo/data';
 import { getSupabaseClient } from '../../../../../lib/db/client';
 
 interface RouteParams {
@@ -86,6 +87,47 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
   const normalizedSlug = normalizeText(founderSlug);
   if (!normalizedSlug) {
     return NextResponse.json({ success: false, message: 'Founder profile not found.' }, { status: 404 });
+  }
+
+  if (DEMO_MODE) {
+    const profile = demoDirectoryProfiles.find((p) => p.founder_slug === normalizedSlug);
+    if (!profile) {
+      return NextResponse.json({ success: false, message: 'Founder profile not found.' }, { status: 404 });
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          founder_slug: profile.founder_slug,
+          name: profile.founder_name,
+          company: profile.company,
+          industry: profile.industry,
+          stage: profile.stage,
+          summary: profile.summary,
+          photo: profile.photo,
+          score: profile.score,
+          social_links: {
+            website: profile.company ? `https://${profile.company.toLowerCase().replace(/\s+/g, '')}.ca` : null,
+            linkedin: profile.founder_name
+              ? `https://linkedin.com/in/${profile.founder_name.toLowerCase().replace(/\s+/g, '')}`
+              : null,
+            twitter: null,
+          },
+          badges: profile.score && profile.score >= 80 ? ['Top Score', 'Audience Favorite'] : profile.score && profile.score >= 70 ? ['Strong Pitch'] : [],
+          deck_link: null,
+          event: (() => {
+            const evt = demoEvents.find((e) => e.id === profile.event.id);
+            return {
+              id: profile.event.id,
+              name: profile.event.name,
+              starts_at: evt?.start_date ?? '2026-03-28T18:00:00.000Z',
+              ends_at: evt?.end_date ?? '2026-03-28T22:00:00.000Z',
+            };
+          })(),
+        },
+      },
+      { status: 200 }
+    );
   }
 
   const client = getSupabaseClient();

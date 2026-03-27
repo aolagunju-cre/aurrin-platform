@@ -11,7 +11,7 @@ export function AdminHeader({ userEmail }: AdminHeaderProps): React.ReactElement
         Signed in as <span className="font-medium text-foreground">{userEmail}</span>
       </div>
       <a
-        href="/public/apply"
+        href="/auth/sign-out"
         aria-label="Logout"
         className="text-sm text-default-500 hover:text-foreground transition-colors"
       >

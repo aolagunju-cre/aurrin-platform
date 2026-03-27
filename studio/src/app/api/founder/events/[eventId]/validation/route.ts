@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoFounderProfile } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
@@ -141,6 +142,23 @@ function buildValidationSummary(rows: AudienceResponseRow[]): {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { eventId } = await params;
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          founder_id: demoFounderProfile.id,
+          event_id: eventId,
+          publishing_start: null,
+          published: true,
+          summary: { total_responses: 0, aggregate_score: null, by_question: [] },
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

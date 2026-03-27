@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { DEMO_MODE, demoProducts } from '@/src/lib/demo/data';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
 export async function GET(
@@ -6,6 +7,32 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const { id } = await context.params;
+
+  if (DEMO_MODE) {
+    const product = demoProducts[0] ?? null;
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          price: {
+            id,
+            amount_cents: product?.price_cents ?? 2900,
+            currency: 'USD',
+            billing_interval: 'monthly',
+          },
+          product: product
+            ? {
+                id: product.id,
+                name: product.name,
+                description: product.description,
+              }
+            : null,
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const client = getSupabaseClient();
   const priceResult = await client.db.getPriceById(id);
 

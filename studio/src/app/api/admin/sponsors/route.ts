@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoSponsors } from '@/src/lib/demo/data';
 import { requireAdmin } from '../../../../lib/auth/admin';
 import { auditLog } from '../../../../lib/audit/log';
 import { SponsorScope, SponsorTier, getSupabaseClient } from '../../../../lib/db/client';
@@ -82,6 +83,10 @@ async function validateEventScope(scope: SponsorScope, eventId: string | null): 
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: demoSponsors }, { status: 200 });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;
@@ -103,6 +108,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    return NextResponse.json({ success: true, data: { id: 'demo-sponsor-new' } }, { status: 201 });
+  }
+
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

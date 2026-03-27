@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractTokenFromHeader, verifyJWT } from '../../../../lib/auth/jwt';
+import { DEMO_MODE, demoFounderProfile } from '@/src/lib/demo/data';
 import { getSupabaseClient } from '../../../../lib/db/client';
+import { resolveAuthIdentityFromRequest } from '../../../../lib/auth/request-auth';
 
 interface FounderPitchRow {
   id: string;
@@ -45,18 +46,43 @@ function isWithinScoringWindow(scoringStart: string | null, scoringEnd: string |
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const token = extractTokenFromHeader(request.headers.get('authorization'));
-  if (!token) {
-    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  if (DEMO_MODE) {
+    return NextResponse.json(
+      {
+        success: true,
+        data: demoFounderProfile.pitches.map((p) => ({
+          id: p.event_id,
+          name: p.event_name,
+          status: p.status === 'published' ? 'archived' : 'live',
+          start_date: null,
+          end_date: null,
+          scoring_start: null,
+          scoring_end: null,
+          publishing_start: null,
+          publishing_end: null,
+          scoring_window_open: false,
+          assigned_judges: [],
+          pitch: {
+            id: p.id,
+            pitch_deck_url: null,
+            score_aggregate: p.score,
+            score_breakdown: null,
+            score_progress: { submitted: 0, total: 0 },
+          },
+          scores_published: p.status === 'published',
+        })),
+      },
+      { status: 200 }
+    );
   }
 
-  const auth = await verifyJWT(token);
-  if (!auth?.sub) {
+  const identity = await resolveAuthIdentityFromRequest(request);
+  if (!identity) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
   const client = getSupabaseClient();
-  const rolesResult = await client.db.getRoleAssignmentsByUserId(auth.sub);
+  const rolesResult = await client.db.getRoleAssignmentsByUserId(identity.userId);
   if (rolesResult.error) {
     return NextResponse.json({ success: false, message: rolesResult.error.message }, { status: 500 });
   }
@@ -75,7 +101,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .map((assignment) => assignment.scoped_id as string)
   );
 
-  const founderResult = await client.db.getFounderByUserId(auth.sub);
+  const founderResult = await client.db.getFounderByUserId(identity.userId);
   if (founderResult.error) {
     return NextResponse.json({ success: false, message: founderResult.error.message }, { status: 500 });
   }

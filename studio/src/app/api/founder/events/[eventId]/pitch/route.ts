@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE, demoFounderProfile, demoEvents } from '@/src/lib/demo/data';
 import { canAccessFounderEvent, requireFounderOrAdmin } from '../../../../../../lib/auth/founder';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
@@ -50,6 +51,25 @@ function buildPitchNotFound(): NextResponse {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { eventId } = await params;
+    const event = demoEvents.find((e) => e.id === eventId);
+    const pitch = demoFounderProfile.pitches.find((p) => p.event_id === eventId);
+    if (!event || !pitch) {
+      return NextResponse.json({ success: false, message: 'Founder pitch not found for event.' }, { status: 404 });
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          event: { id: event.id, name: event.name, status: event.status, scoring_start: event.scoring_start, scoring_end: event.scoring_end, publishing_start: event.publishing_start, publishing_end: event.publishing_end },
+          pitch: { id: pitch.id, founder_id: demoFounderProfile.id, event_id: eventId, pitch_order: null, pitch_deck_url: null, score_aggregate: pitch.score, score_breakdown: null, validation_summary: null, scoring_status: pitch.status === 'published' ? 'scores_published' : 'judges_scoring', scores_published: pitch.status === 'published', validation_available: pitch.status === 'published', score_progress: { submitted: 0, total: 0 } },
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireFounderOrAdmin(request);
   if (authResult instanceof NextResponse) {
     return authResult;

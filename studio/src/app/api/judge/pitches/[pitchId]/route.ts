@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { DEMO_MODE } from '@/src/lib/demo/data';
 import { canAccessEvent, requireJudge } from '../../../../../lib/auth/judge';
 import { getSupabaseClient } from '../../../../../lib/db/client';
 
@@ -7,6 +8,20 @@ interface RouteParams {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  if (DEMO_MODE) {
+    const { pitchId } = await params;
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          pitch: { id: pitchId, event_id: 'evt-001', founder_id: 'demo-founder', pitch_order: 1, company_name: 'Demo Company', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          rubric: { id: 'rubric-001', categories: [], version: 1 },
+        },
+      },
+      { status: 200 }
+    );
+  }
+
   const authResult = await requireJudge(request);
   if (authResult instanceof NextResponse) {
     return authResult;
