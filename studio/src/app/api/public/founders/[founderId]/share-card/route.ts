@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
+import { listFounderSignedAssetMetadata } from '../../../../../../lib/social-assets/delivery';
 
 interface RouteParams {
   params: Promise<{ founderId: string }>;
@@ -96,6 +97,8 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
       score_breakdown: toNumericBreakdown(pitch.score_breakdown),
     }));
 
+  const assets = await listFounderSignedAssetMetadata(founder.id);
+
   return NextResponse.json(
     {
       success: true,
@@ -109,6 +112,7 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
           website: founder.website,
         },
         highlights,
+        assets,
       },
     },
     { status: 200 }
