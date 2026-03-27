@@ -1,36 +1,75 @@
 # Judge Guide
 
-This guide describes what judges can do today and what is still planned.
+This guide explains the current judge scoring workflow in the app.
 
-## How-to: Get judge access
+## How to score a founder pitch
 
-1. Ask an admin to assign your account the `judge` role.
-2. Scope is usually `event` for a specific event, or `global` for cross-event judge operations.
-3. Sign in and use your authenticated session for protected judge/admin APIs.
+1. Open `/judge/events` to see your assigned events.
+2. Select **View Founder Pitches** for a `Live` event or a recent event.
+3. On the founder pitch list (`/judge/events/[eventId]`), select **Score Pitch**.
+4. On the pitch scoring page (`/judge/events/[eventId]/pitch/[pitchId]`), review the founder details and complete the scoring form.
+5. Add optional **Global Comments** for overall feedback.
+6. Use **Save Draft** to keep work in progress.
+7. Use **Submit Score** when your responses are final for judge submission.
 
-## How-to: Work with scoring rubrics (current)
+## Rubric explanation (categories, weights, scales)
 
-1. Judges currently consume rubric-driven scoring structures managed by admins.
-2. Rubrics are versioned so scoring can reference stable definitions.
-3. If rubric criteria look wrong, report the rubric template/version to an admin for correction.
+The scoring form is rendered dynamically from the event rubric version. It does not use hardcoded questions.
 
-## How-to: Track scoring outcomes (current)
+- Categories: each category can have its own weight contribution to the final result.
+- Questions: categories include required and optional questions.
+- Supported response scales and input types:
+  - `radio` scale selections (for example 1-5 style rubric ratings)
+  - `numeric` values (0-100)
+  - `selection` options
+  - `text` responses
+- Score math:
+  - Responses are normalized to numeric values.
+  - Category scores are calculated from their question responses.
+  - Category weights are applied to produce weighted category values.
+  - The UI shows a running total and per-category weighted breakdown in **Current Score Summary**.
 
-1. Judges can coordinate with admins for scoring timelines and completion checks.
-2. Analytics surfaces score distributions and trends in admin analytics views.
+## How to submit scores
 
-## Planned / partial areas
+- **Save Draft** stores your current responses with `state: draft`.
+- **Submit Score** sends your final submission with `state: submitted`.
+- Required rubric questions must be completed before submit.
+- After successful submit, the score is treated as final in the judge UI.
 
-- Dedicated `/judge` scoring UI is protected by middleware path rules but is not yet shipped as a complete page flow in this repository snapshot.
-- Judge assignment and per-pitch scoring workflow UX is planned for a later issue lane.
+## Score lock and publish process (admin action)
 
-## FAQ
+Judges submit scores, but lock and publish are admin-controlled workflow steps.
 
-### Can judges edit rubrics directly?
-No. Rubric creation/versioning is currently an admin capability.
+- `draft`: editable by the assigned judge.
+- `submitted`: judge has finalized submission; the UI becomes read-only.
+- `locked`: admin lock has been applied and edits are blocked.
 
-### Why is there no full judge dashboard yet?
-Judge-specific UX is planned; current implementation focuses on admin rubric management and shared analytics contracts.
+The pitch page revision timeline shows `Created`, `Last Draft`, `Submitted`, and `Locked` timestamps when available.
 
-### How do I know which event I can score?
-Access is controlled by role assignments and scope (`event` or `global`) managed by admins.
+## What happens after publishing
+
+Publishing is an admin action after scoring is complete.
+
+- Founders can view published results only after the publish step.
+- Published data is visible through founder-facing experiences and reporting flows.
+- Judges do not unlock or publish scores from judge pages.
+
+## Troubleshooting
+
+### Validation errors when submitting
+
+- If submit does not proceed, complete all required rubric questions first.
+- Keep comments concise and relevant to the pitch.
+
+### Conflict during save or submit
+
+If you see `This score was updated elsewhere`, the score changed in another session.
+
+1. The page reloads score data.
+2. Re-check responses and comments.
+3. Retry save or submit.
+
+### Read-only score behavior
+
+- If a score is `submitted` or `locked`, editing controls are disabled by design.
+- Contact an admin if you believe lock/publish state changed unexpectedly.
