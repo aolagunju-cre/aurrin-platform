@@ -351,6 +351,15 @@ export interface MentorMatchInsert {
   notes?: string | null;
 }
 
+export interface MentorMatchUpdate {
+  mentor_status?: MentorMatchStatus;
+  founder_status?: MentorMatchStatus;
+  mentor_accepted_at?: string | null;
+  founder_accepted_at?: string | null;
+  declined_by?: string | null;
+  notes?: string | null;
+}
+
 export interface MentorMatchPairRecord {
   mentor_id: string;
   founder_id: string;
@@ -686,6 +695,7 @@ export interface SupabaseDBClient {
   ): Promise<{ data: MentorMatchPairRecord[]; error: Error | null }>;
   insertMentorMatch(record: MentorMatchInsert): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
   getMentorMatchById(id: string): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
+  updateMentorMatchById(id: string, updates: MentorMatchUpdate): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
   deleteMentorMatchById(id: string): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
   getFounderPitchById(id: string): Promise<{ data: JudgePitchDetailRecord | null; error: Error | null }>;
   getLatestRubricVersionByEventId(eventId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
@@ -798,6 +808,7 @@ export function getSupabaseClient(): SupabaseClient {
         listRecentMentorPairs: async () => ({ data: [], error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertMentorMatch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         deleteMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFounderPitchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getLatestRubricVersionByEventId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1769,6 +1780,23 @@ export function getSupabaseClient(): SupabaseClient {
         );
         if (!response.ok) {
           return { data: null, error: new Error(`Mentor match query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as MentorMatchRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateMentorMatchById(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/mentor_matches?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify(updates),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Mentor match update failed: ${response.statusText}`) };
         }
         const rows = await response.json() as MentorMatchRecord[];
         return { data: rows[0] ?? null, error: null };
