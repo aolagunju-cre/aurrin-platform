@@ -8,7 +8,7 @@ import {
 } from '../../../../../../lib/events/lifecycle';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ eventId: string }>;
 }
 
 interface StatusPayload {
@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
 
   let body: StatusPayload;
   try {
@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
   }
 
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -68,7 +68,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     );
   }
 
-  const updateResult = await client.db.updateEvent(id, {
+  const updateResult = await client.db.updateEvent(eventId, {
     status: transition.status,
     archived_at: transition.status === 'archived'
       ? (eventResult.data.archived_at ?? new Date().toISOString())
@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     authResult.userId,
     {
       resource_type: 'event',
-      resource_id: id,
+      resource_id: eventId,
       reason: body.notes?.trim() || null,
       changes: {
         before: { status: eventResult.data.status, archived_at: eventResult.data.archived_at },

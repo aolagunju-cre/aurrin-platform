@@ -4,7 +4,7 @@ import { auditLog } from '../../../../../../lib/audit/log';
 import { FounderApplicationRecord, getSupabaseClient } from '../../../../../../lib/db/client';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ eventId: string }>;
 }
 
 interface AssignFoundersPayload {
@@ -17,9 +17,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
 
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
       success: true,
       data: {
         assigned_founder_application_ids: foundersResult.data
-          .filter((founder) => founder.assigned_event_id === id)
+          .filter((founder) => founder.assigned_event_id === eventId)
           .map((founder) => founder.id),
         candidates: foundersResult.data.map((founder) => ({
           id: founder.id,
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
 
   let body: AssignFoundersPayload;
   try {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   }
 
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
 
   const currentAssignmentsResult = await client.db.queryTable<FounderApplicationRecord>(
     'founder_applications',
-    `select=id,status,assigned_event_id&assigned_event_id=eq.${id}&status=in.(accepted,assigned)&limit=1000`
+    `select=id,status,assigned_event_id&assigned_event_id=eq.${eventId}&status=in.(accepted,assigned)&limit=1000`
   );
 
   if (currentAssignmentsResult.error) {
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
 
     const assignResult = await client.db.updateFounderApplication(founderId, {
       status: 'assigned',
-      assigned_event_id: id,
+        assigned_event_id: eventId,
     });
     if (assignResult.error) {
       return NextResponse.json({ success: false, message: assignResult.error.message }, { status: 500 });
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     authResult.userId,
     {
       resource_type: 'event',
-      resource_id: id,
+      resource_id: eventId,
       changes: {
         before: Array.from(currentIds),
         after: founderApplicationIds,
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     {
       success: true,
       data: {
-        event_id: id,
+        event_id: eventId,
         assigned_founder_application_ids: founderApplicationIds,
       },
     },

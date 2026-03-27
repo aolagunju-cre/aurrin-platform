@@ -1,4 +1,4 @@
-import { SponsorPlacementSection } from '@/src/components/public/SponsorPlacementSection';
+import { SponsorPlacementSection } from "../../../components/public/SponsorPlacementSection";
 
 export default async function EventDetailPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;

@@ -2,8 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { POST as createEvent } from '../src/app/api/admin/events/route';
-import { PATCH as updateEvent } from '../src/app/api/admin/events/[id]/route';
-import { POST as assignJudges } from '../src/app/api/admin/events/[id]/assign-judges/route';
+import { PATCH as updateEvent } from '../src/app/api/admin/events/[eventId]/route';
+import { POST as assignJudges } from '../src/app/api/admin/events/[eventId]/assign-judges/route';
 import { requireAdmin } from '../src/lib/auth/admin';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { auditLog } from '../src/lib/audit/log';
@@ -125,7 +125,7 @@ describe('admin regression contract', () => {
       buildRequest('http://localhost/api/admin/events/event-1', 'PATCH', {
         name: 'Updated Demo Day',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -143,7 +143,7 @@ describe('admin regression contract', () => {
       buildRequest('http://localhost/api/admin/events/event-1/assign-judges', 'POST', {
         judge_user_ids: ['judge-1'],
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);

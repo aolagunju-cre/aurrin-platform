@@ -5,7 +5,7 @@ import { SponsorTier, getSupabaseClient } from '../../../../../../lib/db/client'
 import { getDefaultPricingForTier } from '../../../../../../lib/sponsors/tier-config';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ eventId: string }>;
 }
 
 interface CreateEventSponsorPayload {
@@ -69,9 +69,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   }
 
   const scopedSponsors = sponsorsResult.data.filter(
-    (record) => record.placement_scope === 'site-wide' || record.event_id === id
+    (record) => record.placement_scope === 'site-wide' || record.event_id === eventId
   );
 
   return NextResponse.json(
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
 
   let body: CreateEventSponsorPayload;
   try {
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   }
 
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     website_url: body.website ?? null,
     tier: body.tier,
     placement_scope: body.scope ?? 'event',
-    event_id: body.scope === 'site-wide' ? null : id,
+    event_id: body.scope === 'site-wide' ? null : eventId,
     end_date: new Date(body.end_date).toISOString(),
     pricing_cents: body.pricing ?? getDefaultPricingForTier(body.tier),
     status: body.status ?? 'active',

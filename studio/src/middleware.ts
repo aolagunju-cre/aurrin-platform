@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyJWT, extractTokenFromHeader, isTokenExpired } from './lib/auth/jwt';
-import { randomUUID } from 'crypto';
 
 const PUBLIC_PATHS = ['/public', '/api/public'];
 const PROTECTED_PATHS = ['/admin', '/judge', '/founder', '/mentor', '/subscriber', '/api/protected'];
@@ -9,7 +8,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Generate a request ID for tracing; preserve if already set by upstream
-  const requestId = request.headers.get('x-request-id') ?? randomUUID();
+  const requestId = request.headers.get('x-request-id') ?? globalThis.crypto.randomUUID();
   const baseHeaders = new Headers(request.headers);
   baseHeaders.set('x-request-id', requestId);
 

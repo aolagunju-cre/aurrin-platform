@@ -2,13 +2,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GET as listEvents, POST as createEvent } from '../src/app/api/admin/events/route';
-import { DELETE as archiveEvent, GET as getEvent, PATCH as updateEvent } from '../src/app/api/admin/events/[id]/route';
-import { GET as getJudgeAssignments, POST as assignJudges } from '../src/app/api/admin/events/[id]/assign-judges/route';
-import { GET as getFounderAssignments, POST as assignFounders } from '../src/app/api/admin/events/[id]/assign-founders/route';
-import { PATCH as patchEventStatus } from '../src/app/api/admin/events/[id]/status/route';
-import { PATCH as patchScoringWindow } from '../src/app/api/admin/events/[id]/scoring-window/route';
-import { PATCH as patchPublishingWindow } from '../src/app/api/admin/events/[id]/publishing-window/route';
-import { GET as listEventSponsors, POST as addEventSponsor } from '../src/app/api/admin/events/[id]/sponsors/route';
+import { DELETE as archiveEvent, GET as getEvent, PATCH as updateEvent } from '../src/app/api/admin/events/[eventId]/route';
+import { GET as getJudgeAssignments, POST as assignJudges } from '../src/app/api/admin/events/[eventId]/assign-judges/route';
+import { GET as getFounderAssignments, POST as assignFounders } from '../src/app/api/admin/events/[eventId]/assign-founders/route';
+import { PATCH as patchEventStatus } from '../src/app/api/admin/events/[eventId]/status/route';
+import { PATCH as patchScoringWindow } from '../src/app/api/admin/events/[eventId]/scoring-window/route';
+import { PATCH as patchPublishingWindow } from '../src/app/api/admin/events/[eventId]/publishing-window/route';
+import { GET as listEventSponsors, POST as addEventSponsor } from '../src/app/api/admin/events/[eventId]/sponsors/route';
 import { POST as createMentorMatch } from '../src/app/api/admin/events/[eventId]/mentors/matches/route';
 import { DELETE as deleteMentorMatch } from '../src/app/api/admin/events/[eventId]/mentors/matches/[matchId]/route';
 import { POST as generateMentorMatches } from '../src/app/api/admin/events/[eventId]/mentors/match/route';
@@ -367,7 +367,7 @@ describe('admin events routes', () => {
 
   it('returns event detail', async () => {
     const response = await getEvent(buildRequest('http://localhost/api/admin/events/event-1', 'GET'), {
-      params: Promise.resolve({ id: 'event-1' }),
+      params: Promise.resolve({ eventId: 'event-1' }),
     });
     expect(response.status).toBe(200);
     const payload = await response.json();
@@ -380,7 +380,7 @@ describe('admin events routes', () => {
         name: 'Updated Name',
         status: 'live',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -398,7 +398,7 @@ describe('admin events routes', () => {
 
   it('soft deletes event by archiving status instead of hard delete', async () => {
     const response = await archiveEvent(buildRequest('http://localhost/api/admin/events/event-1', 'DELETE'), {
-      params: Promise.resolve({ id: 'event-1' }),
+      params: Promise.resolve({ eventId: 'event-1' }),
     });
     expect(response.status).toBe(405);
     expect(mockDb.updateEvent).not.toHaveBeenCalledWith('event-1', { status: 'archived' });
@@ -411,7 +411,7 @@ describe('admin events routes', () => {
         new_status: 'Live',
         notes: 'Launching scoring now',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -449,7 +449,7 @@ describe('admin events routes', () => {
 
     const response = await patchEventStatus(
       buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', { new_status: 'Live' }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -506,7 +506,7 @@ describe('admin events routes', () => {
         new_status: 'Archived',
         notes: 'Scoring completed',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
     expect(archiveResponse.status).toBe(200);
     expect(mockedAuditLog).toHaveBeenCalledWith(
@@ -540,7 +540,7 @@ describe('admin events routes', () => {
 
     const repeatedArchiveResponse = await patchEventStatus(
       buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', { new_status: 'Archived' }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
     expect(repeatedArchiveResponse.status).toBe(200);
     await expect(repeatedArchiveResponse.json()).resolves.toEqual(
@@ -573,7 +573,7 @@ describe('admin events routes', () => {
 
     const response = await patchEventStatus(
       buildRequest('http://localhost/api/admin/events/event-1/status', 'PATCH', { new_status: 'Live' }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(400);
@@ -591,7 +591,7 @@ describe('admin events routes', () => {
         scoring_start: '2026-04-01T10:20:00.000Z',
         scoring_end: '2026-04-01T11:40:00.000Z',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -616,7 +616,7 @@ describe('admin events routes', () => {
         scoring_start: '2026-03-31T23:00:00.000Z',
         scoring_end: '2026-04-01T11:00:00.000Z',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(400);
@@ -628,7 +628,7 @@ describe('admin events routes', () => {
         publishing_start: '2026-04-01T13:00:00.000Z',
         publishing_end: '2026-04-02T13:00:00.000Z',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -643,7 +643,7 @@ describe('admin events routes', () => {
   it('lists event-scoped sponsors from dedicated event sponsors route', async () => {
     const response = await listEventSponsors(
       buildRequest('http://localhost/api/admin/events/event-1/sponsors', 'GET'),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -661,7 +661,7 @@ describe('admin events routes', () => {
         tier: 'gold',
         end_date: '2026-06-01T00:00:00.000Z',
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(201);
@@ -679,7 +679,7 @@ describe('admin events routes', () => {
 
   it('loads judge candidates from role assignments and saves assignments', async () => {
     const getResponse = await getJudgeAssignments(buildRequest('http://localhost/api/admin/events/event-1/assign-judges', 'GET'), {
-      params: Promise.resolve({ id: 'event-1' }),
+      params: Promise.resolve({ eventId: 'event-1' }),
     });
     expect(getResponse.status).toBe(200);
     const getPayload = await getResponse.json();
@@ -691,7 +691,7 @@ describe('admin events routes', () => {
       buildRequest('http://localhost/api/admin/events/event-1/assign-judges', 'POST', {
         judge_user_ids: ['judge-2'],
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
     expect(postResponse.status).toBe(200);
     expect(mockDb.insertRoleAssignment).toHaveBeenCalledWith(
@@ -735,7 +735,7 @@ describe('admin events routes', () => {
     });
 
     const getResponse = await getFounderAssignments(buildRequest('http://localhost/api/admin/events/event-1/assign-founders', 'GET'), {
-      params: Promise.resolve({ id: 'event-1' }),
+      params: Promise.resolve({ eventId: 'event-1' }),
     });
     expect(getResponse.status).toBe(200);
     const getPayload = await getResponse.json();
@@ -746,7 +746,7 @@ describe('admin events routes', () => {
       buildRequest('http://localhost/api/admin/events/event-1/assign-founders', 'POST', {
         founder_application_ids: ['fa-1'],
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
     expect(postResponse.status).toBe(200);
     expect(mockDb.updateFounderApplication).toHaveBeenCalledWith(

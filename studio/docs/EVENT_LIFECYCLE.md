@@ -22,7 +22,7 @@ Disallowed transitions:
 
 Lifecycle route:
 
-- `PATCH /api/admin/events/[id]/status`
+- `PATCH /api/admin/events/[eventId]/status`
 - Body: `{ "new_status": "Live" | "Archived", "notes"?: string }`
 
 Status transitions are audited via `event_status_changed`. Repeated requests for a current valid status are idempotent and return success without additional mutation.
@@ -41,8 +41,8 @@ Publishing window controls when founders can see score outcomes:
 
 Window update routes:
 
-- `PATCH /api/admin/events/[id]/scoring-window`
-- `PATCH /api/admin/events/[id]/publishing-window`
+- `PATCH /api/admin/events/[eventId]/scoring-window`
+- `PATCH /api/admin/events/[eventId]/publishing-window`
 
 Scoring window updates are audited via `scoring_window_updated`. Publishing window updates are audited via `publishing_window_updated`.
 
@@ -73,8 +73,8 @@ Admin event detail page controls:
 
 Admin route controls:
 
-- `PATCH /api/admin/events/[id]/status` enforces lifecycle rules and idempotency.
-- `PATCH /api/admin/events/[id]/scoring-window` validates window range and event-date boundaries.
-- `PATCH /api/admin/events/[id]/publishing-window` validates publishing window range.
+- `PATCH /api/admin/events/[eventId]/status` enforces lifecycle rules and idempotency.
+- `PATCH /api/admin/events/[eventId]/scoring-window` validates window range and event-date boundaries.
+- `PATCH /api/admin/events/[eventId]/publishing-window` validates publishing window range.
 
 All lifecycle mutations are designed for explicit operations and immutable audit trails.

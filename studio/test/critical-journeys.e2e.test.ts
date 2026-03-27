@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { POST as submitFounderApplication } from '../src/app/api/public/apply/route';
 import { PATCH as reviewFounderApplication } from '../src/app/api/protected/admin/founder-applications/[applicationId]/route';
-import { POST as assignFoundersToEvent } from '../src/app/api/admin/events/[id]/assign-founders/route';
+import { POST as assignFoundersToEvent } from '../src/app/api/admin/events/[eventId]/assign-founders/route';
 import { POST as submitJudgeScore } from '../src/app/api/judge/pitches/[pitchId]/score/route';
 import { GET as getFounderScores } from '../src/app/api/founder/events/[eventId]/scores/route';
 import { POST as createAudienceSession } from '../src/app/api/public/validate/[eventId]/session/route';
@@ -432,7 +432,7 @@ describe('critical journey e2e coverage', () => {
       'POST',
       { founder_application_ids: ['app-1'] }
     );
-    const assignResponse = await assignFoundersToEvent(assignRequest, { params: Promise.resolve({ id: 'event-1' }) });
+    const assignResponse = await assignFoundersToEvent(assignRequest, { params: Promise.resolve({ eventId: 'event-1' }) });
     expect(assignResponse.status).toBe(200);
     expect(applications.get('app-1')?.status).toBe('assigned');
     expect(applications.get('app-1')?.assigned_event_id).toBe('event-1');

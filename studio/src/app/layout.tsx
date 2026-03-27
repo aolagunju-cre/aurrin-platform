@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SponsorPlacementSection } from "@/src/components/public/SponsorPlacementSection";
+import { SponsorPlacementSection } from "../components/public/SponsorPlacementSection";
 import "./globals.css";
 
 export const metadata: Metadata = {

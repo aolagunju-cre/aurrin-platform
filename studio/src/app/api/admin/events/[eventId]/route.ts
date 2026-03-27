@@ -4,7 +4,7 @@ import { auditLog } from '../../../../../lib/audit/log';
 import { EventStatus, getSupabaseClient } from '../../../../../lib/db/client';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ eventId: string }>;
 }
 
 interface EventPatchPayload {
@@ -39,9 +39,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
 
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
 
   let body: EventPatchPayload;
   try {
@@ -96,7 +96,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
   }
 
   const client = getSupabaseClient();
-  const existingResult = await client.db.getEventById(id);
+  const existingResult = await client.db.getEventById(eventId);
 
   if (existingResult.error) {
     return NextResponse.json({ success: false, message: existingResult.error.message }, { status: 500 });
@@ -155,7 +155,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams): Prom
     nextConfig.image_url = body.image_url;
   }
 
-  const updateResult = await client.db.updateEvent(id, {
+  const updateResult = await client.db.updateEvent(eventId, {
     name: body.name?.trim() || existingResult.data.name,
     description: body.description !== undefined ? body.description : existingResult.data.description,
     status: (body.status as EventStatus | undefined) ?? existingResult.data.status,
@@ -193,9 +193,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const existingResult = await client.db.getEventById(id);
+  const existingResult = await client.db.getEventById(eventId);
 
   if (existingResult.error) {
     return NextResponse.json({ success: false, message: existingResult.error.message }, { status: 500 });
@@ -208,7 +208,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams): Pro
   return NextResponse.json(
     {
       success: false,
-      message: 'Event deletion is not supported. Use PATCH /api/admin/events/[id]/status to archive events.',
+      message: 'Event deletion is not supported. Use PATCH /api/admin/events/[eventId]/status to archive events.',
     },
     { status: 405 }
   );

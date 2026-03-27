@@ -1,7 +1,7 @@
 /** @jest-environment node */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GET as getDirectoryPublishing, POST as postDirectoryPublishing } from '../src/app/api/admin/events/[id]/directory-publishing/route';
+import { GET as getDirectoryPublishing, POST as postDirectoryPublishing } from '../src/app/api/admin/events/[eventId]/directory-publishing/route';
 import { requireAdmin } from '../src/lib/auth/admin';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { sendEmail } from '../src/lib/email/send';
@@ -196,7 +196,7 @@ describe('admin directory publishing route', () => {
   it('returns candidates and auto-publish eligibility for wrap-up control', async () => {
     const response = await getDirectoryPublishing(
       buildRequest('http://localhost/api/admin/events/event-1/directory-publishing', 'GET'),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -241,7 +241,7 @@ describe('admin directory publishing route', () => {
         founder_ids: ['founder-1'],
         visible: true,
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(409);
@@ -254,7 +254,7 @@ describe('admin directory publishing route', () => {
         founder_ids: ['founder-1', 'founder-2'],
         visible: true,
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -285,7 +285,7 @@ describe('admin directory publishing route', () => {
         auto_publish_accepted: true,
         visible: true,
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(200);
@@ -303,7 +303,7 @@ describe('admin directory publishing route', () => {
         founder_ids: ['founder-1'],
         visible: true,
       }),
-      { params: Promise.resolve({ id: 'event-1' }) }
+      { params: Promise.resolve({ eventId: 'event-1' }) }
     );
 
     expect(response.status).toBe(403);

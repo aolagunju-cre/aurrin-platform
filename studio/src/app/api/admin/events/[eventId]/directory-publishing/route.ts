@@ -5,7 +5,7 @@ import { getSupabaseClient, FounderPitchUpdate } from '../../../../../../lib/db/
 import { sendEmail } from '../../../../../../lib/email/send';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ eventId: string }>;
 }
 
 interface FounderApplicationStatusRow {
@@ -145,9 +145,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return NextResponse.json({ success: false, message: 'Event not found.' }, { status: 404 });
   }
 
-  const candidatesResult = await loadCandidates(id);
+  const candidatesResult = await loadCandidates(eventId);
   if (candidatesResult.error) {
     return NextResponse.json({ success: false, message: candidatesResult.error.message }, { status: 500 });
   }
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     {
       success: true,
       data: {
-        event_id: id,
+        event_id: eventId,
         publishing_allowed: publishingAllowed,
         publishing_gate_reason: publishingAllowed
           ? null
@@ -208,9 +208,9 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   }
   const visible = body.visible ?? true;
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     );
   }
 
-  const candidatesResult = await loadCandidates(id);
+  const candidatesResult = await loadCandidates(eventId);
   if (candidatesResult.error) {
     return NextResponse.json({ success: false, message: candidatesResult.error.message }, { status: 500 });
   }
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     authResult.userId,
     {
       resource_type: 'event',
-      resource_id: id,
+      resource_id: eventId,
       changes: {
         founder_ids: Array.from(targetFounderIds),
         updated_founder_ids: updatedFounderIds,
@@ -316,7 +316,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     {
       success: true,
       data: {
-        event_id: id,
+        event_id: eventId,
         visibility: visible,
         requested_founder_ids: Array.from(targetFounderIds),
         updated_founder_ids: updatedFounderIds,

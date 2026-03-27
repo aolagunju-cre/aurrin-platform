@@ -4,7 +4,7 @@ import { auditLog } from '../../../../../../lib/audit/log';
 import { getSupabaseClient } from '../../../../../../lib/db/client';
 
 interface RouteParams {
-  params: Promise<{ id: string }>;
+  params: Promise<{ eventId: string }>;
 }
 
 interface AssignJudgesPayload {
@@ -17,9 +17,9 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
 
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
       });
     }
 
-    if (assignment.scope === 'event' && assignment.scoped_id === id) {
+    if (assignment.scope === 'event' && assignment.scoped_id === eventId) {
       assignedUserIds.push(assignment.user_id);
     }
   }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     return authResult;
   }
 
-  const { id } = await params;
+  const { eventId } = await params;
 
   let body: AssignJudgesPayload;
   try {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   }
 
   const client = getSupabaseClient();
-  const eventResult = await client.db.getEventById(id);
+  const eventResult = await client.db.getEventById(eventId);
   if (eventResult.error) {
     return NextResponse.json({ success: false, message: eventResult.error.message }, { status: 500 });
   }
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
   }
 
   const currentEventJudgeAssignments = assignmentsResult.data.filter(
-    (assignment) => assignment.role === 'judge' && assignment.scope === 'event' && assignment.scoped_id === id
+    (assignment) => assignment.role === 'judge' && assignment.scope === 'event' && assignment.scoped_id === eventId
   );
 
   const currentUserIds = new Set(currentEventJudgeAssignments.map((assignment) => assignment.user_id));
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
         user_id: userId,
         role: 'judge',
         scope: 'event',
-        scoped_id: id,
+        scoped_id: eventId,
         created_by: authResult.userId,
       });
 
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     authResult.userId,
     {
       resource_type: 'event',
-      resource_id: id,
+      resource_id: eventId,
       changes: {
         before: Array.from(currentUserIds),
         after: judgeUserIds,
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest, { params }: RouteParams): Promi
     {
       success: true,
       data: {
-        event_id: id,
+        event_id: eventId,
         assigned_user_ids: judgeUserIds,
       },
     },

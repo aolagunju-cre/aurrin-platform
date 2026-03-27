@@ -1,14 +1,18 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import fs from "node:fs";
 import path from "node:path";
-import Home from "@/app/page";
+import Home from "../src/app/page";
+import { redirect } from "next/navigation";
+
+jest.mock("next/navigation", () => ({
+  redirect: jest.fn(),
+}));
 
 describe("App shell", () => {
-  it("renders the placeholder page", () => {
-    render(<Home />);
-    expect(screen.getByRole("main")).toBeInTheDocument();
+  it("redirects the home page to the public directory", () => {
+    Home();
+    expect(redirect).toHaveBeenCalledWith("/public/directory");
   });
 
   it("includes required judge scoring guide sections", () => {
