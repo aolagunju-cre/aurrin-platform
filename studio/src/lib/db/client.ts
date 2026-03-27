@@ -148,6 +148,13 @@ export interface EventRecord {
   name: string;
   description: string | null;
   status: EventStatus;
+  start_date: string;
+  end_date: string;
+  scoring_start: string | null;
+  scoring_end: string | null;
+  publishing_start: string | null;
+  publishing_end: string | null;
+  archived_at: string | null;
   starts_at: string;
   ends_at: string;
   config: Record<string, unknown> | null;
@@ -159,8 +166,15 @@ export interface EventInsert {
   name: string;
   description?: string | null;
   status?: EventStatus;
-  starts_at: string;
-  ends_at: string;
+  start_date?: string;
+  end_date?: string;
+  starts_at?: string;
+  ends_at?: string;
+  scoring_start?: string | null;
+  scoring_end?: string | null;
+  publishing_start?: string | null;
+  publishing_end?: string | null;
+  archived_at?: string | null;
   config?: Record<string, unknown>;
 }
 
@@ -168,8 +182,15 @@ export interface EventUpdate {
   name?: string;
   description?: string | null;
   status?: EventStatus;
+  start_date?: string;
+  end_date?: string;
   starts_at?: string;
   ends_at?: string;
+  scoring_start?: string | null;
+  scoring_end?: string | null;
+  publishing_start?: string | null;
+  publishing_end?: string | null;
+  archived_at?: string | null;
   config?: Record<string, unknown>;
 }
 
@@ -1202,7 +1223,7 @@ export function getSupabaseClient(): SupabaseClient {
 
     async listEvents() {
       try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/events?select=*&order=starts_at.desc&limit=500`, { headers });
+        const response = await fetch(`${supabaseUrl}/rest/v1/events?select=*&order=start_date.desc.nullslast,starts_at.desc.nullslast&limit=500`, { headers });
         if (!response.ok) {
           return { data: [], error: new Error(`Events query failed: ${response.statusText}`) };
         }
@@ -1221,7 +1242,7 @@ export function getSupabaseClient(): SupabaseClient {
       const encodedIds = ids.map((id) => `"${id.replace(/"/g, '\\"')}"`).join(',');
       try {
         const response = await fetch(
-          `${supabaseUrl}/rest/v1/events?id=in.(${encodeURIComponent(encodedIds)})&select=*&order=starts_at.desc`,
+          `${supabaseUrl}/rest/v1/events?id=in.(${encodeURIComponent(encodedIds)})&select=*&order=start_date.desc.nullslast,starts_at.desc.nullslast`,
           { headers }
         );
         if (!response.ok) {
@@ -1251,6 +1272,12 @@ export function getSupabaseClient(): SupabaseClient {
     },
 
     async insertEvent(record) {
+      const startDate = record.start_date ?? record.starts_at;
+      const endDate = record.end_date ?? record.ends_at;
+      if (!startDate || !endDate) {
+        return { data: null, error: new Error('Event insert requires start_date and end_date (or legacy starts_at/ends_at).') };
+      }
+
       try {
         const response = await fetch(`${supabaseUrl}/rest/v1/events`, {
           method: 'POST',
@@ -1259,8 +1286,13 @@ export function getSupabaseClient(): SupabaseClient {
             name: record.name,
             description: record.description ?? null,
             status: record.status ?? 'upcoming',
-            starts_at: record.starts_at,
-            ends_at: record.ends_at,
+            start_date: startDate,
+            end_date: endDate,
+            scoring_start: record.scoring_start ?? null,
+            scoring_end: record.scoring_end ?? null,
+            publishing_start: record.publishing_start ?? null,
+            publishing_end: record.publishing_end ?? null,
+            archived_at: record.archived_at ?? null,
             config: record.config ?? {},
           }),
         });
@@ -1275,12 +1307,20 @@ export function getSupabaseClient(): SupabaseClient {
     },
 
     async updateEvent(id, updates) {
+      const {
+        starts_at: legacyStartDate,
+        ends_at: legacyEndDate,
+        ...restUpdates
+      } = updates;
+
       try {
         const response = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${encodeURIComponent(id)}`, {
           method: 'PATCH',
           headers: { ...headers, Prefer: 'return=representation' },
           body: JSON.stringify({
-            ...updates,
+            ...restUpdates,
+            start_date: updates.start_date ?? legacyStartDate,
+            end_date: updates.end_date ?? legacyEndDate,
             updated_at: new Date().toISOString(),
           }),
         });

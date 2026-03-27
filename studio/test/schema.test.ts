@@ -10,6 +10,10 @@ const judgeScoresContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/010_judge_scores_state_contract.sql'),
   'utf8'
 );
+const eventLifecycleContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/012_event_lifecycle_sponsor_contract.sql'),
+  'utf8'
+);
 
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
@@ -356,6 +360,48 @@ describe('Database Schema Validation', () => {
       expect(judgeScoresContractSql).toContain('DROP COLUMN IF EXISTS comment');
       expect(judgeScoresContractSql).toContain('DROP COLUMN IF EXISTS is_submitted');
       expect(judgeScoresContractSql).toContain('CREATE INDEX IF NOT EXISTS judge_scores_state_idx ON judge_scores(state);');
+    });
+
+    test('012 event lifecycle/sponsor contract migration exists', () => {
+      expect(eventLifecycleContractSql).toContain('ALTER TABLE events');
+      expect(eventLifecycleContractSql).toContain('ALTER TABLE sponsors');
+    });
+  });
+
+  describe('Event Lifecycle Contract', () => {
+    test('events contract includes lifecycle window fields and archived timestamp', () => {
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ');
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ');
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS scoring_start TIMESTAMPTZ');
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS scoring_end TIMESTAMPTZ');
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS publishing_start TIMESTAMPTZ');
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS publishing_end TIMESTAMPTZ');
+      expect(eventLifecycleContractSql).toContain('ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ');
+    });
+
+    test('events contract backfills legacy windows without data loss', () => {
+      expect(eventLifecycleContractSql).toContain('start_date = COALESCE(start_date, starts_at)');
+      expect(eventLifecycleContractSql).toContain('end_date = COALESCE(end_date, ends_at)');
+      expect(eventLifecycleContractSql).toContain('scoring_start = COALESCE(scoring_start, scoring_opens_at)');
+      expect(eventLifecycleContractSql).toContain('scoring_end = COALESCE(scoring_end, scoring_closes_at)');
+      expect(eventLifecycleContractSql).toContain('publishing_start = COALESCE(publishing_start, results_published_at)');
+      expect(eventLifecycleContractSql).toContain('publishing_end = COALESCE(publishing_end, results_published_at)');
+    });
+
+    test('events contract enforces one-way status progression', () => {
+      expect(eventLifecycleContractSql).toContain('CREATE OR REPLACE FUNCTION enforce_event_status_transition()');
+      expect(eventLifecycleContractSql).toContain("WHEN 'upcoming'::event_status THEN");
+      expect(eventLifecycleContractSql).toContain("WHEN 'live'::event_status THEN");
+      expect(eventLifecycleContractSql).toContain("WHEN 'archived'::event_status THEN");
+      expect(eventLifecycleContractSql).toContain('CREATE TRIGGER events_enforce_status_transition');
+    });
+  });
+
+  describe('Sponsor Contract', () => {
+    test('sponsors contract enforces tier and scope values', () => {
+      expect(eventLifecycleContractSql).toContain("ADD CONSTRAINT sponsors_tier_check CHECK (tier IN ('bronze', 'silver', 'gold'))");
+      expect(eventLifecycleContractSql).toContain("ADD CONSTRAINT sponsors_scope_check CHECK (placement_scope IN ('event', 'site-wide'))");
+      expect(eventLifecycleContractSql).toContain('ADD CONSTRAINT sponsors_scope_event_constraint CHECK (');
     });
   });
 
