@@ -36,6 +36,7 @@ This hub is the canonical entrypoint for platform documentation under `studio/do
 
 - [Architecture](./ARCHITECTURE.md)
 - [API Reference](./API.md)
+- [Audience Validation Runbook](./AUDIENCE_VALIDATION.md)
 - [Database Schema](./DATABASE.md)
 - [Authentication and RBAC](./AUTH.md)
 
