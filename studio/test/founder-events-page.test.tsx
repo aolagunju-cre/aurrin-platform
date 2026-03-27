@@ -74,7 +74,9 @@ describe('FounderEventsPage', () => {
     expect(screen.getAllByText('Judges are scoring').length).toBeGreaterThan(0);
     expect(screen.getByText(/Scores will be published on/)).toBeInTheDocument();
 
-    expect(screen.getByText('Scores published')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Archive' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Founder Archive Table')).toBeInTheDocument();
+    expect(screen.getByText('Published Event')).toBeInTheDocument();
     const detailLinks = screen.getAllByRole('link', { name: 'View Pitch Detail' });
     expect(detailLinks[0]).toHaveAttribute('href', '/founder/events/event-pre/pitch');
     expect(detailLinks[1]).toHaveAttribute('href', '/founder/events/event-post/pitch');

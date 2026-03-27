@@ -28,20 +28,6 @@ interface FounderEventListItem {
   scores_published: boolean;
 }
 
-function isLiveOrRecent(event: FounderEventListItem): boolean {
-  if (event.status === 'live') {
-    return true;
-  }
-
-  const endDateMs = Date.parse(event.end_date);
-  if (Number.isNaN(endDateMs)) {
-    return false;
-  }
-
-  const recentWindowMs = 14 * 24 * 60 * 60 * 1000;
-  return Date.now() - endDateMs <= recentWindowMs;
-}
-
 function formatDateLabel(value: string | null): string {
   if (!value) {
     return 'N/A';
@@ -100,10 +86,17 @@ export default function FounderEventsPage(): React.ReactElement {
     void loadEvents();
   }, []);
 
-  const visibleEvents = useMemo(() => events.filter(isLiveOrRecent), [events]);
+  const currentEvents = useMemo(() => events.filter((event) => event.status !== 'archived'), [events]);
+  const archivedEvents = useMemo(
+    () =>
+      events
+        .filter((event) => event.status === 'archived')
+        .sort((a, b) => Date.parse(b.end_date) - Date.parse(a.end_date)),
+    [events]
+  );
   const selectedEvent = useMemo(
-    () => visibleEvents.find((event) => event.id === selectedEventId) ?? visibleEvents[0] ?? null,
-    [selectedEventId, visibleEvents]
+    () => currentEvents.find((event) => event.id === selectedEventId) ?? currentEvents[0] ?? null,
+    [selectedEventId, currentEvents]
   );
 
   return (
@@ -118,11 +111,11 @@ export default function FounderEventsPage(): React.ReactElement {
 
       {isLoading ? <p>Loading assigned events...</p> : null}
 
-      {!isLoading && !error && visibleEvents.length === 0 ? (
-        <p>No live or recent assigned events available.</p>
+      {!isLoading && !error && currentEvents.length === 0 ? (
+        <p>No active assigned events available.</p>
       ) : null}
 
-      {!isLoading && !error && visibleEvents.length > 0 ? (
+      {!isLoading && !error && currentEvents.length > 0 ? (
         <>
           <table aria-label="Founder Events Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -135,7 +128,7 @@ export default function FounderEventsPage(): React.ReactElement {
               </tr>
             </thead>
             <tbody>
-              {visibleEvents.map((event) => (
+              {currentEvents.map((event) => (
                 <tr key={event.id}>
                   <td>{event.name}</td>
                   <td>{event.status}</td>
@@ -186,6 +179,40 @@ export default function FounderEventsPage(): React.ReactElement {
           ) : null}
         </>
       ) : null}
+
+      {!isLoading && !error && (
+        <section aria-label="Founder Archive" style={{ display: 'grid', gap: '0.5rem' }}>
+          <h2 style={{ margin: 0 }}>Archive</h2>
+          {archivedEvents.length === 0 ? (
+            <p style={{ margin: 0 }}>No archived pitches yet.</p>
+          ) : (
+            <table aria-label="Founder Archive Table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th align="left">Event</th>
+                  <th align="left">Event Date</th>
+                  <th align="left">Score</th>
+                  <th align="left">Validation</th>
+                  <th align="left">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {archivedEvents.map((event) => (
+                  <tr key={event.id}>
+                    <td>{event.name}</td>
+                    <td>{new Date(event.end_date).toLocaleDateString()}</td>
+                    <td>{event.scores_published ? (event.pitch?.score_aggregate ?? 'N/A') : 'Pending publish'}</td>
+                    <td>{event.scores_published ? 'Summary available' : 'Pending publish'}</td>
+                    <td>
+                      <a href={`/founder/events/${event.id}/pitch`}>View Pitch Detail</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
     </section>
   );
 }

@@ -45,5 +45,6 @@ describe('email template registry', () => {
     expect(rendered.text).toContain('Sam Founder');
     expect(rendered.text).toContain('Orbit Labs');
     expect(rendered.text).toContain('https://example.com/reports/1');
+    expect(rendered.text).toContain('Your scores are now available');
   });
 });

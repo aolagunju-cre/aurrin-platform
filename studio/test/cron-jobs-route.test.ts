@@ -4,6 +4,7 @@ import { GET } from '../src/app/api/cron/jobs/route';
 import { processPendingJobs } from '../src/lib/jobs/processor';
 import { enqueueHourlySubscriptionReconciliation } from '../src/lib/jobs/reconciliation-scheduler';
 import { getSupabaseClient } from '../src/lib/db/client';
+import { enqueueScorePublishNotifications } from '../src/lib/events/score-publish-notifications';
 
 jest.mock('../src/lib/jobs/processor', () => ({
   processPendingJobs: jest.fn(),
@@ -17,10 +18,16 @@ jest.mock('../src/lib/db/client', () => ({
   getSupabaseClient: jest.fn(),
 }));
 
+jest.mock('../src/lib/events/score-publish-notifications', () => ({
+  enqueueScorePublishNotifications: jest.fn(),
+}));
+
 const mockedProcessPendingJobs = processPendingJobs as jest.MockedFunction<typeof processPendingJobs>;
 const mockedEnqueueHourlySubscriptionReconciliation =
   enqueueHourlySubscriptionReconciliation as jest.MockedFunction<typeof enqueueHourlySubscriptionReconciliation>;
 const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof getSupabaseClient>;
+const mockedEnqueueScorePublishNotifications =
+  enqueueScorePublishNotifications as jest.MockedFunction<typeof enqueueScorePublishNotifications>;
 
 describe('cron jobs route', () => {
   beforeEach(() => {
@@ -39,6 +46,7 @@ describe('cron jobs route', () => {
     } as never);
 
     mockedEnqueueHourlySubscriptionReconciliation.mockResolvedValue(true);
+    mockedEnqueueScorePublishNotifications.mockResolvedValue(5);
     mockedProcessPendingJobs.mockResolvedValue({ processed: 3, succeeded: 3, failed: 0, dead: 0 });
   });
 
@@ -60,11 +68,13 @@ describe('cron jobs route', () => {
     };
     expect(dbClient.deleteExpiredAudienceSessions).toHaveBeenCalledWith(expect.any(Date));
     expect(mockedEnqueueHourlySubscriptionReconciliation).toHaveBeenCalledTimes(1);
+    expect(mockedEnqueueScorePublishNotifications).toHaveBeenCalledTimes(1);
     expect(mockedProcessPendingJobs).toHaveBeenCalledTimes(1);
 
     expect(await response.json()).toEqual({
       ok: true,
       expiredAudienceSessionsDeleted: 2,
+      scoresPublishedNotificationsQueued: 5,
       processed: 3,
       succeeded: 3,
       failed: 0,

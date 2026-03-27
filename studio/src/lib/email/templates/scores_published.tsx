@@ -4,15 +4,21 @@ import type { EmailTemplateDefinition } from './types';
 export const scoresPublishedTemplate: EmailTemplateDefinition = {
   render: (data) => {
     const common = withCommonFields(data);
+    const eventSummary = typeof data.eventSummary === 'string' && data.eventSummary.trim()
+      ? data.eventSummary.trim()
+      : `${common.company} founder event`;
+
     return composeTemplate({
-      subject: `Scores published for ${common.company}`,
-      preheader: 'Judge scoring results are now available.',
+      subject: `Your scores are now available for ${common.company}`,
+      preheader: 'Your scores are now available.',
       bodyLines: [
         `Hi ${common.name},`,
-        `Your latest score report for ${common.company} was published on ${common.date}.`,
-        'Open your dashboard to review the full breakdown.',
+        'Your scores are now available.',
+        `Publishing date: ${common.date}.`,
+        `Events with newly available scores: ${eventSummary}.`,
+        'Open your founder portal to review the full score and validation breakdown.',
       ],
-      ctaLabel: 'View score report',
+      ctaLabel: 'Open founder portal',
       ctaUrl: common.link,
       data,
     });
