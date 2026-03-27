@@ -98,4 +98,39 @@ describe('hasEntitlement', () => {
 
     await expect(hasEntitlement(userId, productId)).resolves.toBe(false);
   });
+
+  it('returns true when multiple entitlement states include one valid matching source', async () => {
+    listSubscriptionsByUserId.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'sub_legacy',
+          user_id: userId,
+          status: 'cancelled',
+          current_period_end: new Date(Date.now() - 3600_000).toISOString(),
+        },
+      ],
+      error: null,
+    });
+    listEntitlementsByUserId.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'ent_expired',
+          user_id: userId,
+          product_id: productId,
+          source: 'subscription',
+          expires_at: new Date(Date.now() - 3600_000).toISOString(),
+        },
+        {
+          id: 'ent_active',
+          user_id: userId,
+          product_id: productId,
+          source: 'purchase',
+          expires_at: new Date(Date.now() + 3600_000).toISOString(),
+        },
+      ],
+      error: null,
+    });
+
+    await expect(hasEntitlement(userId, productId)).resolves.toBe(true);
+  });
 });

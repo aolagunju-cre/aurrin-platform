@@ -36,6 +36,7 @@ export function buildMentorMatches(
 
   let conflicts = 0;
   const matches: MatchPair[] = [];
+  const mentorsAssignedInRound = new Set<string>();
 
   for (const founderId of founderIds) {
     const selectedForFounder = new Set<string>();
@@ -48,6 +49,9 @@ export function buildMentorMatches(
       if (selectedForFounder.has(mentorId)) {
         continue;
       }
+      if (mentorsAssignedInRound.has(mentorId)) {
+        continue;
+      }
 
       if (isExcluded(mentorId, founderId)) {
         conflicts += 1;
@@ -55,6 +59,7 @@ export function buildMentorMatches(
       }
 
       selectedForFounder.add(mentorId);
+      mentorsAssignedInRound.add(mentorId);
       matches.push({ mentor_id: mentorId, founder_id: founderId });
     }
   }

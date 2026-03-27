@@ -55,4 +55,19 @@ describe('calculateTotals', () => {
     expect(totals.breakdown.missing_required).toEqual(expect.arrayContaining(['a2', 'b1']));
     expect(totals.total).toBeGreaterThanOrEqual(0);
   });
+
+  it('keeps boundary values 0 and 100 within expected weighted totals', () => {
+    const totals = calculateTotals(
+      {
+        a1: 5,
+        a2: 0,
+        b1: 1,
+      },
+      rubricVersion
+    );
+
+    expect(totals.by_category['Category A']).toBe(20);
+    expect(totals.by_category['Category B']).toBe(0);
+    expect(totals.total).toBe(20);
+  });
 });
