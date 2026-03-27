@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FounderEventsPage from '../src/app/(protected)/founder/events/page';
 
@@ -73,15 +73,10 @@ describe('FounderEventsPage', () => {
 
     expect(screen.getAllByText('Judges are scoring').length).toBeGreaterThan(0);
     expect(screen.getByText(/Scores will be published on/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit Pitch' })).toBeDisabled();
-    expect(screen.getByText('Pitch submission is finalized and cannot be edited.')).toBeInTheDocument();
 
-    const detailButtons = screen.getAllByRole('button', { name: 'View Event Details' });
-    fireEvent.click(detailButtons[1]);
-
-    await waitFor(() => {
-      expect(screen.getByText('Aggregated score: 92.5')).toBeInTheDocument();
-    });
-    expect(screen.getByLabelText('Score Breakdown')).toHaveTextContent('"Execution": 93');
+    expect(screen.getByText('Scores published')).toBeInTheDocument();
+    const detailLinks = screen.getAllByRole('link', { name: 'View Pitch Detail' });
+    expect(detailLinks[0]).toHaveAttribute('href', '/founder/events/event-pre/pitch');
+    expect(detailLinks[1]).toHaveAttribute('href', '/founder/events/event-post/pitch');
   });
 });

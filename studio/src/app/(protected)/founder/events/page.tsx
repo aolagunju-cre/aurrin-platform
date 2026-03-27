@@ -56,11 +56,15 @@ function formatDateLabel(value: string | null): string {
 }
 
 function toScoringStatusLabel(event: FounderEventListItem): string {
+  if (event.scores_published) {
+    return 'Scores published';
+  }
+
   if (event.scoring_window_open) {
     return 'Judges are scoring';
   }
 
-  return 'Scoring closed, results pending';
+  return `Scores will be published on ${formatDateLabel(event.publishing_start)}`;
 }
 
 export default function FounderEventsPage(): React.ReactElement {
@@ -124,6 +128,8 @@ export default function FounderEventsPage(): React.ReactElement {
             <thead>
               <tr>
                 <th align="left">Event</th>
+                <th align="left">Status</th>
+                <th align="left">Dates</th>
                 <th align="left">Scoring Status</th>
                 <th align="left">Action</th>
               </tr>
@@ -132,11 +138,11 @@ export default function FounderEventsPage(): React.ReactElement {
               {visibleEvents.map((event) => (
                 <tr key={event.id}>
                   <td>{event.name}</td>
+                  <td>{event.status}</td>
+                  <td>{new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</td>
                   <td>{toScoringStatusLabel(event)}</td>
                   <td>
-                    <button type="button" onClick={() => setSelectedEventId(event.id)}>
-                      View Event Details
-                    </button>
+                    <a href={`/founder/events/${event.id}/pitch`}>View Pitch Detail</a>
                   </td>
                 </tr>
               ))}
