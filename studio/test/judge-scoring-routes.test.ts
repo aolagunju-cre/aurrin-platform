@@ -301,6 +301,73 @@ describe('judge scoring API routes', () => {
     });
   });
 
+  it('transitions an existing score from draft to submitted', async () => {
+    mockDb.getJudgeScoreByJudgeAndPitch.mockResolvedValueOnce({
+      data: {
+        id: 'score-1',
+        judge_id: 'judge-1',
+        founder_pitch_id: 'pitch-1',
+        rubric_version_id: 'rubric-v1',
+        responses: { q1: 80 },
+        comments: 'Initial draft',
+        total_score: 80,
+        category_scores: { Execution: 80 },
+        state: 'draft',
+        submitted_at: null,
+        locked_at: null,
+        created_at: '2026-03-26T00:00:00.000Z',
+        updated_at: '2026-03-26T00:02:00.000Z',
+      },
+      error: null,
+    });
+    mockDb.updateJudgeScore.mockResolvedValueOnce({
+      data: {
+        id: 'score-1',
+        judge_id: 'judge-1',
+        founder_pitch_id: 'pitch-1',
+        rubric_version_id: 'rubric-v1',
+        responses: { q1: 91 },
+        comments: 'Final submission',
+        total_score: 91,
+        category_scores: { Execution: 91 },
+        state: 'submitted',
+        submitted_at: '2026-03-26T00:10:00.000Z',
+        locked_at: null,
+        created_at: '2026-03-26T00:00:00.000Z',
+        updated_at: '2026-03-26T00:10:00.000Z',
+      },
+      error: null,
+    });
+
+    const response = await savePitchScore(
+      buildRequest('http://localhost/api/judge/pitches/pitch-1/score', 'POST', {
+        responses: { q1: 91 },
+        comments: 'Final submission',
+        state: 'submitted',
+      }),
+      { params: Promise.resolve({ pitchId: 'pitch-1' }) }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: {
+        score_id: 'score-1',
+        total_score: 91,
+        breakdown: { Execution: 91 },
+        state: 'submitted',
+      },
+    });
+    expect(mockDb.insertJudgeScore).not.toHaveBeenCalled();
+    expect(mockDb.updateJudgeScore).toHaveBeenCalledWith(
+      'score-1',
+      expect.objectContaining({
+        state: 'submitted',
+        total_score: 91,
+      })
+    );
+  });
+
   it('validates required fields in score POST body', async () => {
     const response = await savePitchScore(
       buildRequest('http://localhost/api/judge/pitches/pitch-1/score', 'POST', {
