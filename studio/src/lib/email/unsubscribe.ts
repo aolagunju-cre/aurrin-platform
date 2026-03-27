@@ -4,7 +4,7 @@ import type { EmailTemplateName } from './templates';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const TRANSACTIONAL_TEMPLATES = new Set<EmailTemplateName>(['password_reset', 'email_verification']);
+const TRANSACTIONAL_TEMPLATES = new Set<EmailTemplateName>(['password_reset', 'email_verification', 'directory_published']);
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

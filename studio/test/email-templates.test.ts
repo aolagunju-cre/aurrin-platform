@@ -5,6 +5,7 @@ import { emailTemplateRegistry, renderEmailTemplate } from '../src/lib/email/tem
 describe('email template registry', () => {
   it('contains all required template names', () => {
     expect(Object.keys(emailTemplateRegistry).sort()).toEqual([
+      'directory_published',
       'email_verification',
       'founder_approved',
       'founder_match_created',
@@ -51,6 +52,18 @@ describe('email template registry', () => {
     expect(rendered.text).toContain('Orbit Labs');
     expect(rendered.text).toContain('https://example.com/reports/1');
     expect(rendered.text).toContain('Your scores are now available');
+  });
+
+  it('renders directory publish notification copy', () => {
+    const rendered = renderEmailTemplate('directory_published', {
+      name: 'Sam Founder',
+      company: 'Orbit Labs',
+      link: 'https://example.com/public/directory/orbit-labs',
+    });
+
+    expect(rendered.subject).toContain("Congratulations! You're now in the Aurrin directory");
+    expect(rendered.text).toContain('Sam Founder');
+    expect(rendered.text).toContain('https://example.com/public/directory/orbit-labs');
   });
 
   it('renders mentor match creation semantics', () => {

@@ -189,6 +189,87 @@ describe('AdminEventDetailPage lifecycle controls', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('scoring_start must be before scoring_end.');
     });
   });
+
+  it('shows directory publishing controls only after wrap-up prerequisites and supports auto-publish action', async () => {
+    const archivedState = {
+      id: 'event-1',
+      name: 'Spring Pitch Day',
+      description: 'Event details',
+      status: 'Archived',
+      start_date: '2026-04-01T09:00:00.000Z',
+      end_date: '2026-04-01T11:00:00.000Z',
+      scoring_start: '2026-04-01T09:00:00.000Z',
+      scoring_end: '2026-04-01T10:00:00.000Z',
+      publishing_start: '2026-01-01T10:30:00.000Z',
+      publishing_end: '2026-04-01T11:00:00.000Z',
+      logo_url: null,
+      image_url: null,
+    };
+
+    const mockResponse = (status: number, payload: unknown) => ({
+      ok: status >= 200 && status < 300,
+      status,
+      json: async () => payload,
+    });
+
+    const fetchMock = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+
+      if (url.endsWith('/api/admin/events/event-1') && method === 'GET') {
+        return mockResponse(200, { success: true, data: archivedState });
+      }
+
+      if (url.endsWith('/api/admin/events/event-1/directory-publishing') && method === 'GET') {
+        return mockResponse(200, {
+          success: true,
+          data: {
+            publishing_allowed: true,
+            candidates: [
+              {
+                founder_id: 'founder-1',
+                founder_name: 'Founder One',
+                founder_email: 'founder1@example.com',
+                company_name: 'Orbit Labs',
+                pitch_id: 'pitch-1',
+                visible_in_directory: false,
+                is_published: true,
+                public_profile_slug: 'orbit-labs',
+                application_status: 'accepted',
+                eligible_for_auto_publish: true,
+              },
+            ],
+          },
+        });
+      }
+
+      if (url.endsWith('/api/admin/events/event-1/directory-publishing') && method === 'POST') {
+        return mockResponse(200, { success: true });
+      }
+
+      return mockResponse(500, { success: false, message: `Unhandled ${method} ${url}` });
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).fetch = fetchMock;
+
+    render(<AdminEventDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Auto-Publish Accepted Founders' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Auto-Publish Accepted Founders' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/events/event-1/directory-publishing',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+  });
 });
 
 describe('AdminEventSponsorsPage', () => {

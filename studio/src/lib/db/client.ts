@@ -318,8 +318,16 @@ export interface FounderPitchRecord {
   validation_summary: Record<string, unknown> | null;
   is_published: boolean;
   published_at: string | null;
+  visible_in_directory: boolean;
+  public_profile_slug: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface FounderPitchUpdate {
+  is_published?: boolean;
+  published_at?: string | null;
+  visible_in_directory?: boolean;
 }
 
 export type MentorMatchStatus = 'pending' | 'accepted' | 'declined';
@@ -698,6 +706,7 @@ export interface SupabaseDBClient {
   updateMentorMatchById(id: string, updates: MentorMatchUpdate): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
   deleteMentorMatchById(id: string): Promise<{ data: MentorMatchRecord | null; error: Error | null }>;
   getFounderPitchById(id: string): Promise<{ data: JudgePitchDetailRecord | null; error: Error | null }>;
+  updateFounderPitch(id: string, updates: FounderPitchUpdate): Promise<{ data: FounderPitchRecord | null; error: Error | null }>;
   getLatestRubricVersionByEventId(eventId: string): Promise<{ data: RubricVersionRecord | null; error: Error | null }>;
   getJudgeScoreByJudgeAndPitch(
     judgeId: string,
@@ -811,6 +820,7 @@ export function getSupabaseClient(): SupabaseClient {
         updateMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         deleteMentorMatchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getFounderPitchById: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
+        updateFounderPitch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getLatestRubricVersionByEventId: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         getJudgeScoreByJudgeAndPitch: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
         insertJudgeScore: async () => ({ data: null, error: new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be set') }),
@@ -1839,6 +1849,26 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Founder pitch query failed: ${response.statusText}`) };
         }
         const rows = await response.json() as JudgePitchDetailRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateFounderPitch(id, updates) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/founder_pitches?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Founder pitch update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as FounderPitchRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };

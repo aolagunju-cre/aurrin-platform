@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 type EventStatus = 'Upcoming' | 'Live' | 'Archived';
@@ -49,6 +49,28 @@ interface WindowDraft {
   publishing_end: string;
 }
 
+interface DirectoryPublishCandidate {
+  founder_id: string;
+  founder_name: string | null;
+  founder_email: string | null;
+  company_name: string | null;
+  pitch_id: string;
+  visible_in_directory: boolean;
+  is_published: boolean;
+  public_profile_slug: string | null;
+  application_status: 'pending' | 'accepted' | 'assigned' | 'declined' | null;
+  eligible_for_auto_publish: boolean;
+}
+
+interface DirectoryPublishingResponse {
+  success: boolean;
+  data?: {
+    publishing_allowed: boolean;
+    candidates: DirectoryPublishCandidate[];
+  };
+  message?: string;
+}
+
 function toDateInputValue(value: string | null): string {
   if (!value) {
     return '';
@@ -89,6 +111,10 @@ export default function AdminEventDetailPage(): React.ReactElement {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<PendingStatus | null>(null);
+  const [directoryCandidates, setDirectoryCandidates] = useState<DirectoryPublishCandidate[]>([]);
+  const [selectedFounderIds, setSelectedFounderIds] = useState<string[]>([]);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
+  const [isPublishingDirectory, setIsPublishingDirectory] = useState(false);
   const [eventDraft, setEventDraft] = useState<EventDraft>({
     name: '',
     description: '',
@@ -144,6 +170,75 @@ export default function AdminEventDetailPage(): React.ReactElement {
   }, [params.id]);
 
   const statusActionLabel = eventDetail ? getStatusActionLabel(eventDetail.status) : null;
+  const publishingStartDate = eventDetail?.publishing_start ? new Date(eventDetail.publishing_start) : null;
+  const publishFoundersControlEnabled = Boolean(
+    eventDetail
+      && eventDetail.status === 'Archived'
+      && publishingStartDate
+      && !Number.isNaN(publishingStartDate.getTime())
+      && publishingStartDate <= new Date()
+  );
+
+  const loadDirectoryCandidates = useCallback(async (): Promise<void> => {
+    if (!publishFoundersControlEnabled) {
+      setDirectoryCandidates([]);
+      setSelectedFounderIds([]);
+      return;
+    }
+
+    setDirectoryError(null);
+    const response = await fetch(`/api/admin/events/${params.id}/directory-publishing`);
+    const payload = await response.json() as DirectoryPublishingResponse;
+    if (!response.ok || !payload.success || !payload.data) {
+      setDirectoryError(payload.message ?? 'Failed to load directory publishing candidates.');
+      return;
+    }
+    setDirectoryCandidates(payload.data.candidates);
+    setSelectedFounderIds([]);
+  }, [params.id, publishFoundersControlEnabled]);
+
+  useEffect(() => {
+    if (publishFoundersControlEnabled) {
+      void loadDirectoryCandidates();
+    } else {
+      setDirectoryCandidates([]);
+      setSelectedFounderIds([]);
+      setDirectoryError(null);
+    }
+  }, [loadDirectoryCandidates, publishFoundersControlEnabled]);
+
+  function toggleFounderSelection(founderId: string): void {
+    setSelectedFounderIds((current) => (
+      current.includes(founderId)
+        ? current.filter((id) => id !== founderId)
+        : [...current, founderId]
+    ));
+  }
+
+  async function applyDirectoryPublishing(payload: {
+    founder_ids?: string[];
+    auto_publish_accepted?: boolean;
+    visible?: boolean;
+  }): Promise<void> {
+    setDirectoryError(null);
+    setIsPublishingDirectory(true);
+    try {
+      const response = await fetch(`/api/admin/events/${params.id}/directory-publishing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as { success: boolean; message?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.message ?? 'Failed to update founder directory visibility.');
+      }
+      await loadDirectoryCandidates();
+    } catch (publishError) {
+      setDirectoryError(publishError instanceof Error ? publishError.message : 'Failed to update founder visibility.');
+    } finally {
+      setIsPublishingDirectory(false);
+    }
+  }
 
   async function handleStatusChange(): Promise<void> {
     if (!eventDetail || !pendingStatus) {
@@ -422,6 +517,69 @@ export default function AdminEventDetailPage(): React.ReactElement {
           </button>
         </section>
       ) : null}
+
+      <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: '1rem', display: 'grid', gap: '0.75rem' }}>
+        <h2 style={{ margin: 0 }}>Publish Founders to Directory</h2>
+        {!publishFoundersControlEnabled ? (
+          <p style={{ margin: 0 }}>
+            Publishing controls become available only after the event is archived and scores are published.
+          </p>
+        ) : (
+          <>
+            <p style={{ margin: 0 }}>Select founders to publish or hide from the public directory.</p>
+            {directoryCandidates.length === 0 ? (
+              <p style={{ margin: 0 }}>No founders are assigned to this event yet.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {directoryCandidates.map((candidate) => (
+                  <label key={candidate.founder_id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input
+                      type="checkbox"
+                      aria-label={`select founder ${candidate.company_name ?? candidate.founder_name ?? candidate.founder_id}`}
+                      checked={selectedFounderIds.includes(candidate.founder_id)}
+                      onChange={() => toggleFounderSelection(candidate.founder_id)}
+                      disabled={isPublishingDirectory}
+                    />
+                    <span>
+                      {(candidate.company_name ?? candidate.founder_name ?? candidate.founder_id)}
+                      {' · '}
+                      {candidate.visible_in_directory ? 'Visible' : 'Hidden'}
+                      {' · '}
+                      {candidate.application_status ?? 'unknown status'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => void applyDirectoryPublishing({ founder_ids: selectedFounderIds, visible: true })}
+                disabled={isPublishingDirectory || selectedFounderIds.length === 0}
+              >
+                {isPublishingDirectory ? 'Updating...' : 'Publish Selected'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void applyDirectoryPublishing({ founder_ids: selectedFounderIds, visible: false })}
+                disabled={isPublishingDirectory || selectedFounderIds.length === 0}
+              >
+                Hide Selected
+              </button>
+              <button
+                type="button"
+                onClick={() => void applyDirectoryPublishing({ auto_publish_accepted: true, visible: true })}
+                disabled={isPublishingDirectory}
+              >
+                Auto-Publish Accepted Founders
+              </button>
+            </div>
+          </>
+        )}
+
+        {directoryError ? <p role="alert" style={{ color: '#b00020', margin: 0 }}>{directoryError}</p> : null}
+      </section>
     </section>
   );
 }
