@@ -4,11 +4,19 @@ import { NextRequest } from 'next/server';
 import { DEMO_SESSION_COOKIE } from '../src/lib/auth/request-auth';
 import { resetRuntimeEnvCacheForTests } from '../src/lib/config/env';
 
+jest.mock('../src/lib/auth/jwt', () => ({
+  verifyJWT: jest.fn().mockResolvedValue({
+    sub: 'user-123',
+    email: 'admin@aurrin.demo',
+  }),
+}));
+
 jest.mock('../src/lib/auth/request-auth', () => {
   const actual = jest.requireActual('../src/lib/auth/request-auth');
   return {
     ...actual,
     createDemoSessionToken: jest.fn().mockResolvedValue('demo-session-token'),
+    setAccessTokenCookie: jest.fn(),
   };
 });
 
@@ -51,8 +59,50 @@ describe('auth sign-in submit route', () => {
 
     const response = await POST(buildDemoRequest());
 
-    expect(response.status).toBe(307);
+    expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe('http://localhost/mentor');
     expect(response.cookies.get(DEMO_SESSION_COOKIE)?.value).toEqual(expect.any(String));
+  });
+
+  it('redirects invalid demo persona submissions back to sign-in with a GET-safe status', async () => {
+    const { POST } = await import('../src/app/auth/sign-in/submit/route');
+
+    const formData = new FormData();
+    formData.set('mode', 'demo');
+    formData.set('persona', 'invalid-persona');
+    formData.set('next', '/founder');
+
+    const response = await POST(
+      new NextRequest(
+        new Request('http://localhost/auth/sign-in/submit', {
+          method: 'POST',
+          body: formData,
+        })
+      )
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/auth/sign-in?next=%2Ffounder&error=forbidden');
+  });
+
+  it('redirects token sign-in submissions with a GET-safe status', async () => {
+    const { POST } = await import('../src/app/auth/sign-in/submit/route');
+
+    const formData = new FormData();
+    formData.set('mode', 'token');
+    formData.set('access_token', 'valid-token');
+    formData.set('next', '/admin');
+
+    const response = await POST(
+      new NextRequest(
+        new Request('http://localhost/auth/sign-in/submit', {
+          method: 'POST',
+          body: formData,
+        })
+      )
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/admin');
   });
 });

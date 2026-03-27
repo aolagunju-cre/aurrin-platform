@@ -9,11 +9,13 @@ import {
 import { isDemoModeEnabled } from '@/src/lib/config/env';
 import { verifyJWT } from '@/src/lib/auth/jwt';
 
+const POST_REDIRECT_STATUS = 303;
+
 function redirectWithError(request: NextRequest, nextPath: string, error: string): NextResponse {
   const url = new URL('/auth/sign-in', request.url);
   url.searchParams.set('next', sanitizeNextPath(nextPath));
   url.searchParams.set('error', error);
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, POST_REDIRECT_STATUS);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     try {
       const token = await createDemoSessionToken(persona);
-      const response = NextResponse.redirect(new URL(nextPath, request.url));
+      const response = NextResponse.redirect(new URL(nextPath, request.url), POST_REDIRECT_STATUS);
       setDemoSessionCookie(response, token);
       return response;
     } catch {
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return redirectWithError(request, nextPath, 'invalid_token');
   }
 
-  const response = NextResponse.redirect(new URL(nextPath, request.url));
+  const response = NextResponse.redirect(new URL(nextPath, request.url), POST_REDIRECT_STATUS);
   setAccessTokenCookie(response, accessToken);
   return response;
 }
