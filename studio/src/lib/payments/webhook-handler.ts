@@ -40,6 +40,51 @@ function currencyToUpper(value: string | null | undefined): string | null {
   return value ? value.toUpperCase() : null;
 }
 
+function readPositiveInteger(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+}
+
+function readFutureIsoTimestamp(value: string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp) || timestamp <= Date.now()) {
+    return null;
+  }
+  return new Date(timestamp).toISOString();
+}
+
+function resolvePurchaseEntitlementExpiry(
+  accessType: 'perpetual' | 'time-limited' | null,
+  metadata: Record<string, string>
+): string | null {
+  if (accessType !== 'time-limited') {
+    return null;
+  }
+
+  const configuredExpiry = readFutureIsoTimestamp(metadata.entitlement_expires_at);
+  if (configuredExpiry) {
+    return configuredExpiry;
+  }
+
+  const durationDays = readPositiveInteger(metadata.entitlement_duration_days);
+  if (durationDays) {
+    const expiry = new Date();
+    expiry.setUTCDate(expiry.getUTCDate() + durationDays);
+    return expiry.toISOString();
+  }
+
+  throw new Error('Missing time-limited entitlement configuration for digital product purchase');
+}
+
 function readUnixTimestampField(source: Record<string, unknown>, key: string): string | null {
   const value = source[key];
   if (typeof value !== 'number') {
@@ -221,11 +266,14 @@ async function processRefundEvent(event: Stripe.Event): Promise<void> {
 async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<void> {
   const db = getSupabaseClient().db;
   const paymentIntent = event.data.object as Stripe.PaymentIntent;
+  const metadata = paymentIntent.metadata ?? {};
+  const userId = isUuid(metadata.user_id) ? metadata.user_id : null;
+  const productId = isUuid(metadata.product_id) ? metadata.product_id : null;
 
   const insertedTx = await db.insertTransaction({
-    user_id: isUuid(paymentIntent.metadata?.user_id) ? paymentIntent.metadata.user_id : null,
-    subscription_id: isUuid(paymentIntent.metadata?.subscription_id)
-      ? paymentIntent.metadata.subscription_id
+    user_id: userId,
+    subscription_id: isUuid(metadata.subscription_id)
+      ? metadata.subscription_id
       : null,
     stripe_event_id: event.id,
     event_type: event.type,
@@ -238,10 +286,55 @@ async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<
     throw insertedTx.error;
   }
 
-  if (isUuid(paymentIntent.metadata?.user_id)) {
-    await tryAudit('payment_succeeded', paymentIntent.metadata.user_id, 'transaction', insertedTx.data?.id ?? null, {
+  if (userId) {
+    await tryAudit('payment_succeeded', userId, 'transaction', insertedTx.data?.id ?? null, {
       stripe_payment_intent_id: paymentIntent.id,
       amount_cents: paymentIntent.amount_received || paymentIntent.amount,
+    });
+  }
+
+  if (userId && productId) {
+    const productResult = await db.getProductById(productId);
+    if (productResult.error) {
+      throw productResult.error;
+    }
+
+    const product = productResult.data;
+    if (!product || product.product_type !== 'digital') {
+      return;
+    }
+
+    const entitlement = await db.insertEntitlement({
+      user_id: userId,
+      product_id: productId,
+      source: 'purchase',
+      expires_at: resolvePurchaseEntitlementExpiry(product.access_type, metadata),
+    });
+    if (entitlement.error) {
+      throw entitlement.error;
+    }
+
+    if (product.file_id) {
+      await enqueueJob(
+        'send_email',
+        {
+          template_name: 'digital_product_download',
+          data: {
+            product_id: productId,
+            file_id: product.file_id,
+          },
+        },
+        {
+          aggregate_id: productId,
+          aggregate_type: 'product',
+        }
+      );
+    }
+
+    await tryAudit('entitlement_granted', userId, 'entitlement', entitlement.data?.id ?? null, {
+      product_id: productId,
+      source: 'purchase',
+      event_type: event.type,
     });
   }
 }

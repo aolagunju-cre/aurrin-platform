@@ -6,7 +6,7 @@
  */
 
 import { uploadFile, UploadError, ALLOWED_MIME_TYPES, FILE_SIZE_LIMITS, DEFAULT_SIGNED_URL_EXPIRY } from '../src/lib/storage/upload';
-import { getSignedUrl, SignedUrlError } from '../src/lib/storage/signedUrl';
+import { getSignedUrl, getSignedUrlForEntitlement, SignedUrlError } from '../src/lib/storage/signedUrl';
 import { deleteFile, DeleteError } from '../src/lib/storage/delete';
 import { runRetentionPolicy, scanFile } from '../src/lib/storage/retention';
 import { setSupabaseClient, resetSupabaseClient, SupabaseClient, FileRecord } from '../src/lib/db/client';
@@ -284,6 +284,16 @@ describe('getSignedUrl()', () => {
       expect.any(String),
       600
     );
+  });
+});
+
+describe('getSignedUrlForEntitlement()', () => {
+  afterEach(() => resetSupabaseClient());
+
+  it('returns a signed URL without owner checks for entitlement downloads', async () => {
+    setSupabaseClient(makeSupabaseClient({ getResult: { data: makeFileRecord({ owner_id: 'another-user' }), error: null } }));
+    const url = await getSignedUrlForEntitlement(FILE_ID);
+    expect(url).toContain('https://');
   });
 });
 

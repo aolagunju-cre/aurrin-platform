@@ -73,6 +73,37 @@ export async function getSignedUrl(
   return signedUrl;
 }
 
+export async function getSignedUrlForEntitlement(fileId: string, expiresIn?: number): Promise<string> {
+  const client = getSupabaseClient();
+
+  const { data: file, error: fetchError } = await client.db.getFile(fileId);
+  if (fetchError || !file) {
+    throw new SignedUrlError(`File '${fileId}' not found`, 'NOT_FOUND');
+  }
+
+  const bucket = extractBucket(file.storage_path);
+  const relativePath = file.storage_path.slice(bucket.length + 1);
+  const resolvedExpiry = expiresIn
+    ?? file.signed_url_expiry
+    ?? DEFAULT_SIGNED_URL_EXPIRY[bucket as SupportedBucket]
+    ?? 3600;
+
+  const { signedUrl, error: urlError } = await client.storage.createSignedUrl(
+    bucket,
+    relativePath,
+    resolvedExpiry
+  );
+
+  if (urlError || !signedUrl) {
+    throw new SignedUrlError(
+      `Failed to generate signed URL: ${urlError?.message}`,
+      'STORAGE_ERROR'
+    );
+  }
+
+  return signedUrl;
+}
+
 function extractBucket(storagePath: string): string {
   const slashIndex = storagePath.indexOf('/');
   if (slashIndex === -1) return storagePath;

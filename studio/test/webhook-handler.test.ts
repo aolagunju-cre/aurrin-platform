@@ -31,6 +31,7 @@ describe('handleStripeWebhookEvent', () => {
   const db = {
     getTransactionByStripeEventId: jest.fn(),
     getSubscriptionByStripeId: jest.fn(),
+    getProductById: jest.fn(),
     getUserById: jest.fn(),
     upsertSubscription: jest.fn(),
     insertTransaction: jest.fn(),
@@ -56,6 +57,10 @@ describe('handleStripeWebhookEvent', () => {
         id: userId,
         email: 'subscriber@example.com',
       },
+      error: null,
+    });
+    db.getProductById.mockResolvedValue({
+      data: null,
       error: null,
     });
     db.upsertSubscription.mockResolvedValue({
@@ -314,6 +319,61 @@ describe('handleStripeWebhookEvent', () => {
         amount_cents: 1200,
         currency: 'USD',
         status: 'succeeded',
+      })
+    );
+  });
+
+  it('creates digital purchase entitlement and download email job for payment intents', async () => {
+    db.getProductById.mockResolvedValueOnce({
+      data: {
+        id: productId,
+        product_type: 'digital',
+        access_type: 'time-limited',
+        file_id: '55555555-5555-4555-8555-555555555555',
+      },
+      error: null,
+    });
+
+    const event = {
+      id: 'evt_pi_digital',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_456',
+          amount: 4900,
+          amount_received: 4900,
+          currency: 'usd',
+          metadata: {
+            user_id: userId,
+            product_id: productId,
+            entitlement_duration_days: '30',
+          },
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    const result = await handleStripeWebhookEvent(event);
+
+    expect(result).toEqual({ duplicate: false, deadLettered: false });
+    expect(db.insertEntitlement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: userId,
+        product_id: productId,
+        source: 'purchase',
+        expires_at: expect.any(String),
+      })
+    );
+    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+      'send_email',
+      expect.objectContaining({
+        template_name: 'digital_product_download',
+        data: expect.objectContaining({
+          product_id: productId,
+        }),
+      }),
+      expect.objectContaining({
+        aggregate_id: productId,
+        aggregate_type: 'product',
       })
     );
   });
