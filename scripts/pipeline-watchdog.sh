@@ -363,9 +363,10 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
       continue
     fi
 
-    PRIMARY_MERGE_TOKEN="${GH_TOKEN:-}"
+    PRIMARY_MERGE_TOKEN="${PIPELINE_APP_TOKEN:-}"
+    SECONDARY_MERGE_TOKEN="${GH_TOKEN:-}"
     FALLBACK_MERGE_TOKEN="${GH_AW_GITHUB_TOKEN:-}"
-    if [ -z "$PRIMARY_MERGE_TOKEN" ] && [ -z "$FALLBACK_MERGE_TOKEN" ]; then
+    if [ -z "$PRIMARY_MERGE_TOKEN" ] && [ -z "$SECONDARY_MERGE_TOKEN" ] && [ -z "$FALLBACK_MERGE_TOKEN" ]; then
       echo "::warning::PR #${PR_NUM}: no token available for MVP merge."
       continue
     fi
@@ -390,14 +391,17 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
 
     if [ "$(printf '%s' "$PR_DETAILS" | jq -r '.isDraft')" = "true" ]; then
       echo "PR #${PR_NUM}: marking draft ready before MVP merge."
-      if ! GH_TOKEN="${PRIMARY_MERGE_TOKEN:-${FALLBACK_MERGE_TOKEN:-}}" gh pr ready "$PR_NUM" --repo "$REPO" >/dev/null; then
+      READY_TOKEN="${PRIMARY_MERGE_TOKEN:-${SECONDARY_MERGE_TOKEN:-${FALLBACK_MERGE_TOKEN:-}}}"
+      if ! GH_TOKEN="$READY_TOKEN" gh pr ready "$PR_NUM" --repo "$REPO" >/dev/null; then
         echo "::warning::Could not mark PR #${PR_NUM} ready for review before merge"
         continue
       fi
     fi
 
     echo "PR #${PR_NUM}: merging in MVP mode."
-    if merge_with_token "$PRIMARY_MERGE_TOKEN" "primary" 2 || merge_with_token "$FALLBACK_MERGE_TOKEN" "fallback" 1; then
+    if merge_with_token "$PRIMARY_MERGE_TOKEN" "primary" 2 || \
+       merge_with_token "$SECONDARY_MERGE_TOKEN" "secondary" 1 || \
+       merge_with_token "$FALLBACK_MERGE_TOKEN" "fallback" 1; then
       ACTIONS_TAKEN=$((ACTIONS_TAKEN + 1))
       break
     fi

@@ -12,6 +12,10 @@ grep -F 'workflows: ["PR Review Submit", "Node CI"]' "$WORKFLOW" >/dev/null
 grep -F 'types: [completed]' "$WORKFLOW" >/dev/null
 grep -F "run: bash scripts/pipeline-watchdog.sh" "$WORKFLOW" >/dev/null
 grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/null
+grep -F 'name: Create pipeline app token' "$WORKFLOW" >/dev/null
+grep -F 'app-id: ${{ vars.PIPELINE_APP_ID }}' "$WORKFLOW" >/dev/null
+grep -F 'private-key: ${{ secrets.PIPELINE_APP_PRIVATE_KEY }}' "$WORKFLOW" >/dev/null
+grep -F 'PIPELINE_APP_TOKEN: ${{ steps.pipeline_app_token.outputs.token }}' "$WORKFLOW" >/dev/null
 grep -F "MVP_MERGE_THRESHOLD_SECONDS:" "$WORKFLOW" >/dev/null
 grep -F "MVP_FAST_MERGE_TARGET_PR:" "$WORKFLOW" >/dev/null
 grep -F "workflow_active_runs()" "$SCRIPT" >/dev/null
@@ -31,6 +35,10 @@ grep -F 'MVP_MERGE_THRESHOLD_SECONDS="${MVP_MERGE_THRESHOLD_SECONDS:-1200}"' "$S
 grep -F 'MVP_FAST_MERGE_TARGET_PR="${MVP_FAST_MERGE_TARGET_PR:-}"' "$SCRIPT" >/dev/null
 grep -F 'skipping because fast-track merge is targeting PR #' "$SCRIPT" >/dev/null
 grep -F 'bash "$SCRIPT_DIR/classify-pipeline-pr.sh"' "$SCRIPT" >/dev/null
+grep -F 'PRIMARY_MERGE_TOKEN="${PIPELINE_APP_TOKEN:-}"' "$SCRIPT" >/dev/null
+grep -F 'SECONDARY_MERGE_TOKEN="${GH_TOKEN:-}"' "$SCRIPT" >/dev/null
+grep -F 'READY_TOKEN="${PRIMARY_MERGE_TOKEN:-${SECONDARY_MERGE_TOKEN:-${FALLBACK_MERGE_TOKEN:-}}}"' "$SCRIPT" >/dev/null
+grep -F 'merge_with_token "$SECONDARY_MERGE_TOKEN" "secondary" 1' "$SCRIPT" >/dev/null
 grep -F 'gh pr merge "$PR_NUM" --repo "$REPO" --squash --admin --delete-branch' "$SCRIPT" >/dev/null
 grep -F 'gh workflow run "auto-dispatch-requeue.yml" --repo "$REPO"' "$SCRIPT" >/dev/null
 grep -F 'Open pipeline PRs exist (${OPEN_PIPELINE_PR_COUNT}). Skipping orphaned-issue dispatch to preserve one-PR-at-a-time flow.' "$SCRIPT" >/dev/null
