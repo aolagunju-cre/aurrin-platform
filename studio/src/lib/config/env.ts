@@ -45,6 +45,23 @@ function readBooleanEnv(key: string, defaultValue = false): boolean {
   return /^(1|true|yes|on)$/iu.test(value);
 }
 
+function readOptionalBooleanEnv(key: string): boolean | null {
+  const value = process.env[key]?.trim();
+  if (!value) {
+    return null;
+  }
+
+  if (/^(1|true|yes|on)$/iu.test(value)) {
+    return true;
+  }
+
+  if (/^(0|false|no|off)$/iu.test(value)) {
+    return false;
+  }
+
+  return null;
+}
+
 function readEnv(canonicalKey: string, options: EnvLookupOptions = {}): string | null {
   const directValue = process.env[canonicalKey]?.trim();
   if (directValue) {
@@ -67,12 +84,16 @@ function readEnv(canonicalKey: string, options: EnvLookupOptions = {}): string |
 }
 
 function buildRuntimeEnv(): RuntimeEnv {
-  const demoModeRequested = readBooleanEnv('DEMO_MODE');
+  const supabaseUrl = readEnv('NEXT_PUBLIC_SUPABASE_URL', { legacyKeys: ['SUPABASE_URL'] });
+  const supabaseAnonKey = readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', { legacyKeys: ['SUPABASE_ANON_KEY'] });
+  const supabaseServiceRoleKey = readEnv('SUPABASE_SERVICE_ROLE_KEY', { legacyKeys: ['SUPABASE_SERVICE_KEY'] });
+  const demoModePreference = readOptionalBooleanEnv('DEMO_MODE');
   const forceDemo = readBooleanEnv('FORCE_DEMO_MODE');
-  const demoMode = forceDemo || (demoModeRequested && process.env.NODE_ENV !== 'production');
+  const hasSupabaseConfig = Boolean(supabaseUrl && (supabaseServiceRoleKey || supabaseAnonKey));
+  const demoMode = forceDemo || demoModePreference === true || (demoModePreference !== false && process.env.NODE_ENV === 'production' && !hasSupabaseConfig);
 
-  if (demoModeRequested && !forceDemo && process.env.NODE_ENV === 'production') {
-    warnOnce('[env] DEMO_MODE is ignored in production environments. Use FORCE_DEMO_MODE=true to override.');
+  if (demoModePreference === null && demoMode && process.env.NODE_ENV === 'production' && !hasSupabaseConfig) {
+    warnOnce('[env] Demo mode enabled automatically because Supabase environment variables are not configured.');
   }
 
   const supabaseJwtSecret = readEnv('SUPABASE_JWT_SECRET', { defaultValue: 'your-secret-key' }) ?? 'your-secret-key';
@@ -81,9 +102,9 @@ function buildRuntimeEnv(): RuntimeEnv {
   }
 
   return {
-    supabaseUrl: readEnv('NEXT_PUBLIC_SUPABASE_URL', { legacyKeys: ['SUPABASE_URL'] }),
-    supabaseAnonKey: readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', { legacyKeys: ['SUPABASE_ANON_KEY'] }),
-    supabaseServiceRoleKey: readEnv('SUPABASE_SERVICE_ROLE_KEY', { legacyKeys: ['SUPABASE_SERVICE_KEY'] }),
+    supabaseUrl,
+    supabaseAnonKey,
+    supabaseServiceRoleKey,
     supabaseJwtSecret,
     stripeSecretKey: readEnv('STRIPE_SECRET_KEY'),
     stripePublishableKey: readEnv('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', { legacyKeys: ['STRIPE_PUBLISHABLE_KEY'] }),

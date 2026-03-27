@@ -1,36 +1,9 @@
 import Link from 'next/link';
 import { DirectoryShareButton } from '../../../../components/public/DirectoryShareButton';
+import { getPublicDirectoryProfile } from '../../../../lib/directory/profile';
 
 interface PublicDirectoryProfilePageProps {
   params: Promise<{ founderSlug: string }>;
-}
-
-interface DirectoryProfilePayload {
-  success: boolean;
-  message?: string;
-  data?: {
-    founder_slug: string;
-    name: string | null;
-    company: string | null;
-    industry: string | null;
-    stage: string | null;
-    summary: string | null;
-    photo: string | null;
-    score: number | null;
-    social_links: {
-      website: string | null;
-      linkedin: string | null;
-      twitter: string | null;
-    };
-    badges: string[];
-    deck_link: string | null;
-    event: {
-      id: string;
-      name: string;
-      starts_at: string;
-      ends_at: string;
-    };
-  };
 }
 
 function toDisplayDate(value: string): string {
@@ -54,23 +27,6 @@ function getBaseUrl(): string {
   return 'http://localhost:3000';
 }
 
-async function loadProfile(founderSlug: string): Promise<DirectoryProfilePayload | null> {
-  const endpoint = `${getBaseUrl()}/api/public/directory/${encodeURIComponent(founderSlug)}`;
-
-  try {
-    const response = await fetch(endpoint, { cache: 'no-store' });
-    const payload = (await response.json()) as DirectoryProfilePayload;
-
-    if (!response.ok || !payload.success) {
-      return null;
-    }
-
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
 function toSocialLinkLabel(url: string): string {
   try {
     const { hostname } = new URL(url);
@@ -82,8 +38,7 @@ function toSocialLinkLabel(url: string): string {
 
 export default async function PublicDirectoryProfilePage({ params }: PublicDirectoryProfilePageProps) {
   const { founderSlug } = await params;
-  const profilePayload = await loadProfile(founderSlug);
-  const profile = profilePayload?.data;
+  const { data: profile } = await getPublicDirectoryProfile(founderSlug);
 
   if (!profile) {
     return (

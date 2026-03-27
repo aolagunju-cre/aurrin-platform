@@ -1,6 +1,6 @@
 /**
  * Demo/mock data for UI development without a database connection.
- * Activated by setting DEMO_MODE=true in environment.
+ * Activated when demo mode is enabled via environment configuration.
  */
 
 import { isDemoModeEnabled } from '../config/env';

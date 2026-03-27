@@ -3,42 +3,48 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PublicDirectoryProfilePage from '../src/app/public/directory/[founderSlug]/page';
 import { DirectoryShareButton } from '../src/components/public/DirectoryShareButton';
+import { getPublicDirectoryProfile } from '../src/lib/directory/profile';
+
+jest.mock('../src/lib/directory/profile', () => ({
+  getPublicDirectoryProfile: jest.fn(),
+}));
+
+const mockedGetPublicDirectoryProfile = getPublicDirectoryProfile as jest.MockedFunction<typeof getPublicDirectoryProfile>;
 
 describe('public directory profile page', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
+    mockedGetPublicDirectoryProfile.mockReset();
   });
 
   it('renders public profile fields and exact CTA text without private score internals', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (global as any).fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        data: {
-          founder_slug: 'orbit-labs',
-          name: 'Sam Founder',
-          company: 'Orbit Labs',
-          industry: 'climate',
-          stage: 'seed',
-          summary: 'Long-form founder summary for public profile.',
-          photo: null,
-          score: 91,
-          social_links: {
-            website: 'https://orbit.example',
-            linkedin: 'https://linkedin.com/company/orbit',
-            twitter: 'https://twitter.com/orbit',
-          },
-          badges: ['Top Score', 'Audience Favorite'],
-          deck_link: 'https://example.com/deck.pdf',
-          event: {
-            id: 'event-1',
-            name: 'Spring Demo Day',
-            starts_at: '2026-03-01T00:00:00.000Z',
-            ends_at: '2026-03-02T00:00:00.000Z',
-          },
+    (global as any).fetch = jest.fn();
+    mockedGetPublicDirectoryProfile.mockResolvedValueOnce({
+      data: {
+        founder_slug: 'orbit-labs',
+        name: 'Sam Founder',
+        company: 'Orbit Labs',
+        industry: 'climate',
+        stage: 'seed',
+        summary: 'Long-form founder summary for public profile.',
+        photo: null,
+        score: 91,
+        social_links: {
+          website: 'https://orbit.example',
+          linkedin: 'https://linkedin.com/company/orbit',
+          twitter: 'https://twitter.com/orbit',
         },
-      }),
+        badges: ['Top Score', 'Audience Favorite'],
+        deck_link: 'https://example.com/deck.pdf',
+        event: {
+          id: 'event-1',
+          name: 'Spring Demo Day',
+          starts_at: '2026-03-01T00:00:00.000Z',
+          ends_at: '2026-03-02T00:00:00.000Z',
+        },
+      },
+      error: null,
     });
 
     const page = await PublicDirectoryProfilePage({ params: Promise.resolve({ founderSlug: 'orbit-labs' }) });
@@ -59,9 +65,7 @@ describe('public directory profile page', () => {
     expect(screen.getByText('Interested? Contact {Aurrin}')).toBeInTheDocument();
     expect(screen.queryByText(/score_breakdown/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/validation/i)).not.toBeInTheDocument();
-
-    const callUrl = ((global as any).fetch as jest.Mock).mock.calls[0][0] as string;
-    expect(callUrl).toContain('/api/public/directory/orbit-labs');
+    expect((global as any).fetch).not.toHaveBeenCalled();
   });
 
   it('copies profile URL when Share is clicked', async () => {

@@ -79,7 +79,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <p className="mt-2 text-sm text-default-500">
           {demoMode
             ? 'Choose a seeded persona to exercise the protected journeys without external services.'
-            : 'Demo mode is disabled. Set DEMO_MODE=true outside production to enable seeded personas.'}
+            : 'Demo mode is disabled. Set DEMO_MODE=true to enable seeded personas.'}
         </p>
 
         <div className="mt-6 grid gap-3">
