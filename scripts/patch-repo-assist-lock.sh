@@ -11,11 +11,22 @@ content = File.read(path)
 original = content.dup
 
 step_name = "      - name: Fail targeted issue runs without actionable output\n"
+checkout_step_name = "      - name: Checkout repository for dependency-block handler\n"
 dependency_step_name = "      - name: Handle dependency-blocked targeted issues\n"
 insert_before = "      - name: Invalidate GitHub App token\n"
 fallback_insert_after = "      - name: Update reaction comment with completion status\n"
 dedupe_step_name = "      - name: Deduplicate repeated create_pull_request outputs\n"
 detection_skip_message = "Detection skipped: PIPELINE_MVP_MODE=true"
+
+checkout_step = <<'STEP'.chomp
+      - name: Checkout repository for dependency-block handler
+        if: always() && needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != '' && steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT != ''
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GITHUB_TOKEN }}
+STEP
 
 dependency_step = <<'STEP'.chomp
       - name: Handle dependency-blocked targeted issues
@@ -171,7 +182,33 @@ legacy_dependency_step_pattern = /
 (?=^      -\ name:\ Fail\ targeted\ issue\ runs\ without\ actionable\ output\n)
 /mx
 
+legacy_checkout_step_pattern = /
+^      -\ name:\ Checkout\ repository\ for\ dependency-block\ handler\n
+.*?
+(?=^      -\ name:\ Handle\ dependency-blocked\ targeted\ issues\n)
+/mx
+
+content.sub!(legacy_checkout_step_pattern, "#{checkout_step}\n")
 content.sub!(legacy_dependency_step_pattern, "#{dependency_step}\n")
+
+unless content.include?(checkout_step_name)
+  if content.include?(dependency_step_name)
+    content.sub!(dependency_step_name, "#{checkout_step}\n#{dependency_step_name}")
+  elsif content.include?(step_name)
+    content.sub!(step_name, "#{checkout_step}\n#{step_name}")
+  elsif content.include?(insert_before)
+    content.sub!(insert_before, "#{checkout_step}\n#{insert_before}")
+  elsif content.include?(fallback_insert_after)
+    anchor = <<'ANCHOR'
+      - name: Update reaction comment with completion status
+        id: conclusion
+ANCHOR
+    raise "Could not find insertion point for dependency-block checkout in #{path}" unless content.include?(anchor)
+    content.sub!(anchor, "#{anchor}\n#{checkout_step}")
+  else
+    raise "Could not find insertion point for dependency-block checkout in #{path}"
+  end
+end
 
 unless content.include?(dependency_step_name)
   if content.include?(step_name)
@@ -190,6 +227,9 @@ ANCHOR
   end
 end
 
+raise "Patched dependency-block checkout missing in #{path}" unless content.include?(checkout_step_name)
+raise "Duplicate dependency-block checkout steps detected in #{path}" unless content.scan(checkout_step_name).length == 1
+raise "Dependency-block checkout must use actions/checkout in #{path}" unless content.include?("uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2")
 raise "Patched dependency-block handler missing in #{path}" unless content.include?(dependency_step_name)
 raise "Duplicate dependency-block handlers detected in #{path}" unless content.scan(dependency_step_name).length == 1
 raise "Dependency-block handler must invoke handle-dependency-blocked-issue.sh in #{path}" unless content.include?("bash scripts/handle-dependency-blocked-issue.sh")

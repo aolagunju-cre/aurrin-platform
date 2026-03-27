@@ -72,7 +72,9 @@ SECOND_HASH=$(hash_file "$WORKFLOW")
 [ "$FIRST_HASH" = "$SECOND_HASH" ]
 
 grep -F "      - name: Fail targeted issue runs without actionable output" "$WORKFLOW" >/dev/null
+grep -F "      - name: Checkout repository for dependency-block handler" "$WORKFLOW" >/dev/null
 grep -F "      - name: Handle dependency-blocked targeted issues" "$WORKFLOW" >/dev/null
+grep -F "uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2" "$WORKFLOW" >/dev/null
 grep -F "bash scripts/handle-dependency-blocked-issue.sh" "$WORKFLOW" >/dev/null
 grep -F "needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != ''" "$WORKFLOW" >/dev/null
 grep -F 'if (!/^\d+$/.test(issue || "")) {' "$WORKFLOW" >/dev/null
@@ -85,6 +87,7 @@ grep -F 'PIPELINE_MVP_MODE: ${{ vars.PIPELINE_MVP_MODE }}' "$WORKFLOW" >/dev/nul
 grep -F 'Detection skipped: PIPELINE_MVP_MODE=true' "$WORKFLOW" >/dev/null
 
 [ "$(grep -c "^      - name: Fail targeted issue runs without actionable output$" "$WORKFLOW")" -eq 1 ]
+[ "$(grep -c "^      - name: Checkout repository for dependency-block handler$" "$WORKFLOW")" -eq 1 ]
 [ "$(grep -c "^      - name: Handle dependency-blocked targeted issues$" "$WORKFLOW")" -eq 1 ]
 [ "$(grep -c "^      - name: Deduplicate repeated create_pull_request outputs$" "$WORKFLOW")" -eq 1 ]
 
@@ -119,10 +122,12 @@ import sys
 with open(sys.argv[1], "r", encoding="utf-8") as fh:
     names = [line.strip() for line in fh if line.strip()]
 
+checkout = names.index("Checkout repository for dependency-block handler")
 dependency_block = names.index("Handle dependency-blocked targeted issues")
 guard = names.index("Fail targeted issue runs without actionable output")
 dedupe = names.index("Deduplicate repeated create_pull_request outputs")
 process = names.index("Process Safe Outputs")
+assert checkout < dependency_block, names
 assert dependency_block < guard, names
 assert dedupe < process, names
 PY

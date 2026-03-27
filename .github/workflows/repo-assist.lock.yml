@@ -1287,6 +1287,13 @@ jobs:
             setupGlobals(core, github, context, exec, io);
             const { main } = require('${{ runner.temp }}/gh-aw/actions/notify_comment_error.cjs');
             await main();
+      - name: Checkout repository for dependency-block handler
+        if: always() && needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != '' && steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT != ''
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          token: ${{ steps.safe-outputs-app-token.outputs.token || secrets.GITHUB_TOKEN }}
       - name: Handle dependency-blocked targeted issues
         if: always() && needs.agent.result == 'success' && needs.safe_outputs.result == 'success' && github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != '' && steps.setup-agent-output-env.outputs.GH_AW_AGENT_OUTPUT != ''
         env:
