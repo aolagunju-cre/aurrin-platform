@@ -11,6 +11,7 @@ export type JobType =
   | 'send_email'
   | 'email'
   | 'pdf_generate'
+  | 'generate_pdf_report'
   | 'social_asset'
   | 'export'
   | 'mentor_match'

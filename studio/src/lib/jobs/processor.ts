@@ -17,7 +17,8 @@ async function dispatchJob(job: OutboxJob): Promise<JobResult> {
     case 'email':
       return handleEmailJob(job.payload, { jobId: job.id });
     case 'pdf_generate':
-      return handlePdfJob(job.payload);
+    case 'generate_pdf_report':
+      return handlePdfJob(job.payload, { jobId: job.id });
     case 'social_asset':
       return handleAssetJob(job.payload);
     case 'mentor_match':

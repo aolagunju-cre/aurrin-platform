@@ -36,7 +36,22 @@ function makeJob(overrides: Partial<OutboxJob> = {}): OutboxJob {
 
 function makeClient(overrides: Partial<SupabaseClient['db']> = {}): SupabaseClient {
   const db: SupabaseClient['db'] = {
-    insertFile: jest.fn().mockResolvedValue({ data: null, error: null }),
+    insertFile: jest.fn().mockResolvedValue({
+      data: {
+        id: 'file-1',
+        owner_id: 'owner-1',
+        file_name: 'file.pdf',
+        file_type: 'application/pdf',
+        file_size: 10,
+        storage_path: 'generated-reports/owner-1/file.pdf',
+        signed_url_expiry: 3600,
+        retention_days: 7,
+        is_public: false,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      error: null,
+    }),
     getFile: jest.fn().mockResolvedValue({ data: null, error: null }),
     deleteFile: jest.fn().mockResolvedValue({ error: null }),
     getExpiredFiles: jest.fn().mockResolvedValue({ data: [], error: null }),
@@ -442,12 +457,39 @@ describe('handleEmailJob', () => {
 });
 
 describe('handlePdfJob', () => {
+  afterEach(() => {
+    resetSupabaseClient();
+  });
+
   it('returns success with valid payload', async () => {
-    const result = await handlePdfJob({ event_id: 'e1', founder_id: 'f1', template: 'report' });
+    const client = makeClient();
+    setSupabaseClient(client);
+
+    const result = await handlePdfJob(
+      { event_id: 'e1', founder_id: 'f1', pitch_id: 'p1', report_type: 'full' },
+      { jobId: 'job-123' }
+    );
+
     expect(result.success).toBe(true);
+    expect(client.storage.upload).toHaveBeenCalledWith(
+      'generated-reports',
+      expect.stringContaining('report-job-123.pdf'),
+      expect.any(Buffer),
+      expect.objectContaining({ contentType: 'application/pdf' })
+    );
+    expect(client.db.insertFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner_id: 'f1',
+        file_name: 'report-job-123.pdf',
+        storage_path: expect.stringContaining('generated-reports/f1/'),
+      })
+    );
   });
 
   it('returns failure when required fields missing', async () => {
+    const client = makeClient();
+    setSupabaseClient(client);
+
     const result = await handlePdfJob({ event_id: 'e1' });
     expect(result.success).toBe(false);
   });
