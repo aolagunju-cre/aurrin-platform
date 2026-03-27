@@ -22,6 +22,10 @@ const mentorMatchingContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/014_mentor_matching_contract.sql'),
   'utf8'
 );
+const publicDirectoryContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/015_public_directory_profile_contract.sql'),
+  'utf8'
+);
 
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
@@ -148,6 +152,26 @@ describe('Database Schema Validation', () => {
     test('founder_pitches has unique constraint on (founder_id, event_id)', () => {
       // Verified in migration: UNIQUE(founder_id, event_id)
       expect(true).toBe(true);
+    });
+
+    test('founder directory contract adds visibility + slug columns', () => {
+      expect(publicDirectoryContractSql).toContain(
+        'ADD COLUMN IF NOT EXISTS visible_in_directory BOOLEAN NOT NULL DEFAULT FALSE'
+      );
+      expect(publicDirectoryContractSql).toContain('ADD COLUMN IF NOT EXISTS public_profile_slug TEXT');
+    });
+
+    test('founder directory contract enforces slug normalization and uniqueness suffixing', () => {
+      expect(publicDirectoryContractSql).toContain('CREATE OR REPLACE FUNCTION normalize_public_profile_slug');
+      expect(publicDirectoryContractSql).toContain("REGEXP_REPLACE(COALESCE(source_text, ''), '[^a-z0-9]+', '-', 'g')");
+      expect(publicDirectoryContractSql).toContain("base_slug || '-' || suffix::TEXT");
+      expect(publicDirectoryContractSql).toContain(
+        'CREATE UNIQUE INDEX IF NOT EXISTS founder_pitches_public_profile_slug_unique_idx'
+      );
+    });
+
+    test('founder directory visibility defaults to hidden', () => {
+      expect(publicDirectoryContractSql).toContain('visible_in_directory BOOLEAN NOT NULL DEFAULT FALSE');
     });
 
     test('judge_scores has unique constraint on (judge_id, founder_pitch_id)', () => {
@@ -280,6 +304,13 @@ describe('Database Schema Validation', () => {
       expect(true).toBe(true);
     });
 
+    test('public founder pitch policy requires explicit directory visibility', () => {
+      expect(publicDirectoryContractSql).toContain('DROP POLICY IF EXISTS founder_pitches_published ON founder_pitches');
+      expect(publicDirectoryContractSql).toContain('CREATE POLICY founder_pitches_published ON founder_pitches FOR SELECT');
+      expect(publicDirectoryContractSql).toContain('visible_in_directory = TRUE');
+      expect(publicDirectoryContractSql).toContain("e.status = 'archived'::event_status");
+    });
+
     test('audience policies allow public participation', () => {
       expect(audienceValidationContractSql).toContain('CREATE POLICY audience_sessions_insert_public ON audience_sessions');
       expect(audienceValidationContractSql).toContain('CREATE POLICY audience_sessions_select_own_session ON audience_sessions');
@@ -399,6 +430,12 @@ describe('Database Schema Validation', () => {
     test('012 event lifecycle/sponsor contract migration exists', () => {
       expect(eventLifecycleContractSql).toContain('ALTER TABLE events');
       expect(eventLifecycleContractSql).toContain('ALTER TABLE sponsors');
+    });
+
+    test('015 public directory profile contract migration exists', () => {
+      expect(publicDirectoryContractSql).toContain('ALTER TABLE founder_pitches');
+      expect(publicDirectoryContractSql).toContain('CREATE OR REPLACE FUNCTION next_founder_profile_slug');
+      expect(publicDirectoryContractSql).toContain('CREATE TRIGGER founder_pitches_assign_public_slug');
     });
   });
 
