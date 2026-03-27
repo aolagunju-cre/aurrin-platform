@@ -16,6 +16,7 @@ describe('email template registry', () => {
       'password_reset',
       'report_ready',
       'scores_published',
+      'social_asset_ready',
       'subscription_activated',
       'subscription_cancelled',
       'welcome_founder',
@@ -90,5 +91,19 @@ describe('email template registry', () => {
     expect(rendered.subject).toContain('Mentor Mentor Max, meet Founder Founder One');
     expect(rendered.text).toContain('Mentor contact: mentor@example.com');
     expect(rendered.text).toContain('Founder contact: founder@example.com');
+  });
+
+  it('renders social asset ready template with asset metadata', () => {
+    const rendered = renderEmailTemplate('social_asset_ready', {
+      name: 'Sam Founder',
+      asset_type: 'profile',
+      format: 'og',
+      event_name: 'Spring Demo Day',
+      link: 'https://signed.example/social.png',
+    });
+
+    expect(rendered.subject).toContain('profile (OG) share card is ready');
+    expect(rendered.text).toContain('Spring Demo Day');
+    expect(rendered.text).toContain('https://signed.example/social.png');
   });
 });

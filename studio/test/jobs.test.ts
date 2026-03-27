@@ -36,6 +36,7 @@ function makeJob(overrides: Partial<OutboxJob> = {}): OutboxJob {
 
 function makeClient(overrides: Partial<SupabaseClient['db']> = {}): SupabaseClient {
   const db: SupabaseClient['db'] = {
+    queryTable: jest.fn().mockResolvedValue({ data: [], error: null }),
     insertFile: jest.fn().mockResolvedValue({
       data: {
         id: 'file-1',
@@ -60,13 +61,14 @@ function makeClient(overrides: Partial<SupabaseClient['db']> = {}): SupabaseClie
     insertOutboxJob: jest.fn().mockResolvedValue({ data: makeJob(), error: null }),
     fetchPendingJobs: jest.fn().mockResolvedValue({ data: [], error: null }),
     updateJobState: jest.fn().mockResolvedValue({ error: null }),
+    getUserById: jest.fn().mockResolvedValue({ data: { id: 'u-1', email: 'founder@example.com', name: 'Founder One' }, error: null }),
     ...overrides,
   };
   return {
     storage: {
       upload: jest.fn().mockResolvedValue({ path: '', error: null }),
       remove: jest.fn().mockResolvedValue({ error: null }),
-      createSignedUrl: jest.fn().mockResolvedValue({ signedUrl: '', error: null }),
+      createSignedUrl: jest.fn().mockResolvedValue({ signedUrl: 'https://signed.example/social.png', error: null }),
     },
     db,
   };
@@ -341,6 +343,44 @@ describe('processPendingJobs', () => {
     );
   });
 
+  it('dispatches generate_social_asset jobs and marks them completed', async () => {
+    const job = makeJob({
+      id: 'asset-job-1',
+      job_type: 'generate_social_asset',
+      payload: {
+        asset_type: 'profile',
+        founder_id: 'founder-1',
+        event_id: 'event-1',
+        format: 'twitter',
+        founder_email: 'founder@example.com',
+        founder_name: 'Founder One',
+        company_name: 'Orbit Labs',
+        score: '91.2',
+        date: '2026-03-27',
+        event_name: 'Spring Demo Day',
+      },
+    });
+    const client = makeClient({
+      fetchPendingJobs: jest.fn().mockResolvedValue({ data: [job], error: null }),
+    });
+    setSupabaseClient(client);
+
+    const result = await processPendingJobs();
+
+    expect(result.succeeded).toBe(1);
+    expect(client.storage.upload).toHaveBeenCalledWith(
+      'social-assets',
+      'profile/founder-1/event-1/twitter.png',
+      expect.any(Buffer),
+      expect.objectContaining({ contentType: 'image/png' })
+    );
+    expect(client.db.updateJobState).toHaveBeenCalledWith(
+      'asset-job-1',
+      'completed',
+      expect.objectContaining({ completed_at: expect.any(String), error_message: null })
+    );
+  });
+
   it('persists error_message when provider send fails', async () => {
     mockResendSend.mockResolvedValueOnce({
       data: null,
@@ -496,27 +536,108 @@ describe('handlePdfJob', () => {
 });
 
 describe('handleAssetJob', () => {
+  afterEach(() => {
+    resetSupabaseClient();
+  });
+
   it('returns success with valid payload', async () => {
+    const queryTable = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [], error: null }) // files lookup
+      .mockResolvedValueOnce({ data: [], error: null }); // completed outbox lookup
+    const client = makeClient({ queryTable });
+    setSupabaseClient(client);
+
     const result = await handleAssetJob({
       founder_id: 'f1',
       event_id: 'e1',
       asset_type: 'profile',
       format: 'og',
+      founder_email: 'founder@example.com',
       founder_name: 'Sam Founder',
       company_name: 'Orbit Labs',
       score: '91.2',
       date: '2026-03-27',
       event_name: 'Spring Demo Day',
     });
+
     expect(result.success).toBe(true);
+    expect(result.cached).toBe(false);
+    expect(client.storage.upload).toHaveBeenCalledWith(
+      'social-assets',
+      'profile/f1/e1/og.png',
+      expect.any(Buffer),
+      expect.objectContaining({ contentType: 'image/png' })
+    );
+    expect(client.db.insertOutboxJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        job_type: 'send_email',
+        payload: expect.objectContaining({
+          to: 'founder@example.com',
+          template_name: 'social_asset_ready',
+        }),
+      })
+    );
   });
 
   it('returns failure when required fields missing', async () => {
+    setSupabaseClient(makeClient());
     const result = await handleAssetJob({ event_id: 'e1' });
     expect(result.success).toBe(false);
   });
 
+  it('reuses cached storage asset when payload hash is unchanged', async () => {
+    const payload = {
+      founder_id: 'f1',
+      event_id: 'e1',
+      asset_type: 'profile',
+      format: 'twitter',
+      founder_email: 'founder@example.com',
+      founder_name: 'Sam Founder',
+      company_name: 'Orbit Labs',
+      score: '91.2',
+      date: '2026-03-27',
+      event_name: 'Spring Demo Day',
+    };
+    const queryTable = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: [{
+          id: 'file-asset',
+          owner_id: 'f1',
+          file_name: 'twitter.png',
+          file_type: 'image/png',
+          file_size: 123,
+          storage_path: 'social-assets/profile/f1/e1/twitter.png',
+          signed_url_expiry: 3600,
+          retention_days: 90,
+          is_public: false,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 86400000).toISOString(),
+        }],
+        error: null,
+      }) // existing file
+      .mockResolvedValueOnce({
+        data: [{ payload }],
+        error: null,
+      }); // latest completed payload
+    const client = makeClient({ queryTable });
+    setSupabaseClient(client);
+
+    const result = await handleAssetJob(payload);
+
+    expect(result.success).toBe(true);
+    expect(result.cached).toBe(true);
+    expect(client.storage.upload).not.toHaveBeenCalled();
+    expect(client.storage.createSignedUrl).toHaveBeenCalledWith(
+      'social-assets',
+      'profile/f1/e1/twitter.png',
+      3600
+    );
+  });
+
   it('returns failure for unsupported format', async () => {
+    setSupabaseClient(makeClient());
     const result = await handleAssetJob({
       asset_type: 'profile',
       format: 'facebook',

@@ -12,6 +12,7 @@ export type JobType =
   | 'email'
   | 'pdf_generate'
   | 'generate_pdf_report'
+  | 'generate_social_asset'
   | 'social_asset'
   | 'export'
   | 'mentor_match'
@@ -51,6 +52,9 @@ export interface JobResult {
   success: boolean;
   error?: string;
   email_id?: string;
+  asset_url?: string;
+  storage_path?: string;
+  cached?: boolean;
 }
 
 /** Exponential backoff delays (seconds) per retry attempt (0-indexed). */

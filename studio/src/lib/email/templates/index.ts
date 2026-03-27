@@ -8,6 +8,7 @@ import { mentorMatchedIntroTemplate } from './mentor_matched_intro';
 import { mentorMatchedTemplate } from './mentor_matched';
 import { passwordResetTemplate } from './password_reset';
 import { reportReadyTemplate } from './report_ready';
+import { socialAssetReadyTemplate } from './social_asset_ready';
 import { scoresPublishedTemplate } from './scores_published';
 import { subscriptionActivatedTemplate } from './subscription_activated';
 import { subscriptionCancelledTemplate } from './subscription_cancelled';
@@ -29,6 +30,7 @@ export const emailTemplateRegistry = {
   password_reset: passwordResetTemplate,
   email_verification: emailVerificationTemplate,
   report_ready: reportReadyTemplate,
+  social_asset_ready: socialAssetReadyTemplate,
 } as const;
 
 export type EmailTemplateName = keyof typeof emailTemplateRegistry;
