@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { SIGN_UP_ROLE_OPTIONS, sanitizeNextPath } from '@/src/lib/auth/request-auth';
-import { isDemoModeEnabled } from '@/src/lib/config/env';
+import { getSupabaseConfigStatus, isDemoModeEnabled } from '@/src/lib/config/env';
 
 interface SignUpPageProps {
   searchParams: Promise<{
@@ -25,6 +25,9 @@ function messageForError(error: string | undefined): string | null {
   if (error === 'forbidden') {
     return 'Demo sign-up is not available right now.';
   }
+  if (error === 'supabase_not_configured') {
+    return 'Supabase auth is not configured for credential sign-up. Use demo mode or configure the missing environment variables.';
+  }
   return null;
 }
 
@@ -33,6 +36,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const nextPath = sanitizeNextPath(params.next);
   const demoMode = isDemoModeEnabled();
   const errorMessage = messageForError(params.error);
+  const supabaseConfigStatus = getSupabaseConfigStatus();
 
   return (
     <main className="mx-auto grid min-h-[calc(100vh-12rem)] max-w-5xl gap-8 px-6 py-12 md:grid-cols-[1.1fr_0.9fr]">
@@ -48,6 +52,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         {errorMessage ? (
           <div className="mt-6 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
             {errorMessage}
+          </div>
+        ) : null}
+
+        {!supabaseConfigStatus.configured ? (
+          <div className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning-700">
+            Missing Supabase auth config: {supabaseConfigStatus.missingKeys.join(', ')}
           </div>
         ) : null}
 

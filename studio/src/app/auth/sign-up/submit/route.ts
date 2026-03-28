@@ -8,7 +8,7 @@ import {
   setDemoSessionCookie,
   type SignUpRole,
 } from '@/src/lib/auth/request-auth';
-import { getRuntimeEnv, isDemoModeEnabled } from '@/src/lib/config/env';
+import { getRuntimeEnv, getSupabaseConfigStatus, isDemoModeEnabled } from '@/src/lib/config/env';
 import { getSupabaseClient } from '@/src/lib/db/client';
 import { auditLog } from '@/src/lib/audit/log';
 
@@ -124,6 +124,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch {
       return redirectWithError(request, nextPath, 'registration_failed');
     }
+  }
+
+  if (!getSupabaseConfigStatus().configured) {
+    return redirectWithError(request, nextPath, 'supabase_not_configured');
   }
 
   const signUpPayload = await signUpWithSupabase(email, password, name);

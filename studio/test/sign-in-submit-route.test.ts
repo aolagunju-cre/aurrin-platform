@@ -92,6 +92,8 @@ describe('auth sign-in submit route', () => {
     process.env.DEMO_MODE = 'false';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
     resetRuntimeEnvCacheForTests();
 
     (global.fetch as jest.Mock).mockResolvedValue({
@@ -130,6 +132,8 @@ describe('auth sign-in submit route', () => {
     process.env.DEMO_MODE = 'false';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
     resetRuntimeEnvCacheForTests();
 
     (global.fetch as jest.Mock).mockResolvedValue({
@@ -156,5 +160,33 @@ describe('auth sign-in submit route', () => {
 
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe('http://localhost/auth/sign-in?next=%2Fadmin&error=invalid_credentials');
+  });
+
+  it('redirects with explicit env-config error when Supabase auth keys are missing', async () => {
+    process.env.DEMO_MODE = 'false';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    resetRuntimeEnvCacheForTests();
+
+    const { POST } = await import('../src/app/auth/sign-in/submit/route');
+
+    const formData = new FormData();
+    formData.set('mode', 'credentials');
+    formData.set('email', 'owner@example.com');
+    formData.set('password', 'super-secret-password');
+    formData.set('next', '/admin');
+
+    const response = await POST(
+      new NextRequest(
+        new Request('http://localhost/auth/sign-in/submit', {
+          method: 'POST',
+          body: formData,
+        })
+      )
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/auth/sign-in?next=%2Fadmin&error=supabase_not_configured');
   });
 });

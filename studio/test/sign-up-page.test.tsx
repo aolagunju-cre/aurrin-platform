@@ -43,4 +43,21 @@ describe('auth sign-up page', () => {
     expect(screen.getByRole('option', { name: 'Subscriber' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument();
   });
+
+  it('shows Supabase configuration guidance when credential sign-up is selected but env is incomplete', async () => {
+    process.env.DEMO_MODE = 'false';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    resetRuntimeEnvCacheForTests();
+
+    const page = await SignUpPage({ searchParams: Promise.resolve({ error: 'supabase_not_configured' }) });
+    render(page as React.ReactElement);
+
+    expect(
+      screen.getByText('Supabase auth is not configured for credential sign-up. Use demo mode or configure the missing environment variables.')
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Missing Supabase auth config:/)).toBeInTheDocument();
+    expect(screen.getByText(/SUPABASE_SERVICE_ROLE_KEY/)).toBeInTheDocument();
+    expect(screen.getByText(/SUPABASE_JWT_SECRET/)).toBeInTheDocument();
+  });
 });

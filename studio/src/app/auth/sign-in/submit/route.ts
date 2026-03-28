@@ -6,7 +6,7 @@ import {
   setAccessTokenCookie,
   setDemoSessionCookie,
 } from '@/src/lib/auth/request-auth';
-import { getRuntimeEnv, isDemoModeEnabled } from '@/src/lib/config/env';
+import { getRuntimeEnv, getSupabaseConfigStatus, isDemoModeEnabled } from '@/src/lib/config/env';
 import { verifyJWT } from '@/src/lib/auth/jwt';
 
 const POST_REDIRECT_STATUS = 303;
@@ -70,6 +70,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const password = String(formData.get('password') ?? '').trim();
   if (!email || !password) {
     return redirectWithError(request, nextPath, 'invalid_credentials');
+  }
+
+  if (!getSupabaseConfigStatus().configured) {
+    return redirectWithError(request, nextPath, 'supabase_not_configured');
   }
 
   const accessToken = await signInWithSupabaseCredentials(email, password);

@@ -41,5 +41,48 @@ for required_file in 001_initial_schema.sql 002_rls_policies.sql; do
   fi
 done
 
+if ! grep -Eq 'CREATE TABLE[[:space:]]+users' "$MIGRATIONS_DIR/001_initial_schema.sql"; then
+  echo "ERROR: users table contract missing from 001_initial_schema.sql" >&2
+  exit 1
+fi
+
+if ! grep -Eq 'CREATE TABLE[[:space:]]+role_assignments' "$MIGRATIONS_DIR/001_initial_schema.sql"; then
+  echo "ERROR: role_assignments table contract missing from 001_initial_schema.sql" >&2
+  exit 1
+fi
+
+if ! grep -Eq 'CREATE TABLE[[:space:]]+events' "$MIGRATIONS_DIR/001_initial_schema.sql"; then
+  echo "ERROR: events table contract missing from 001_initial_schema.sql" >&2
+  exit 1
+fi
+
+if ! grep -Eq 'CREATE TABLE[[:space:]]+founder_applications' "$MIGRATIONS_DIR/001_initial_schema.sql"; then
+  echo "ERROR: founder_applications table contract missing from 001_initial_schema.sql" >&2
+  exit 1
+fi
+
+if ! grep -Eq 'CREATE TABLE[[:space:]]+sponsors' "$MIGRATIONS_DIR/001_initial_schema.sql"; then
+  echo "ERROR: sponsors table contract missing from 001_initial_schema.sql" >&2
+  exit 1
+fi
+
+declare -a migration_chain=()
+while IFS= read -r filename; do
+  migration_chain+=("$filename")
+done < <(
+  find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' ! -name 'rollback_*' -printf '%f\n' \
+    | LC_ALL=C sort
+)
+
+if [[ ${#migration_chain[@]} -eq 0 ]]; then
+  echo "ERROR: No migration files found in $MIGRATIONS_DIR" >&2
+  exit 1
+fi
+
+echo "Deterministic migration chain (lexicographic):"
+for migration_file in "${migration_chain[@]}"; do
+  echo "  - $migration_file"
+done
+
 echo "Applying migrations from: $MIGRATIONS_DIR"
 (cd "$ROOT_DIR/studio" && npx supabase db push)

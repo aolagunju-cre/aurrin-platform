@@ -209,4 +209,27 @@ describe('auth sign-up submit route', () => {
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe('http://localhost/mentor');
   });
+
+  it('returns explicit env-config error when non-demo sign-up is requested without full Supabase config', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    resetRuntimeEnvCacheForTests();
+
+    const { POST } = await import('../src/app/auth/sign-up/submit/route');
+
+    const response = await POST(buildRequest({
+      mode: 'credentials',
+      name: 'New Founder',
+      email: 'new-founder@example.com',
+      password: 'VeryStrongPass123!',
+      role: 'founder',
+      next: '/founder',
+    }));
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/sign-up?next=%2Ffounder&error=supabase_not_configured'
+    );
+  });
 });
