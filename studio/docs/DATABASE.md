@@ -29,12 +29,13 @@ cp .env.example .env.local
 # NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 # NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 # SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+# SUPABASE_JWT_SECRET=your-jwt-secret
 ```
 
 ### 3. Apply Migrations
 ```bash
-# Via Supabase CLI
-npx supabase db push
+# From repository root: canonical migration path (validates required credentials + migration chain)
+bash scripts/run-supabase-migrations.sh
 
 # Or manually: apply migration SQL files in order from studio/src/lib/db/migrations/
 ```

@@ -25,6 +25,18 @@ export interface RuntimeEnv {
   featureFlags: FeatureFlags;
 }
 
+export const REQUIRED_SUPABASE_ENV_KEYS = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_JWT_SECRET',
+] as const;
+
+export interface SupabaseConfigStatus {
+  configured: boolean;
+  missingKeys: string[];
+}
+
 let cachedRuntimeEnv: RuntimeEnv | null = null;
 
 function warnOnce(message: string): void {
@@ -90,12 +102,12 @@ function buildRuntimeEnv(): RuntimeEnv {
   const supabaseJwtSecret = readEnv('SUPABASE_JWT_SECRET', { defaultValue: 'your-secret-key' }) ?? 'your-secret-key';
   const demoModePreference = readOptionalBooleanEnv('DEMO_MODE');
   const forceDemo = readBooleanEnv('FORCE_DEMO_MODE');
-  const hasSupabaseConfig = Boolean(
-    supabaseUrl
-      && supabaseAnonKey
-      && supabaseServiceRoleKey
-      && supabaseJwtSecret !== 'your-secret-key'
-  );
+  const hasSupabaseConfig = getSupabaseConfigStatusFromValues(
+    supabaseUrl,
+    supabaseAnonKey,
+    supabaseServiceRoleKey,
+    supabaseJwtSecret
+  ).configured;
   const demoMode = forceDemo || demoModePreference === true || (demoModePreference !== false && process.env.NODE_ENV === 'production' && !hasSupabaseConfig);
 
   if (demoModePreference === null && demoMode && process.env.NODE_ENV === 'production' && !hasSupabaseConfig) {
@@ -132,12 +144,51 @@ function buildRuntimeEnv(): RuntimeEnv {
   };
 }
 
+function getSupabaseConfigStatusFromValues(
+  supabaseUrl: string | null,
+  supabaseAnonKey: string | null,
+  supabaseServiceRoleKey: string | null,
+  supabaseJwtSecret: string
+): SupabaseConfigStatus {
+  const missingKeys: string[] = [];
+
+  if (!supabaseUrl) {
+    missingKeys.push('NEXT_PUBLIC_SUPABASE_URL');
+  }
+
+  if (!supabaseAnonKey) {
+    missingKeys.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
+
+  if (!supabaseServiceRoleKey) {
+    missingKeys.push('SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  if (!supabaseJwtSecret || supabaseJwtSecret === 'your-secret-key') {
+    missingKeys.push('SUPABASE_JWT_SECRET');
+  }
+
+  return {
+    configured: missingKeys.length === 0,
+    missingKeys,
+  };
+}
+
 export function getRuntimeEnv(): RuntimeEnv {
   if (!cachedRuntimeEnv) {
     cachedRuntimeEnv = buildRuntimeEnv();
   }
 
   return cachedRuntimeEnv;
+}
+
+export function getSupabaseConfigStatus(env: RuntimeEnv = getRuntimeEnv()): SupabaseConfigStatus {
+  return getSupabaseConfigStatusFromValues(
+    env.supabaseUrl,
+    env.supabaseAnonKey,
+    env.supabaseServiceRoleKey,
+    env.supabaseJwtSecret
+  );
 }
 
 export function isDemoModeEnabled(): boolean {

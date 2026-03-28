@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { getRuntimeEnv, resetRuntimeEnvCacheForTests } from '../src/lib/config/env';
+import { getRuntimeEnv, getSupabaseConfigStatus, resetRuntimeEnvCacheForTests } from '../src/lib/config/env';
 
 const ORIGINAL_ENV = process.env;
 
@@ -53,5 +53,27 @@ describe('runtime env demo mode', () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
 
     expect(getRuntimeEnv().demoMode).toBe(true);
+  });
+
+  it('reports missing Supabase keys when configuration is incomplete', () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://demo.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+
+    const status = getSupabaseConfigStatus(getRuntimeEnv());
+
+    expect(status.configured).toBe(false);
+    expect(status.missingKeys).toEqual(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET']);
+  });
+
+  it('reports configured Supabase status when all required keys are present', () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://demo.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret-key';
+
+    const status = getSupabaseConfigStatus(getRuntimeEnv());
+
+    expect(status.configured).toBe(true);
+    expect(status.missingKeys).toEqual([]);
   });
 });

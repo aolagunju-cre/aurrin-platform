@@ -56,10 +56,10 @@ npm test
 Schema migration must run before traffic cutover.
 
 ```bash
-APP_ROOT=$(bash scripts/resolve-nextjs-app-root.sh)
-cd "$APP_ROOT"
-npx supabase db push
+bash scripts/run-supabase-migrations.sh
 ```
+
+The migration runner validates required Supabase credentials up front and fails with an explicit missing-variable list when configuration is incomplete.
 
 For manual migration execution, apply SQL files in `studio/src/lib/db/migrations/` in order.
 
