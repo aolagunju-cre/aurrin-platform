@@ -81,6 +81,8 @@ export default function FounderDashboardPage(): React.ReactElement {
       <nav aria-label="Founder Navigation" className="flex gap-4 text-sm">
         <a href="/founder/profile" className="text-violet-400 hover:text-violet-300 transition-colors">Profile</a>
         <span className="text-default-300">|</span>
+        <a href="/founder/campaign" className="text-violet-400 hover:text-violet-300 transition-colors">Campaigns</a>
+        <span className="text-default-300">|</span>
         <a href="/founder/events" className="text-violet-400 hover:text-violet-300 transition-colors">Events</a>
         <span className="text-default-300">|</span>
         <a href="/founder/reports" className="text-violet-400 hover:text-violet-300 transition-colors">Reports</a>

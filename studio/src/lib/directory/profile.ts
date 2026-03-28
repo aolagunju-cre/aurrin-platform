@@ -4,6 +4,7 @@ import { DEMO_MODE, demoDirectoryProfiles, demoEvents } from '../demo/data';
 export interface PublicDirectoryProfile {
   founder_id: string | null;
   founder_slug: string;
+  campaign_id: string | null;
   name: string | null;
   company: string | null;
   industry: string | null;
@@ -65,6 +66,12 @@ interface FounderApplicationRow {
   website: string | null;
   twitter: string | null;
   linkedin: string | null;
+}
+
+interface FounderCampaignLookupRow {
+  id: string;
+  status: 'active' | 'funded';
+  updated_at: string;
 }
 
 function normalizeText(value: string | null | undefined): string | null {
@@ -138,6 +145,31 @@ async function getDonationSummaryForFounderSlug(founderSlug: string): Promise<{ 
   return { count, total_cents };
 }
 
+async function getPrimaryPublicCampaignId(founderId: string): Promise<{ data: string | null; error: Error | null }> {
+  const client = getSupabaseClient();
+  const result = await client.db.queryTable<FounderCampaignLookupRow>(
+    'campaigns',
+    [
+      `founder_id=eq.${encodeURIComponent(founderId)}`,
+      'status=in.(active,funded)',
+      'select=id,status,updated_at',
+      'order=updated_at.desc',
+      'limit=20',
+    ].join('&')
+  );
+
+  if (result.error) {
+    return { data: null, error: result.error };
+  }
+
+  const activeCampaign = result.data.find((campaign) => campaign.status === 'active');
+  if (activeCampaign) {
+    return { data: activeCampaign.id, error: null };
+  }
+
+  return { data: result.data[0]?.id ?? null, error: null };
+}
+
 function toDemoProfile(founderSlug: string): PublicDirectoryProfile | null {
   const profile = demoDirectoryProfiles.find((entry) => entry.founder_slug === founderSlug);
   if (!profile) {
@@ -149,6 +181,7 @@ function toDemoProfile(founderSlug: string): PublicDirectoryProfile | null {
   return {
     founder_id: null,
     founder_slug: profile.founder_slug,
+    campaign_id: null,
     name: profile.founder_name,
     company: profile.company,
     industry: profile.industry,
@@ -236,12 +269,18 @@ export async function getPublicDirectoryProfile(founderSlug: string): Promise<{
     application = applicationResult.data[0] ?? null;
   }
 
+  const campaignResult = await getPrimaryPublicCampaignId(row.founder.id);
+  if (campaignResult.error) {
+    return { data: null, error: campaignResult.error };
+  }
+
   const donations = await getDonationSummaryForFounderSlug(row.public_profile_slug);
 
   return {
     data: {
       founder_id: row.founder.id,
       founder_slug: row.public_profile_slug,
+      campaign_id: campaignResult.data,
       name: normalizeText(row.founder.user?.name ?? null),
       company: normalizeText(row.founder.company_name ?? null),
       industry: normalizeText(application?.industry ?? null),

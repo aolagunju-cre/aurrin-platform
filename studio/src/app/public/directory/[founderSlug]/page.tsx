@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { DirectoryShareButton } from '../../../../components/public/DirectoryShareButton';
+import { CampaignSection } from '../../../../components/public/CampaignSection';
 import { FounderSupportCheckout } from '../../../../components/public/FounderSupportCheckout';
+import { siteConfig } from '../../../../config/site';
 import { getPublicDirectoryProfile } from '../../../../lib/directory/profile';
 
 interface PublicDirectoryProfilePageProps {
@@ -139,6 +141,8 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
 
       <DirectoryShareButton profileUrl={profileUrl} />
 
+      {profile.campaign_id ? <CampaignSection campaignId={profile.campaign_id} /> : null}
+
       <FounderSupportCheckout
         founderSlug={profile.founder_slug}
         founderName={profile.name ?? profile.company ?? 'this founder'}
@@ -160,7 +164,12 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
 
       <p className="text-default-500">
         Interested? Contact {`{Aurrin}`}{' '}
-        <a href="mailto:hello@aurrin.com" className="text-violet-400 hover:text-violet-300 transition-colors">hello@aurrin.com</a>
+        <a
+          href={`mailto:${siteConfig.contactEmail}`}
+          className="text-violet-400 hover:text-violet-300 transition-colors"
+        >
+          {siteConfig.contactEmail}
+        </a>
       </p>
     </main>
   );
