@@ -6,7 +6,7 @@ import {
   setAccessTokenCookie,
   setDemoSessionCookie,
 } from '@/src/lib/auth/request-auth';
-import { isDemoModeEnabled } from '@/src/lib/config/env';
+import { getRuntimeEnv, isDemoModeEnabled } from '@/src/lib/config/env';
 import { verifyJWT } from '@/src/lib/auth/jwt';
 
 const POST_REDIRECT_STATUS = 303;
@@ -16,6 +16,29 @@ function redirectWithError(request: NextRequest, nextPath: string, error: string
   url.searchParams.set('next', sanitizeNextPath(nextPath));
   url.searchParams.set('error', error);
   return NextResponse.redirect(url, POST_REDIRECT_STATUS);
+}
+
+async function signInWithSupabaseCredentials(email: string, password: string): Promise<string | null> {
+  const runtimeEnv = getRuntimeEnv();
+  if (!runtimeEnv.supabaseUrl || !runtimeEnv.supabaseAnonKey) {
+    return null;
+  }
+
+  const response = await fetch(`${runtimeEnv.supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: runtimeEnv.supabaseAnonKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = await response.json() as { access_token?: string };
+  return payload.access_token?.trim() || null;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -43,14 +66,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const accessToken = String(formData.get('access_token') ?? '').trim();
+  const email = String(formData.get('email') ?? '').trim();
+  const password = String(formData.get('password') ?? '').trim();
+  if (!email || !password) {
+    return redirectWithError(request, nextPath, 'invalid_credentials');
+  }
+
+  const accessToken = await signInWithSupabaseCredentials(email, password);
   if (!accessToken) {
-    return redirectWithError(request, nextPath, 'invalid_token');
+    return redirectWithError(request, nextPath, 'invalid_credentials');
   }
 
   const payload = await verifyJWT(accessToken);
   if (!payload?.sub || !payload.email) {
-    return redirectWithError(request, nextPath, 'invalid_token');
+    return redirectWithError(request, nextPath, 'session_failure');
   }
 
   const response = NextResponse.redirect(new URL(nextPath, request.url), POST_REDIRECT_STATUS);
