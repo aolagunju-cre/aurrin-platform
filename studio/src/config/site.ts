@@ -4,6 +4,8 @@ export const siteConfig = {
   name: "Aurrin Ventures",
   description: "Founder discovery, scoring, and mentorship platform",
   navItems: [
+    { label: "Events", href: "/public/events" },
+    { label: "Portfolio", href: "/public/portfolio" },
     { label: "Directory", href: "/public/directory" },
     { label: "Apply", href: "/public/apply" },
   ],
@@ -15,6 +17,8 @@ export const siteConfig = {
     { label: "Admin", href: "/admin", description: "Platform management & analytics" },
   ],
   navMenuItems: [
+    { label: "Events", href: "/public/events" },
+    { label: "Portfolio", href: "/public/portfolio" },
     { label: "Directory", href: "/public/directory" },
     { label: "Apply", href: "/public/apply" },
     { label: "Founder Portal", href: "/founder" },
@@ -26,5 +30,8 @@ export const siteConfig = {
   links: {
     linkedin: "https://www.linkedin.com/company/aurrinventures/?viewAsMember=true",
     sponsor: "https://donate.stripe.com/00w4gzfVc6LS3XKfmf0RG00",
+    events: "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
+    pitchSignup: "https://forms.gle/HNRtWCv1eMG1SexY8",
+    judgeSignup: "https://forms.gle/7JkmtQEstYajDEWYA",
   },
 };
