@@ -70,12 +70,13 @@ export function Navbar() {
         </NavbarItem>
         <NavbarItem className="hidden md:flex">
           <Button
-            as={Link}
-            className="text-sm font-normal text-default-600 bg-default-100"
-            href={siteConfig.links.sponsor}
+            as={NextLink}
+            className="text-sm font-normal"
+            color="primary"
+            href="/auth/sign-in"
             variant="flat"
           >
-            Sponsor
+            Sign In
           </Button>
         </NavbarItem>
       </NavbarContent>
@@ -87,11 +88,8 @@ export function Navbar() {
 
       <NavbarMenu>
         <div className="mx-4 mt-2 flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-default-400 mt-2 mb-1">
-            Public
-          </p>
           {siteConfig.navItems.map((item, index) => (
-            <NavbarMenuItem key={`pub-${index}`}>
+            <NavbarMenuItem key={`nav-${index}`}>
               <NextLink
                 className="w-full text-foreground hover:text-violet-400 transition-colors"
                 href={item.href}
@@ -100,6 +98,14 @@ export function Navbar() {
               </NextLink>
             </NavbarMenuItem>
           ))}
+          <NavbarMenuItem>
+            <NextLink
+              className="w-full text-violet-400 hover:text-violet-300 transition-colors font-medium"
+              href="/auth/sign-in"
+            >
+              Sign In
+            </NextLink>
+          </NavbarMenuItem>
         </div>
       </NavbarMenu>
     </HeroNavbar>
