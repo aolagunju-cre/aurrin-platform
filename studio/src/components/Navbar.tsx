@@ -25,7 +25,7 @@ export function Navbar() {
         <NavbarBrand as="li" className="gap-3 max-w-fit">
           <NextLink className="flex justify-start items-center gap-2" href="/">
             <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-500 to-fuchsia-500">
-              Aurrin
+              Aurrin Ventures
             </span>
           </NextLink>
         </NavbarBrand>

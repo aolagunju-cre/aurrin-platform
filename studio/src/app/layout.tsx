@@ -5,7 +5,6 @@ import clsx from "clsx";
 import { Providers } from "./providers";
 import { siteConfig } from "@/src/config/site";
 import { fontSans } from "@/src/config/fonts";
-import { SponsorPlacementSection } from "@/src/components/public/SponsorPlacementSection";
 import { Navbar } from "@/src/components/Navbar";
 
 export const metadata: Metadata = {
@@ -47,9 +46,7 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="mt-8 border-t border-default-200 p-4">
-              <div className="container mx-auto max-w-7xl px-6">
-                <SponsorPlacementSection />
-              </div>
+              <div className="container mx-auto max-w-7xl px-6" />
             </footer>
           </div>
         </Providers>

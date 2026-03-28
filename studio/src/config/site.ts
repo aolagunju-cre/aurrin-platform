@@ -1,7 +1,7 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Aurrin",
+  name: "Aurrin Ventures",
   description: "Founder discovery, scoring, and mentorship platform",
   navItems: [
     { label: "Directory", href: "/public/directory" },
