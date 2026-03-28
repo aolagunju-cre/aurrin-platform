@@ -9,25 +9,16 @@ import {
   NavbarItem,
   NavbarMenuItem,
 } from "@heroui/navbar";
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/dropdown";
 import { Button } from "@heroui/button";
 import { Link } from "@heroui/link";
 import { link as linkStyles } from "@heroui/theme";
 import NextLink from "next/link";
-import { useRouter } from "next/navigation";
 import clsx from "clsx";
 
 import { siteConfig } from "@/src/config/site";
 import { ThemeSwitch } from "@/src/components/ThemeSwitch";
 
 export function Navbar() {
-  const router = useRouter();
-
   return (
     <HeroNavbar maxWidth="xl" position="sticky">
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
@@ -52,42 +43,6 @@ export function Navbar() {
               </NextLink>
             </NavbarItem>
           ))}
-          <NavbarItem>
-            <Dropdown>
-              <DropdownTrigger>
-                <button
-                  className={clsx(
-                    linkStyles({ color: "foreground" }),
-                    "flex items-center gap-1 cursor-pointer bg-transparent border-none",
-                  )}
-                >
-                  Portals
-                  <svg
-                    className="w-3.5 h-3.5 opacity-60"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label="Role portals"
-                onAction={(key) => router.push(key as string)}
-              >
-                {siteConfig.portalItems.map((item) => (
-                  <DropdownItem
-                    key={item.href}
-                    description={item.description}
-                  >
-                    {item.label}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
-          </NavbarItem>
         </ul>
       </NavbarContent>
 
@@ -142,20 +97,6 @@ export function Navbar() {
                 href={item.href}
               >
                 {item.label}
-              </NextLink>
-            </NavbarMenuItem>
-          ))}
-          <p className="text-xs font-semibold uppercase tracking-wider text-default-400 mt-4 mb-1">
-            Portals
-          </p>
-          {siteConfig.portalItems.map((item, index) => (
-            <NavbarMenuItem key={`portal-${index}`}>
-              <NextLink
-                className="w-full text-foreground hover:text-violet-400 transition-colors"
-                href={item.href}
-              >
-                {item.label}
-                <span className="block text-xs text-default-400">{item.description}</span>
               </NextLink>
             </NavbarMenuItem>
           ))}

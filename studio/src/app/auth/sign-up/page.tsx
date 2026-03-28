@@ -31,6 +31,20 @@ function messageForError(error: string | undefined): string | null {
   return null;
 }
 
+const SIGN_UP_ROLE_DESTINATIONS: Record<(typeof SIGN_UP_ROLE_OPTIONS)[number]['value'], string> = {
+  founder: '/founder',
+  judge: '/judge/events',
+  mentor: '/mentor',
+  subscriber: '/subscriber',
+};
+
+const SIGN_UP_ROLE_DESCRIPTIONS: Record<(typeof SIGN_UP_ROLE_OPTIONS)[number]['value'], string> = {
+  founder: 'Build your profile, manage events, and track reports.',
+  judge: 'Review assigned events and submit rubric scores.',
+  mentor: 'Manage mentor matches and founder introductions.',
+  subscriber: 'Access premium content and purchase history.',
+};
+
 export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const params = await searchParams;
   const nextPath = sanitizeNextPath(params.next);
@@ -95,22 +109,31 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
               className="w-full rounded-2xl border border-default-200 bg-background px-4 py-3 text-sm text-foreground focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             />
           </label>
-          <label className="grid gap-2 text-sm text-default-600">
-            Role
-            <select
-              name="role"
-              required
-              defaultValue=""
-              className="w-full rounded-2xl border border-default-200 bg-background px-4 py-3 text-sm text-foreground focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-            >
-              <option value="" disabled>Select a role</option>
+          <fieldset className="grid gap-2 text-sm text-default-600">
+            <legend className="text-sm text-default-600">Role</legend>
+            <p className="text-xs text-default-500">Pick the role you want to enter after account creation.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
               {SIGN_UP_ROLE_OPTIONS.map((role) => (
-                <option key={role.value} value={role.value}>
-                  {role.label}
-                </option>
+                <label
+                  key={role.value}
+                  className="cursor-pointer rounded-2xl border border-default-200 bg-background px-4 py-3 transition hover:border-violet-400 has-[:checked]:border-violet-500 has-[:checked]:bg-violet-500/5"
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={role.value}
+                    required
+                    className="sr-only"
+                  />
+                  <span className="block text-sm font-semibold text-foreground">{role.label}</span>
+                  <span className="mt-1 block text-xs text-default-500">{SIGN_UP_ROLE_DESCRIPTIONS[role.value]}</span>
+                  <span className="mt-2 block text-xs font-mono text-default-400">
+                    Route: {SIGN_UP_ROLE_DESTINATIONS[role.value]}
+                  </span>
+                </label>
               ))}
-            </select>
-          </label>
+            </div>
+          </fieldset>
           <button
             type="submit"
             className="inline-flex w-fit items-center rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:opacity-90"

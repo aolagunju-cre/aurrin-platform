@@ -24,7 +24,7 @@ describe('auth sign-up page', () => {
     resetRuntimeEnvCacheForTests();
   });
 
-  it('renders role options exactly for founder, judge, mentor, and subscriber', async () => {
+  it('renders role cards exactly for founder, judge, mentor, and subscriber with route hints', async () => {
     process.env.DEMO_MODE = 'false';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
@@ -35,13 +35,15 @@ describe('auth sign-up page', () => {
     const page = await SignUpPage({ searchParams: Promise.resolve({}) });
     render(page as React.ReactElement);
 
-    const roleInput = screen.getByLabelText('Role');
-    expect(roleInput).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Founder' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Judge' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Mentor' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Subscriber' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('founder')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('judge')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('mentor')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('subscriber')).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Admin/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Route: /founder')).toBeInTheDocument();
+    expect(screen.getByText('Route: /judge/events')).toBeInTheDocument();
+    expect(screen.getByText('Route: /mentor')).toBeInTheDocument();
+    expect(screen.getByText('Route: /subscriber')).toBeInTheDocument();
   });
 
   it('shows Supabase configuration guidance when credential sign-up is selected but env is incomplete', async () => {
