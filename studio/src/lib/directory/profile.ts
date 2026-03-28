@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '../db/client';
 import { DEMO_MODE, demoDirectoryProfiles, demoEvents } from '../demo/data';
+import { PUBLIC_DIRECTORY_PITCH_SELECT } from './query';
 
 export interface PublicDirectoryProfile {
   founder_id: string | null;
@@ -238,9 +239,7 @@ export async function getPublicDirectoryProfile(founderSlug: string): Promise<{
       `public_profile_slug=eq.${encodeURIComponent(normalizedSlug)}`,
       'visible_in_directory=eq.true',
       'is_published=eq.true',
-      'select=id,public_profile_slug,score_aggregate,pitch_deck_url,validation_summary,',
-      'founder:founders!founder_pitches_founder_id_fkey(id,company_name,bio,website,social_proof,user:users!founders_user_id_fkey(name,email,avatar_url)),',
-      'event:events!founder_pitches_event_id_fkey(id,name,status,starts_at,ends_at)',
+      `select=${encodeURIComponent(PUBLIC_DIRECTORY_PITCH_SELECT)}`,
       'limit=1',
     ].join('&')
   );

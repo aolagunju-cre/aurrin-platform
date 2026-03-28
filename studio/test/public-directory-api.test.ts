@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 import { GET as listDirectory } from '../src/app/api/public/directory/route';
 import { GET as getDirectoryProfile } from '../src/app/api/public/directory/[founderSlug]/route';
 import { getSupabaseClient } from '../src/lib/db/client';
+import { PUBLIC_DIRECTORY_PITCH_SELECT } from '../src/lib/directory/query';
 
 jest.mock('../src/lib/db/client', () => ({
   getSupabaseClient: jest.fn(),
@@ -153,6 +154,18 @@ describe('public directory API routes', () => {
       },
     ]);
     expect(payload.pagination.total).toBe(1);
+    expect(mockDb.queryTable).toHaveBeenNthCalledWith(
+      1,
+      'founder_pitches',
+      [
+        'visible_in_directory=eq.true',
+        'is_published=eq.true',
+        'public_profile_slug=not.is.null',
+        `select=${encodeURIComponent(PUBLIC_DIRECTORY_PITCH_SELECT)}`,
+        'order=published_at.desc.nullslast,updated_at.desc',
+        'limit=500',
+      ].join('&')
+    );
   });
 
   it('constrains score query bounds to 0-100 and keeps non-sensitive listing payload shape', async () => {
