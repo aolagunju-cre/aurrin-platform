@@ -190,9 +190,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'visible_in_directory=eq.true',
       'is_published=eq.true',
       'public_profile_slug=not.is.null',
-      'select=id,public_profile_slug,score_aggregate,pitch_deck_url,validation_summary,',
-      'founder:founders!founder_pitches_founder_id_fkey(id,company_name,bio,website,social_proof,user:users!founders_user_id_fkey(name,email,avatar_url)),',
-      'event:events!founder_pitches_event_id_fkey(id,name,status,starts_at,ends_at)',
+      'select=id,public_profile_slug,score_aggregate,pitch_deck_url,validation_summary,founder:founders!founder_pitches_founder_id_fkey(id,company_name,bio,website,social_proof,user:users!founders_user_id_fkey(name,email,avatar_url)),event:events!founder_pitches_event_id_fkey(id,name,status,starts_at,ends_at)',
       'order=published_at.desc.nullslast,updated_at.desc',
       `limit=${MAX_SOURCE_ROWS}`,
     ].join('&')
