@@ -54,6 +54,8 @@ network:
   - node
   - python
   - dotnet
+  - "fonts.googleapis.com"
+  - "fonts.gstatic.com"
 
 safe-outputs:
   github-app:

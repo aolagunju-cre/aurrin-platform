@@ -36,6 +36,8 @@ network:
   allowed:
     - defaults
     - openrouter.ai
+    - "fonts.googleapis.com"
+    - "fonts.gstatic.com"
 
 safe-outputs:
   create-issue:

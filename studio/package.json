@@ -10,6 +10,8 @@
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --verbose"
   },
   "dependencies": {
+    "@fontsource/fira-code": "^5.2.7",
+    "@fontsource/inter": "^5.2.8",
     "@heroui/avatar": "^2.2.26",
     "@heroui/breadcrumbs": "^2.2.25",
     "@heroui/button": "^2.2.32",

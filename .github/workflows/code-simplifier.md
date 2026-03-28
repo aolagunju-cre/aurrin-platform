@@ -35,6 +35,8 @@ network:
     - defaults
     - openrouter.ai
     - dotnet
+    - "fonts.googleapis.com"
+    - "fonts.gstatic.com"
 
 tools:
   github:

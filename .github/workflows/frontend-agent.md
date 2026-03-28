@@ -34,6 +34,8 @@ network:
   - openrouter.ai
   - node
   - dotnet
+  - "fonts.googleapis.com"
+  - "fonts.gstatic.com"
 
 tools:
   github:

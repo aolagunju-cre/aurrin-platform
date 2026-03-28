@@ -30,6 +30,8 @@ network:
   allowed:
     - defaults
     - node
+    - "fonts.googleapis.com"
+    - "fonts.gstatic.com"
 
 safe-outputs:
   add-comment:
