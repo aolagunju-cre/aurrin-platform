@@ -5,6 +5,7 @@ import eventsData from "@/public/events.json";
 import { AurrinEvent, Founder } from "@/src/types";
 import Link from "next/link";
 import { siteConfig } from "@/src/config/site";
+import { getPublicFounderProfileHref } from "@/src/lib/founders/profile-link";
 
 interface FounderWithEvent extends Founder {
   eventId: string;
@@ -185,7 +186,11 @@ export default function PortfolioPage() {
                 </div>
               )}
 
-              <div className="flex items-start gap-4">
+              <Link
+                href={getPublicFounderProfileHref(founder.company)}
+                aria-label={`View ${founder.name} profile`}
+                className="flex items-start gap-4 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              >
                 {founder.photo ? (
                   <img
                     src={founder.photo}
@@ -209,7 +214,7 @@ export default function PortfolioPage() {
                     <p className="text-sm text-default-500 mt-1 line-clamp-2">{founder.pitchTitle}</p>
                   )}
                 </div>
-              </div>
+              </Link>
 
               {founder.fundraisingGoal && (
                 <div className="mt-3 flex items-center justify-between text-sm">
@@ -237,12 +242,20 @@ export default function PortfolioPage() {
               )}
 
               <div className="mt-4 pt-4 border-t border-default-200 dark:border-gray-700 flex items-center justify-between">
-                <Link
-                  href={`/public/events/${founder.eventId}`}
-                  className="text-xs text-default-400 hover:text-violet-500 transition-colors"
-                >
-                  {formatDate(founder.eventDate)}
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={getPublicFounderProfileHref(founder.company)}
+                    className="text-sm font-medium text-violet-500 transition-colors hover:text-violet-400"
+                  >
+                    View Profile
+                  </Link>
+                  <Link
+                    href={`/public/events/${founder.eventId}`}
+                    className="text-xs text-default-400 hover:text-violet-500 transition-colors"
+                  >
+                    {formatDate(founder.eventDate)}
+                  </Link>
+                </div>
                 {founder.linkedIn && (
                   <a
                     href={founder.linkedIn}

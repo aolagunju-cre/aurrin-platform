@@ -1,6 +1,7 @@
 import Link from "next/link";
 import eventsData from "@/public/events.json";
 import { AurrinEvent, Founder } from "@/src/types";
+import { getPublicFounderProfileHref } from "@/src/lib/founders/profile-link";
 
 interface FounderWithEvent extends Founder {
   eventId: string;
@@ -76,9 +77,8 @@ export function FeaturedCampaigns() {
           const isFunded = founder.investment?.received;
 
           return (
-            <Link
+            <div
               key={`${founder.eventId}-${index}`}
-              href={`/public/events/${founder.eventId}`}
               className={`group relative block p-6 rounded-2xl border transition-all duration-300 hover:shadow-lg ${
                 isFunded
                   ? "border-green-500/30 bg-green-500/5 hover:border-green-500/50"
@@ -91,7 +91,11 @@ export function FeaturedCampaigns() {
                 </div>
               )}
 
-              <div className="flex items-start gap-4">
+              <Link
+                href={getPublicFounderProfileHref(founder.company)}
+                aria-label={`View ${founder.name} profile`}
+                className="flex items-start gap-4 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              >
                 {founder.photo ? (
                   <img
                     src={founder.photo}
@@ -126,7 +130,7 @@ export function FeaturedCampaigns() {
                     </p>
                   )}
                 </div>
-              </div>
+              </Link>
 
               {/* Funding progress */}
               {founder.fundraisingGoal && founder.fundraisingGoal > 0 && (
@@ -154,7 +158,22 @@ export function FeaturedCampaigns() {
                   </div>
                 </div>
               )}
-            </Link>
+
+              <div className="mt-4 flex items-center justify-between">
+                <Link
+                  href={getPublicFounderProfileHref(founder.company)}
+                  className="text-sm font-medium text-violet-500 transition-colors hover:text-violet-400"
+                >
+                  View Profile
+                </Link>
+                <Link
+                  href={`/public/events/${founder.eventId}`}
+                  className="text-xs text-default-400 transition-colors hover:text-violet-500"
+                >
+                  Event Details
+                </Link>
+              </div>
+            </div>
           );
         })}
       </div>

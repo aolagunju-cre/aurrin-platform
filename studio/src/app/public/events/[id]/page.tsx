@@ -1,6 +1,7 @@
 import Link from "next/link";
 import eventsData from "@/public/events.json";
 import { AurrinEvent } from "@/src/types";
+import { getPublicFounderProfileHref } from "@/src/lib/founders/profile-link";
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -115,12 +116,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <h2 className="text-xl font-semibold mb-6">Founders</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {event.founders.map((founder, index) => (
-              <div
+              <Link
                 key={index}
+                href={getPublicFounderProfileHref(founder.company)}
+                aria-label={`View ${founder.name} profile`}
                 className={`p-4 rounded-2xl border transition-all ${
                   founder.investment?.received
-                    ? "border-green-500/30 bg-green-500/5"
-                    : "border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5"
+                    ? "border-green-500/30 bg-green-500/5 hover:border-green-500/50"
+                    : "border-default-200 dark:border-gray-700 bg-default-50 dark:bg-default-50/5 hover:border-violet-500/50"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -152,7 +155,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     )}
                   </div>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </section>
