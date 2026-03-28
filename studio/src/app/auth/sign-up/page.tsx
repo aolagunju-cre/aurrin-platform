@@ -20,6 +20,9 @@ function messageForError(error: string | undefined): string | null {
   if (error === 'registration_failed') {
     return 'Account creation failed. Please try again.';
   }
+  if (error === 'email_rate_limited') {
+    return 'Signup email sending is temporarily rate limited. If you already received a confirmation email, use it and then sign in. Otherwise wait a bit and try again.';
+  }
   if (error === 'session_failure') {
     return 'Account created, but session setup failed. Please sign in.';
   }

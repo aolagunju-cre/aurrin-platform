@@ -76,4 +76,19 @@ describe('auth sign-up page', () => {
       screen.getByText('Account created. Check your email to confirm your signup, then sign in.')
     ).toBeInTheDocument();
   });
+
+  it('shows signup email rate-limit guidance when Supabase throttles confirmation sends', async () => {
+    process.env.DEMO_MODE = 'false';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    resetRuntimeEnvCacheForTests();
+
+    const page = await SignUpPage({ searchParams: Promise.resolve({ error: 'email_rate_limited' }) });
+    render(page as React.ReactElement);
+
+    expect(
+      screen.getByText('Signup email sending is temporarily rate limited. If you already received a confirmation email, use it and then sign in. Otherwise wait a bit and try again.')
+    ).toBeInTheDocument();
+  });
 });

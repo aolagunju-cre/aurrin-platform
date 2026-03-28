@@ -339,6 +339,149 @@ describe('auth sign-up submit route', () => {
     expect(response.headers.get('location')).toBe('http://localhost/founder');
   });
 
+  it('recovers unconfirmed auth users when signup emails are rate limited', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    const mockDb = {
+      getUserByEmail: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insertUser: jest.fn().mockResolvedValue({
+        data: {
+          id: 'user-123',
+          email: 'new-founder@example.com',
+          name: 'New Founder',
+          avatar_url: null,
+          unsubscribed: false,
+          unsubscribe_token: '11111111-1111-4111-8111-111111111111',
+          created_at: '2026-03-28T00:00:00.000Z',
+          updated_at: '2026-03-28T00:00:00.000Z',
+        },
+        error: null,
+      }),
+      updateUser: jest.fn(),
+      getRoleAssignmentsByUserId: jest.fn().mockResolvedValue({ data: [], error: null }),
+      insertRoleAssignment: jest.fn().mockResolvedValue({
+        data: {
+          id: 'ra-1',
+          user_id: 'user-123',
+          role: 'founder',
+          scope: 'global',
+          scoped_id: null,
+          created_at: '2026-03-28T00:00:00.000Z',
+          updated_at: '2026-03-28T00:00:00.000Z',
+          created_by: 'user-123',
+        },
+        error: null,
+      }),
+    };
+
+    mockedGetSupabaseClient.mockReturnValue({
+      storage: {
+        upload: jest.fn(),
+        remove: jest.fn(),
+        createSignedUrl: jest.fn(),
+      },
+      db: mockDb as never,
+    });
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error_code: 'over_email_send_rate_limit' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'email_not_confirmed' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          users: [
+            {
+              id: 'user-123',
+              email: 'new-founder@example.com',
+              email_confirmed_at: null,
+              confirmed_at: null,
+            },
+          ],
+        }),
+      });
+
+    const { POST } = await import('../src/app/auth/sign-up/submit/route');
+
+    const response = await POST(buildRequest({
+      mode: 'credentials',
+      name: 'New Founder',
+      email: 'new-founder@example.com',
+      password: 'VeryStrongPass123!',
+      role: 'Founder',
+      next: '/founder',
+    }));
+
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      3,
+      'https://example.supabase.co/auth/v1/admin/users?page=1&per_page=1000',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          apikey: 'service-key',
+          Authorization: 'Bearer service-key',
+        }),
+      })
+    );
+    expect(mockDb.insertUser).toHaveBeenCalledWith({
+      id: 'user-123',
+      email: 'new-founder@example.com',
+      name: 'New Founder',
+    });
+    expect(mockDb.insertRoleAssignment).toHaveBeenCalled();
+    expect(mockedSetAccessTokenCookie).not.toHaveBeenCalled();
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/sign-up?next=%2Ffounder&success=confirm_email'
+    );
+  });
+
+  it('returns a specific rate-limit error when signup email delivery is throttled before auth user creation', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error_code: 'over_email_send_rate_limit' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'email_not_confirmed' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ users: [] }),
+      });
+
+    const { POST } = await import('../src/app/auth/sign-up/submit/route');
+
+    const response = await POST(buildRequest({
+      mode: 'credentials',
+      name: 'New Founder',
+      email: 'new-founder@example.com',
+      password: 'VeryStrongPass123!',
+      role: 'Founder',
+      next: '/founder',
+    }));
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/sign-up?next=%2Ffounder&error=email_rate_limited'
+    );
+  });
+
   it('reuses existing users and role assignments without duplicating persistence writes', async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';

@@ -16,15 +16,31 @@ const POST_REDIRECT_STATUS = 303;
 
 interface SupabaseSignUpResponse {
   access_token?: string;
+  error_code?: string;
+  msg?: string;
+  message?: string;
   user?: {
     id?: string;
     email?: string;
+    email_confirmed_at?: string | null;
+    confirmed_at?: string | null;
   };
 }
 
 interface SupabaseSignUpResult {
   ok: boolean;
   payload: SupabaseSignUpResponse | null;
+}
+
+interface SupabaseAdminUser {
+  id?: string;
+  email?: string;
+  email_confirmed_at?: string | null;
+  confirmed_at?: string | null;
+}
+
+interface SupabaseAdminUsersResponse {
+  users?: SupabaseAdminUser[];
 }
 
 function roleLandingPath(role: SignUpRole): string {
@@ -111,6 +127,30 @@ async function signInWithSupabaseCredentials(email: string, password: string): P
   return payload.access_token?.trim() || null;
 }
 
+async function getSupabaseAuthUserByEmail(email: string): Promise<SupabaseAdminUser | null> {
+  const runtimeEnv = getRuntimeEnv();
+  if (!runtimeEnv.supabaseUrl || !runtimeEnv.supabaseServiceRoleKey) {
+    return null;
+  }
+
+  const response = await fetch(`${runtimeEnv.supabaseUrl}/auth/v1/admin/users?page=1&per_page=1000`, {
+    headers: {
+      apikey: runtimeEnv.supabaseServiceRoleKey,
+      Authorization: `Bearer ${runtimeEnv.supabaseServiceRoleKey}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const payload = await response.json() as SupabaseAdminUsersResponse;
+  const normalizedEmail = email.trim().toLowerCase();
+
+  return payload.users?.find((user) => user.email?.trim().toLowerCase() === normalizedEmail) ?? null;
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const formData = await request.formData();
   const mode = String(formData.get('mode') ?? '').trim();
@@ -157,6 +197,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let authEmail = signUpResult.ok
     ? signUpResult.payload?.user?.email?.trim().toLowerCase() || verifiedAccessTokenPayload?.email?.trim().toLowerCase() || null
     : null;
+  let authUserConfirmed = Boolean(
+    verifiedAccessTokenPayload?.email_confirmed_at
+    || signUpResult.payload?.user?.email_confirmed_at
+    || signUpResult.payload?.user?.confirmed_at
+  );
 
   if (!authUserId || !authEmail || !accessToken) {
     const existingAccessToken = await signInWithSupabaseCredentials(email, password);
@@ -167,11 +212,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         verifiedAccessTokenPayload = payload;
         authUserId = payload.sub;
         authEmail = payload.email.trim().toLowerCase();
+        authUserConfirmed = Boolean(payload.email_confirmed_at);
       }
     }
   }
 
   if (!authUserId || !authEmail) {
+    const existingAuthUser = await getSupabaseAuthUserByEmail(email);
+    if (existingAuthUser?.id && existingAuthUser.email) {
+      authUserId = existingAuthUser.id.trim();
+      authEmail = existingAuthUser.email.trim().toLowerCase();
+      authUserConfirmed = Boolean(existingAuthUser.email_confirmed_at || existingAuthUser.confirmed_at);
+    }
+  }
+
+  if (!authUserId || !authEmail) {
+    if (signUpResult.payload?.error_code === 'over_email_send_rate_limit') {
+      return redirectWithError(request, nextPath, 'email_rate_limited');
+    }
     return redirectWithError(request, nextPath, 'registration_failed');
   }
   const client = getSupabaseClient();
@@ -233,6 +291,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   if (!accessToken) {
+    if (authUserConfirmed) {
+      return redirectWithError(request, nextPath, 'session_failure');
+    }
     return redirectWithSuccess(request, nextPath, 'confirm_email');
   }
 
