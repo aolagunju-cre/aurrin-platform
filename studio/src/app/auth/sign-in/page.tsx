@@ -119,7 +119,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       </section>
 
       <section className="rounded-3xl border border-default-200 bg-background p-8 shadow-sm">
-        <h2 className="text-2xl font-semibold text-foreground">New to Aurrin?</h2>
+        <h2 className="text-2xl font-semibold text-foreground">New to Aurrin Ventures?</h2>
         <p className="mt-2 text-sm text-default-500">
           Create an account to apply as a founder, judge pitches, mentor teams, or access premium content.
         </p>
@@ -140,7 +140,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         ) : null}
 
         <p className="mt-6 text-xs text-default-400">
-          Need to leave the current session? Visit <Link className="text-violet-500 hover:text-violet-400" href="/auth/sign-out">/auth/sign-out</Link>.
+          Already signed in? <Link className="text-violet-500 hover:text-violet-400" href="/auth/sign-out">Sign out</Link>.
         </p>
       </section>
     </main>
