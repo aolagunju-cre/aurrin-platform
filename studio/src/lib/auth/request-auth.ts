@@ -17,6 +17,7 @@ const DEMO_SESSION_ISSUER = 'aurrin-platform';
 
 export type NormalizedRole = 'admin' | 'judge' | 'founder' | 'mentor' | 'subscriber' | 'audience';
 export type DemoPersona = NormalizedRole;
+export type SignUpRole = 'founder' | 'judge' | 'mentor' | 'subscriber';
 
 interface CookieRecord {
   value: string;
@@ -118,6 +119,13 @@ const DEMO_PERSONAS: DemoPersonaDefinition[] = [
   },
 ];
 
+export const SIGN_UP_ROLE_OPTIONS: ReadonlyArray<{ value: SignUpRole; label: 'Founder' | 'Judge' | 'Mentor' | 'Subscriber' }> = [
+  { value: 'founder', label: 'Founder' },
+  { value: 'judge', label: 'Judge' },
+  { value: 'mentor', label: 'Mentor' },
+  { value: 'subscriber', label: 'Subscriber' },
+];
+
 function normalizeCookieValue(value: CookieRecord | string | undefined): string | null {
   if (!value) {
     return null;
@@ -165,6 +173,15 @@ export function normalizeRole(role: string): NormalizedRole | null {
     default:
       return null;
   }
+}
+
+export function normalizeSignUpRole(role: string): SignUpRole | null {
+  const normalized = normalizeRole(role);
+  if (!normalized || normalized === 'admin' || normalized === 'audience') {
+    return null;
+  }
+
+  return normalized;
 }
 
 export function hasNormalizedRole(roles: string[], requiredRole: NormalizedRole): boolean {
@@ -239,6 +256,44 @@ export async function createDemoSessionToken(persona: DemoPersona): Promise<stri
       name: personaDefinition.name,
       persona: personaDefinition.persona,
       roles: personaDefinition.roles,
+    },
+    {
+      audience: DEMO_SESSION_AUDIENCE,
+      expiresInSeconds: DEMO_SESSION_TTL_SECONDS,
+      issuer: DEMO_SESSION_ISSUER,
+    }
+  );
+}
+
+export async function createDemoRegistrationSessionToken(input: {
+  role: SignUpRole;
+  email: string;
+  name?: string | null;
+}): Promise<string> {
+  if (!isDemoModeEnabled()) {
+    throw new Error('Demo mode is not enabled.');
+  }
+
+  const normalizedRole = normalizeSignUpRole(input.role);
+  if (!normalizedRole) {
+    throw new Error('Invalid sign-up role.');
+  }
+
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    throw new Error('Email is required.');
+  }
+
+  const normalizedName = input.name?.trim() || `${normalizedRole[0].toUpperCase()}${normalizedRole.slice(1)} User`;
+  const syntheticUserId = `demo-signup-${normalizedRole}-${normalizedEmail.replace(/[^a-z0-9]+/giu, '-').replace(/^-+|-+$/gu, '') || 'user'}`;
+
+  return signJWT(
+    {
+      sub: syntheticUserId,
+      email: normalizedEmail,
+      name: normalizedName,
+      persona: normalizedRole,
+      roles: [normalizedRole],
     },
     {
       audience: DEMO_SESSION_AUDIENCE,

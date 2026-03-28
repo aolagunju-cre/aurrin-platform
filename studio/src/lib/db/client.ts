@@ -410,6 +410,7 @@ export interface UserSearchRecord {
 }
 
 export interface UserInsert {
+  id?: string;
   email: string;
   name?: string | null;
 }
@@ -1391,6 +1392,7 @@ export function getSupabaseClient(): SupabaseClient {
           method: 'POST',
           headers: { ...headers, Prefer: 'return=representation' },
           body: JSON.stringify({
+            id: record.id ?? undefined,
             email: record.email,
             name: record.name ?? null,
           }),
