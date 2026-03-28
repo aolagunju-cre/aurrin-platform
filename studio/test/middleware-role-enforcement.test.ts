@@ -22,6 +22,15 @@ describe('middleware role enforcement parity', () => {
     mockedGetRoleAssignmentsForUser.mockResolvedValue([]);
   });
 
+  it('returns 401 for unauthenticated protected API requests', async () => {
+    mockedResolveAuthIdentityFromRequest.mockResolvedValue(null);
+
+    const response = await middleware(new NextRequest(new Request('http://localhost/api/admin/roles', { method: 'GET' })));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'Unauthorized' });
+  });
+
   it('returns 403 for access-token users without required role on protected API routes', async () => {
     mockedResolveAuthIdentityFromRequest.mockResolvedValue({
       kind: 'access-token',
