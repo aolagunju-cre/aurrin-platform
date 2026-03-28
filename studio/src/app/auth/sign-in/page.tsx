@@ -38,12 +38,12 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   return (
     <main className="mx-auto grid min-h-[calc(100vh-12rem)] max-w-5xl gap-8 px-6 py-12 md:grid-cols-[1.1fr_0.9fr]">
       <section className="rounded-3xl border border-default-200 bg-default-50/80 p-8 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-default-500">Aurrin Access</p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground">Sign in to the platform</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-default-500">Aurrin Ventures</p>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground">Welcome back</h1>
         <p className="mt-3 max-w-2xl text-default-500">
           {demoMode
-            ? 'Use a seeded persona to exercise protected flows without external services.'
-            : 'Use your Supabase account credentials to start a secure session.'}
+            ? 'Try the platform with a demo account — pick a role below to get started.'
+            : 'Sign in with your email and password to access your dashboard.'}
         </p>
 
         {errorMessage ? (
@@ -52,9 +52,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </div>
         ) : null}
 
-        {!supabaseConfigStatus.configured ? (
+        {!supabaseConfigStatus.configured && !demoMode ? (
           <div className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning-700">
-            Missing Supabase auth config: {supabaseConfigStatus.missingKeys.join(', ')}
+            Account sign-in is not available yet. Please check back soon.
           </div>
         ) : null}
 
@@ -114,15 +114,6 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
                 Sign in
               </button>
             </form>
-
-            <div className="mt-8 rounded-2xl border border-default-200 bg-background/70 p-4 text-sm text-default-500">
-              <p className="font-medium text-foreground">Callback support</p>
-              <p className="mt-1">
-                Redirect your Supabase auth flow to{' '}
-                <code className="rounded bg-default-100 px-1.5 py-0.5 text-xs text-foreground">/auth/callback?access_token=&lt;jwt&gt;</code>
-                {' '}or include a relative <code className="rounded bg-default-100 px-1.5 py-0.5 text-xs text-foreground">next</code> query.
-              </p>
-            </div>
           </>
         )}
       </section>

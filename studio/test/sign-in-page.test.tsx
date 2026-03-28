@@ -78,8 +78,6 @@ describe('auth sign-in page mode detection', () => {
     expect(
       screen.getByText('Supabase auth is not configured for credential sign-in. Use demo mode or configure the missing environment variables.')
     ).toBeInTheDocument();
-    expect(screen.getByText(/Missing Supabase auth config:/)).toBeInTheDocument();
-    expect(screen.getByText(/SUPABASE_SERVICE_ROLE_KEY/)).toBeInTheDocument();
-    expect(screen.getByText(/SUPABASE_JWT_SECRET/)).toBeInTheDocument();
+    expect(screen.getByText(/Account sign-in is not available yet/)).toBeInTheDocument();
   });
 });
