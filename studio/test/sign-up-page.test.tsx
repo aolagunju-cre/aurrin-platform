@@ -29,7 +29,6 @@ describe('auth sign-up page', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
-    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
     resetRuntimeEnvCacheForTests();
 
     const page = await SignUpPage({ searchParams: Promise.resolve({}) });
@@ -60,7 +59,7 @@ describe('auth sign-up page', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/Missing Supabase auth config:/)).toBeInTheDocument();
     expect(screen.getByText(/SUPABASE_SERVICE_ROLE_KEY/)).toBeInTheDocument();
-    expect(screen.getByText(/SUPABASE_JWT_SECRET/)).toBeInTheDocument();
+    expect(screen.queryByText(/SUPABASE_JWT_SECRET/)).not.toBeInTheDocument();
   });
 
   it('shows confirmation guidance after account creation requires email verification', async () => {
@@ -68,7 +67,6 @@ describe('auth sign-up page', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
-    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
     resetRuntimeEnvCacheForTests();
 
     const page = await SignUpPage({ searchParams: Promise.resolve({ success: 'confirm_email' }) });

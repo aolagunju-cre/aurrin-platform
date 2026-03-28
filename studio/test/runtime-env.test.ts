@@ -42,7 +42,6 @@ describe('runtime env demo mode', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://demo.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
-    process.env.SUPABASE_JWT_SECRET = 'jwt-secret-key';
 
     expect(getRuntimeEnv().demoMode).toBe(false);
   });
@@ -50,7 +49,6 @@ describe('runtime env demo mode', () => {
   it('keeps demo fallback on when one required Supabase key is missing', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://demo.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
 
     expect(getRuntimeEnv().demoMode).toBe(true);
   });
@@ -62,14 +60,13 @@ describe('runtime env demo mode', () => {
     const status = getSupabaseConfigStatus(getRuntimeEnv());
 
     expect(status.configured).toBe(false);
-    expect(status.missingKeys).toEqual(['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET']);
+    expect(status.missingKeys).toEqual(['SUPABASE_SERVICE_ROLE_KEY']);
   });
 
-  it('reports configured Supabase status when all required keys are present', () => {
+  it('reports configured Supabase status when required hosted Supabase keys are present', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://demo.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
-    process.env.SUPABASE_JWT_SECRET = 'jwt-secret-key';
 
     const status = getSupabaseConfigStatus(getRuntimeEnv());
 

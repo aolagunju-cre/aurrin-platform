@@ -29,6 +29,10 @@ function getSecret(): Uint8Array | Buffer {
   return new TextEncoder().encode(secretString);
 }
 
+function hasConfiguredJwtSecret(): boolean {
+  return getRuntimeEnv().supabaseJwtSecret !== 'your-secret-key';
+}
+
 export interface JWTPayload {
   sub: string;
   email: string;
@@ -60,18 +64,108 @@ function isVerifiedJWTPayload(payload: unknown): payload is JWTPayload {
   );
 }
 
-export async function verifyJWT(token: string): Promise<JWTPayload | null> {
+function decodeJwtPayload(token: string): Partial<JWTPayload> | null {
   try {
-    const jose = await getJoseLib();
-    if (!jose) {
+    const [, payloadSegment] = token.split('.');
+    if (!payloadSegment) {
       return null;
     }
-    const verified = await jose.jwtVerify(token, getSecret());
-    return isVerifiedJWTPayload(verified.payload) ? verified.payload : null;
-  } catch (error) {
-    console.error('JWT verification failed:', error);
+
+    const normalized = payloadSegment.replace(/-/gu, '+').replace(/_/gu, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    const decoded = typeof Buffer !== 'undefined'
+      ? Buffer.from(padded, 'base64').toString('utf-8')
+      : atob(padded);
+    const payload = JSON.parse(decoded) as Partial<JWTPayload>;
+    return payload && typeof payload === 'object' ? payload : null;
+  } catch {
     return null;
   }
+}
+
+interface SupabaseUserResponse {
+  id?: string;
+  email?: string;
+  email_confirmed_at?: string;
+  phone_confirmed_at?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+}
+
+async function verifySupabaseAccessToken(token: string): Promise<JWTPayload | null> {
+  const runtimeEnv = getRuntimeEnv();
+  if (!runtimeEnv.supabaseUrl || !runtimeEnv.supabaseAnonKey) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${runtimeEnv.supabaseUrl}/auth/v1/user`, {
+      method: 'GET',
+      headers: {
+        apikey: runtimeEnv.supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const user = await response.json() as SupabaseUserResponse;
+    if (!user.id || !user.email) {
+      return null;
+    }
+
+    const decoded = decodeJwtPayload(token);
+    const audience = decoded?.aud;
+
+    return {
+      sub: user.id,
+      email: user.email,
+      email_confirmed_at: user.email_confirmed_at,
+      phone_confirmed_at: user.phone_confirmed_at,
+      app_metadata: user.app_metadata,
+      user_metadata: user.user_metadata,
+      iat: typeof decoded?.iat === 'number' ? decoded.iat : Math.floor(Date.now() / 1000),
+      exp: typeof decoded?.exp === 'number' ? decoded.exp : Math.floor(Date.now() / 1000),
+      aud: typeof audience === 'string' || (Array.isArray(audience) && audience.every((entry) => typeof entry === 'string'))
+        ? audience
+        : 'authenticated',
+      iss: typeof decoded?.iss === 'string' ? decoded.iss : `${runtimeEnv.supabaseUrl}/auth/v1`,
+    };
+  } catch (error) {
+    console.error('Supabase token introspection failed:', error);
+    return null;
+  }
+}
+
+export async function verifyJWT(token: string): Promise<JWTPayload | null> {
+  let verificationError: unknown = null;
+
+  try {
+    if (hasConfiguredJwtSecret()) {
+      const jose = await getJoseLib();
+      if (!jose) {
+        return null;
+      }
+      const verified = await jose.jwtVerify(token, getSecret());
+      return isVerifiedJWTPayload(verified.payload) ? verified.payload : null;
+    }
+  } catch (error) {
+    verificationError = error;
+  }
+
+  const introspectedPayload = await verifySupabaseAccessToken(token);
+  if (introspectedPayload) {
+    return introspectedPayload;
+  }
+
+  if (verificationError) {
+    console.error('JWT verification failed:', verificationError);
+  }
+
+  return null;
 }
 
 interface AppJWTOptions {

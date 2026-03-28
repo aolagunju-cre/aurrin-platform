@@ -423,7 +423,8 @@ export async function resolveAuthIdentityFromStores(
   }
 
   const supabaseConfigStatus = getSupabaseConfigStatus();
-  if (!isDemoModeEnabled() && supabaseConfigStatus.configured) {
+  const runtimeEnv = getRuntimeEnv();
+  if (!isDemoModeEnabled() && supabaseConfigStatus.configured && runtimeEnv.supabaseJwtSecret !== 'your-secret-key') {
     const hasActiveSession = await hasActiveSupabaseSession(accessToken);
     if (!hasActiveSession) {
       return null;

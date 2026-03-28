@@ -29,7 +29,6 @@ export const REQUIRED_SUPABASE_ENV_KEYS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_JWT_SECRET',
 ] as const;
 
 export interface SupabaseConfigStatus {
@@ -117,12 +116,12 @@ function buildRuntimeEnv(): RuntimeEnv {
   if (demoModePreference === false && !hasSupabaseConfig) {
     warnOnce(
       '[env] DEMO_MODE=false but one or more required Supabase keys are missing: '
-      + 'NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET.'
+      + 'NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.'
     );
   }
 
   if (supabaseJwtSecret === 'your-secret-key') {
-    warnOnce('[env] SUPABASE_JWT_SECRET is not configured; using the default development secret.');
+    warnOnce('[env] SUPABASE_JWT_SECRET is not configured; using Supabase token introspection instead of local JWT verification.');
   }
 
   return {
@@ -162,10 +161,6 @@ function getSupabaseConfigStatusFromValues(
 
   if (!supabaseServiceRoleKey) {
     missingKeys.push('SUPABASE_SERVICE_ROLE_KEY');
-  }
-
-  if (!supabaseJwtSecret || supabaseJwtSecret === 'your-secret-key') {
-    missingKeys.push('SUPABASE_JWT_SECRET');
   }
 
   return {

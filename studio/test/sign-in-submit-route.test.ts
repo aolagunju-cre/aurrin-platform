@@ -111,7 +111,6 @@ describe('auth sign-in submit route', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
-    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
     resetRuntimeEnvCacheForTests();
 
     (global.fetch as jest.Mock).mockResolvedValue({
