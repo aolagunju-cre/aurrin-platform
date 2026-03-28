@@ -2,17 +2,24 @@ import React from "react";
 import "@testing-library/jest-dom";
 import fs from "node:fs";
 import path from "node:path";
+import { render, screen } from "@testing-library/react";
 import Home from "../src/app/page";
-import { redirect } from "next/navigation";
 
-jest.mock("next/navigation", () => ({
-  redirect: jest.fn(),
+jest.mock("next/image", () => ({
+  __esModule: true,
+  default: ({ priority: _priority, ...props }: React.ImgHTMLAttributes<HTMLImageElement> & { priority?: boolean }) => (
+    <img {...props} />
+  ),
 }));
 
 describe("App shell", () => {
-  it("redirects the home page to the public directory", () => {
-    Home();
-    expect(redirect).toHaveBeenCalledWith("/public/directory");
+  it("renders the public marketing homepage", () => {
+    render(Home());
+
+    expect(screen.getByRole("heading", { name: "Aurrin Ventures" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Support Founders" })).toHaveAttribute("href", "/public/directory");
+    expect(screen.getByRole("link", { name: "Apply to Pitch" })).toHaveAttribute("href", "/public/apply");
+    expect(screen.getByText("Join Calgary's Startup Ecosystem")).toBeInTheDocument();
   });
 
   it("includes required judge scoring guide sections", () => {

@@ -34,6 +34,14 @@ const publicDirectoryContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/015_public_directory_profile_contract.sql'),
   'utf8'
 );
+const publicRoleApplicationsContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/017_public_role_applications_contract.sql'),
+  'utf8'
+);
+const campaignsRuntimeContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/018_campaigns_runtime_contract.sql'),
+  'utf8'
+);
 
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
@@ -468,6 +476,17 @@ describe('Database Schema Validation', () => {
       expect(publicDirectoryContractSql).toContain('CREATE OR REPLACE FUNCTION next_founder_profile_slug');
       expect(publicDirectoryContractSql).toContain('CREATE TRIGGER founder_pitches_assign_public_slug');
     });
+
+    test('017 public role applications contract migration exists', () => {
+      expect(publicRoleApplicationsContractSql).toContain('CREATE TYPE community_role AS ENUM');
+      expect(publicRoleApplicationsContractSql).toContain('CREATE TABLE community_role_applications');
+      expect(publicRoleApplicationsContractSql).toContain('ALTER TABLE community_role_applications ENABLE ROW LEVEL SECURITY;');
+    });
+
+    test('018 campaigns runtime contract migration exists', () => {
+      expect(campaignsRuntimeContractSql).toContain('DROP POLICY IF EXISTS donations_public_read ON campaign_donations;');
+      expect(campaignsRuntimeContractSql).toContain('CREATE OR REPLACE FUNCTION increment_campaign_raised');
+    });
   });
 
   describe('Event Lifecycle Contract', () => {
@@ -521,6 +540,31 @@ describe('Database Schema Validation', () => {
       expect(requiredColumns).toContain('full_name');
       expect(requiredColumns).toContain('deck_path');
       expect(requiredColumns.length).toBe(7);
+    });
+  });
+
+  describe('Community Role Application Contract', () => {
+    test('community role applications include expected enums, indexes, and update trigger', () => {
+      expect(publicRoleApplicationsContractSql).toContain("CREATE TYPE community_role AS ENUM ('judge', 'mentor');");
+      expect(publicRoleApplicationsContractSql).toContain(
+        "CREATE TYPE community_role_application_status AS ENUM ('pending', 'accepted', 'declined');"
+      );
+      expect(publicRoleApplicationsContractSql).toContain('CREATE INDEX idx_community_role_applications_role_email');
+      expect(publicRoleApplicationsContractSql).toContain('CREATE INDEX idx_community_role_applications_status');
+      expect(publicRoleApplicationsContractSql).toContain('CREATE TRIGGER community_role_applications_update_timestamp');
+    });
+  });
+
+  describe('Campaign Runtime Contract', () => {
+    test('campaign donations are no longer directly publicly readable', () => {
+      expect(campaignsRuntimeContractSql).toContain('DROP POLICY IF EXISTS donations_public_read ON campaign_donations;');
+    });
+
+    test('increment campaign raised RPC updates totals atomically', () => {
+      expect(campaignsRuntimeContractSql).toContain('amount_raised_cents = amount_raised_cents + amount_input');
+      expect(campaignsRuntimeContractSql).toContain('donor_count = donor_count + 1');
+      expect(campaignsRuntimeContractSql).toContain("status IN ('active', 'funded')");
+      expect(campaignsRuntimeContractSql).toContain("THEN 'funded'::campaign_status");
     });
   });
 });

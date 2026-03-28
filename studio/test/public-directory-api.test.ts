@@ -120,6 +120,10 @@ describe('public directory API routes', () => {
           },
         ],
         error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [],
+        error: null,
       });
 
     const response = await listDirectory(
@@ -198,6 +202,10 @@ describe('public directory API routes', () => {
           },
         ],
         error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [],
+        error: null,
       });
 
     const response = await listDirectory(
@@ -262,6 +270,10 @@ describe('public directory API routes', () => {
           },
         ],
         error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [],
+        error: null,
       });
 
     const response = await getDirectoryProfile(new Request('http://localhost/api/public/directory/orbit-labs'), {
@@ -274,6 +286,7 @@ describe('public directory API routes', () => {
     expect(payload.data).toEqual(
       expect.objectContaining({
         founder_slug: 'orbit-labs',
+        campaign_id: null,
         name: 'Sam Founder',
         company: 'Orbit Labs',
         industry: 'Tech',

@@ -9,6 +9,12 @@ jest.mock('../src/lib/directory/profile', () => ({
   getPublicDirectoryProfile: jest.fn(),
 }));
 
+jest.mock('../src/components/public/CampaignSection', () => ({
+  CampaignSection: ({ campaignId }: { campaignId: string }) => (
+    <div data-testid="campaign-section">Campaign: {campaignId}</div>
+  ),
+}));
+
 const mockedGetPublicDirectoryProfile = getPublicDirectoryProfile as jest.MockedFunction<typeof getPublicDirectoryProfile>;
 
 describe('public directory profile page', () => {
@@ -24,6 +30,7 @@ describe('public directory profile page', () => {
       data: {
         founder_id: 'founder-1',
         founder_slug: 'orbit-labs',
+        campaign_id: null,
         name: 'Sam Founder',
         company: 'Orbit Labs',
         industry: 'climate',
@@ -68,7 +75,45 @@ describe('public directory profile page', () => {
     expect(screen.getByText('Interested? Contact {Aurrin}')).toBeInTheDocument();
     expect(screen.queryByText(/score_breakdown/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/validation/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('campaign-section')).not.toBeInTheDocument();
     expect((global as any).fetch).not.toHaveBeenCalled();
+  });
+
+  it('renders the campaign section when a public campaign is available', async () => {
+    mockedGetPublicDirectoryProfile.mockResolvedValueOnce({
+      data: {
+        founder_id: 'founder-1',
+        founder_slug: 'orbit-labs',
+        campaign_id: 'campaign-1',
+        name: 'Sam Founder',
+        company: 'Orbit Labs',
+        industry: 'climate',
+        stage: 'seed',
+        summary: 'Long-form founder summary for public profile.',
+        photo: null,
+        score: 91,
+        social_links: {
+          website: 'https://orbit.example',
+          linkedin: null,
+          twitter: null,
+        },
+        badges: [],
+        deck_link: null,
+        event: {
+          id: 'event-1',
+          name: 'Spring Demo Day',
+          starts_at: '2026-03-01T00:00:00.000Z',
+          ends_at: '2026-03-02T00:00:00.000Z',
+        },
+        donations: null,
+      },
+      error: null,
+    });
+
+    const page = await PublicDirectoryProfilePage({ params: Promise.resolve({ founderSlug: 'orbit-labs' }) });
+    render(page as React.ReactElement);
+
+    expect(screen.getByTestId('campaign-section')).toHaveTextContent('Campaign: campaign-1');
   });
 
   it('copies profile URL when Share is clicked', async () => {

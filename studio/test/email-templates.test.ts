@@ -5,6 +5,7 @@ import { emailTemplateRegistry, renderEmailTemplate } from '../src/lib/email/tem
 describe('email template registry', () => {
   it('contains all required template names', () => {
     expect(Object.keys(emailTemplateRegistry).sort()).toEqual([
+      'community_role_application_received',
       'directory_published',
       'email_verification',
       'founder_approved',
@@ -75,6 +76,23 @@ describe('email template registry', () => {
 
     expect(rendered.subject).toContain("You've been paired with Founder One! Accept to connect.");
     expect(rendered.text).toContain("You've been paired with Founder One! Accept to connect.");
+  });
+
+  it('renders community role application notifications with role-specific details', () => {
+    const rendered = renderEmailTemplate('community_role_application_received', {
+      role: 'judge',
+      name: 'Sam Reviewer',
+      email: 'sam@example.com',
+      expertise: 'AI, venture evaluation',
+      linkedin: 'https://linkedin.com/in/sam-reviewer',
+      motivation: 'I want to support early-stage founders.',
+    });
+
+    expect(rendered.subject).toContain('New Judge application: Sam Reviewer');
+    expect(rendered.text).toContain('Sam Reviewer');
+    expect(rendered.text).toContain('AI, venture evaluation');
+    expect(rendered.text).toContain('https://linkedin.com/in/sam-reviewer');
+    expect(rendered.text).toContain('Motivation: I want to support early-stage founders.');
   });
 
   it('renders reminder semantics for mentor and founder recipients', () => {

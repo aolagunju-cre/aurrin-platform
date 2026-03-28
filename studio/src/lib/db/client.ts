@@ -88,6 +88,34 @@ export interface FounderApplicationUpdate {
   application_data?: Record<string, unknown>;
 }
 
+export type CommunityRole = 'judge' | 'mentor';
+export type CommunityRoleApplicationStatus = 'pending' | 'accepted' | 'declined';
+
+export interface CommunityRoleApplicationRecord {
+  id: string;
+  role: CommunityRole;
+  email: string;
+  full_name: string;
+  expertise: string;
+  linkedin: string | null;
+  application_data: Record<string, unknown>;
+  status: CommunityRoleApplicationStatus;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityRoleApplicationInsert {
+  role: CommunityRole;
+  email: string;
+  full_name: string;
+  expertise: string;
+  linkedin?: string | null;
+  application_data?: Record<string, unknown>;
+  status?: CommunityRoleApplicationStatus;
+}
+
 export interface UserRecord {
   id: string;
   email: string;
@@ -679,8 +707,15 @@ export interface SupabaseDBClient {
   ): Promise<{ error: Error | null }>;
   getFounderApplicationById(id: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   getFounderApplicationByEmail(email: string): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  getCommunityRoleApplicationByRoleAndEmail(
+    role: CommunityRole,
+    email: string
+  ): Promise<{ data: CommunityRoleApplicationRecord | null; error: Error | null }>;
   getUserById(id: string): Promise<{ data: UserRecord | null; error: Error | null }>;
   insertFounderApplication(record: FounderApplicationInsert): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
+  insertCommunityRoleApplication(
+    record: CommunityRoleApplicationInsert
+  ): Promise<{ data: CommunityRoleApplicationRecord | null; error: Error | null }>;
   updateFounderApplication(id: string, updates: FounderApplicationUpdate): Promise<{ data: FounderApplicationRecord | null; error: Error | null }>;
   getUserByEmail(email: string): Promise<{ data: UserRecord | null; error: Error | null }>;
   insertUser(record: UserInsert): Promise<{ data: UserRecord | null; error: Error | null }>;
@@ -798,8 +833,10 @@ export function getSupabaseClient(): SupabaseClient {
         updateJobState: async () => ({ error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         getFounderApplicationById: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         getFounderApplicationByEmail: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        getCommunityRoleApplicationByRoleAndEmail: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         getUserById: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         insertFounderApplication: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        insertCommunityRoleApplication: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         updateFounderApplication: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         getUserByEmail: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         insertUser: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
@@ -1301,6 +1338,22 @@ export function getSupabaseClient(): SupabaseClient {
       }
     },
 
+    async getCommunityRoleApplicationByRoleAndEmail(role, email) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/community_role_applications?role=eq.${encodeURIComponent(role)}&email=eq.${encodeURIComponent(email)}&select=*&order=updated_at.desc&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Community role application query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as CommunityRoleApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
     async getUserById(id) {
       try {
         const response = await fetch(
@@ -1344,6 +1397,31 @@ export function getSupabaseClient(): SupabaseClient {
           return { data: null, error: new Error(`Founder application insert failed: ${response.statusText}`) };
         }
         const rows = await response.json() as FounderApplicationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertCommunityRoleApplication(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/community_role_applications`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            role: record.role,
+            email: record.email,
+            full_name: record.full_name,
+            expertise: record.expertise,
+            linkedin: record.linkedin ?? null,
+            application_data: record.application_data ?? {},
+            status: record.status ?? 'pending',
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Community role application insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as CommunityRoleApplicationRecord[];
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };

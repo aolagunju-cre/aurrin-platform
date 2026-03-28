@@ -83,6 +83,7 @@ describe('public directory demo mode routes', () => {
     expect(payload.data).toEqual({
       founder_id: null,
       founder_slug: 'maya-chen-terravolt',
+      campaign_id: null,
       name: 'Maya Chen',
       company: 'TerraVolt Energy',
       industry: 'CleanTech',

@@ -1,3 +1,4 @@
+import { communityRoleApplicationReceivedTemplate } from './community_role_application_received';
 import { founderMatchCreatedTemplate } from './founder_match_created';
 import { founderSupportConfirmationTemplate } from './founder_support_confirmation';
 import { matchAcceptedTemplate } from './match_accepted';
@@ -18,6 +19,7 @@ import type { EmailTemplateData, RenderedEmailTemplate } from './types';
 import { welcomeFounderTemplate } from './welcome_founder';
 
 export const emailTemplateRegistry = {
+  community_role_application_received: communityRoleApplicationReceivedTemplate,
   welcome_founder: welcomeFounderTemplate,
   founder_approved: founderApprovedTemplate,
   directory_published: directoryPublishedTemplate,

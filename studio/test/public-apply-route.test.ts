@@ -52,11 +52,23 @@ function buildRequest(overrides: Record<string, string> = {}, file?: File): Next
   return new NextRequest(new Request('http://localhost/api/public/apply', { method: 'POST', body: formData }));
 }
 
+function buildJsonRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest(
+    new Request('http://localhost/api/public/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  );
+}
+
 describe('POST /api/public/apply', () => {
   let mockDb: {
     getFounderApplicationById: jest.Mock;
     getFounderApplicationByEmail: jest.Mock;
+    getCommunityRoleApplicationByRoleAndEmail: jest.Mock;
     insertFounderApplication: jest.Mock;
+    insertCommunityRoleApplication: jest.Mock;
     updateFounderApplication: jest.Mock;
     getUserByEmail: jest.Mock;
     insertUser: jest.Mock;
@@ -71,6 +83,7 @@ describe('POST /api/public/apply', () => {
     mockDb = {
       getFounderApplicationById: jest.fn(),
       getFounderApplicationByEmail: jest.fn().mockResolvedValue({ data: null, error: null }),
+      getCommunityRoleApplicationByRoleAndEmail: jest.fn().mockResolvedValue({ data: null, error: null }),
       insertFounderApplication: jest.fn().mockResolvedValue({
         data: {
           id: 'app-1',
@@ -89,6 +102,23 @@ describe('POST /api/public/apply', () => {
           status: 'pending',
           assigned_event_id: null,
           application_data: {},
+          reviewed_at: null,
+          reviewed_by: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        error: null,
+      }),
+      insertCommunityRoleApplication: jest.fn().mockResolvedValue({
+        data: {
+          id: 'role-app-1',
+          role: 'judge',
+          email: 'judge@example.com',
+          full_name: 'Judge Judy',
+          expertise: 'Pitch coaching',
+          linkedin: null,
+          application_data: { motivation: 'I want to support founders with direct pitch feedback.' },
+          status: 'pending',
           reviewed_at: null,
           reviewed_by: null,
           created_at: new Date().toISOString(),
@@ -144,7 +174,9 @@ describe('POST /api/public/apply', () => {
         updateJobState: jest.fn(),
         getFounderApplicationById: mockDb.getFounderApplicationById,
         getFounderApplicationByEmail: mockDb.getFounderApplicationByEmail,
+        getCommunityRoleApplicationByRoleAndEmail: mockDb.getCommunityRoleApplicationByRoleAndEmail,
         insertFounderApplication: mockDb.insertFounderApplication,
+        insertCommunityRoleApplication: mockDb.insertCommunityRoleApplication,
         updateFounderApplication: mockDb.updateFounderApplication,
         getUserByEmail: mockDb.getUserByEmail,
         insertUser: mockDb.insertUser,
@@ -292,5 +324,142 @@ describe('POST /api/public/apply', () => {
     expect(response.status).toBe(400);
     expect(body.errors.deck_file).toBe('Pitch deck must be a PDF');
     expect(mockedUploadFile).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid judge JSON submission and notifies the internal contact', async () => {
+    const response = await POST(buildJsonRequest({
+      role: 'judge',
+      full_name: 'Judge Judy',
+      email: 'judge@example.com',
+      expertise: 'Pitch coaching',
+      linkedin: 'https://linkedin.com/in/jjudge',
+      motivation: 'I want to support founders with direct pitch feedback at live events.',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true, message: 'Application submitted' });
+    expect(mockDb.insertCommunityRoleApplication).toHaveBeenCalledWith({
+      role: 'judge',
+      email: 'judge@example.com',
+      full_name: 'Judge Judy',
+      expertise: 'Pitch coaching',
+      linkedin: 'https://linkedin.com/in/jjudge',
+      status: 'pending',
+      application_data: {
+        motivation: 'I want to support founders with direct pitch feedback at live events.',
+      },
+    });
+    expect(mockedSendEmail).toHaveBeenCalledWith(
+      'admin@aurrinventures.ca',
+      'community_role_application_received',
+      expect.objectContaining({
+        role: 'judge',
+        name: 'Judge Judy',
+        email: 'judge@example.com',
+        expertise: 'Pitch coaching',
+      })
+    );
+    expect(mockedUploadFile).not.toHaveBeenCalled();
+  });
+
+  it('accepts a valid mentor JSON submission and stores role-specific data', async () => {
+    const response = await POST(buildJsonRequest({
+      role: 'mentor',
+      full_name: 'Mentor Mary',
+      email: 'mentor@example.com',
+      expertise: 'Go-to-market strategy',
+      linkedin: 'https://linkedin.com/in/mmentor',
+      availability: '2 hours per month',
+      how_can_help: 'I can help founders test positioning, messaging, and early customer conversations.',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true, message: 'Application submitted' });
+    expect(mockDb.insertCommunityRoleApplication).toHaveBeenCalledWith({
+      role: 'mentor',
+      email: 'mentor@example.com',
+      full_name: 'Mentor Mary',
+      expertise: 'Go-to-market strategy',
+      linkedin: 'https://linkedin.com/in/mmentor',
+      status: 'pending',
+      application_data: {
+        availability: '2 hours per month',
+        how_can_help: 'I can help founders test positioning, messaging, and early customer conversations.',
+      },
+    });
+    expect(mockedSendEmail).toHaveBeenCalledWith(
+      'admin@aurrinventures.ca',
+      'community_role_application_received',
+      expect.objectContaining({
+        role: 'mentor',
+        name: 'Mentor Mary',
+        email: 'mentor@example.com',
+      })
+    );
+  });
+
+  it('returns role-specific validation errors for invalid judge and mentor JSON payloads', async () => {
+    const judgeResponse = await POST(buildJsonRequest({
+      role: 'judge',
+      full_name: 'Judge Judy',
+      email: 'judge@example.com',
+      expertise: 'Pitch coaching',
+      motivation: 'Too short',
+    }));
+    const judgeBody = await judgeResponse.json();
+
+    expect(judgeResponse.status).toBe(400);
+    expect(judgeBody.success).toBe(false);
+    expect(judgeBody.errors.motivation).toContain('at least 30 characters');
+
+    const mentorResponse = await POST(buildJsonRequest({
+      role: 'mentor',
+      full_name: 'Mentor Mary',
+      email: 'mentor@example.com',
+      expertise: 'Go-to-market strategy',
+      how_can_help: '',
+    }));
+    const mentorBody = await mentorResponse.json();
+
+    expect(mentorResponse.status).toBe(400);
+    expect(mentorBody.success).toBe(false);
+    expect(mentorBody.errors.how_can_help).toBe('How you can help is required');
+    expect(mockDb.insertCommunityRoleApplication).not.toHaveBeenCalled();
+  });
+
+  it('returns success without creating a duplicate community role application submitted in the last day', async () => {
+    mockDb.getCommunityRoleApplicationByRoleAndEmail.mockResolvedValueOnce({
+      data: {
+        id: 'role-app-existing',
+        role: 'judge',
+        email: 'judge@example.com',
+        full_name: 'Judge Judy',
+        expertise: 'Pitch coaching',
+        linkedin: null,
+        application_data: {},
+        status: 'pending',
+        reviewed_at: null,
+        reviewed_by: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      error: null,
+    });
+
+    const response = await POST(buildJsonRequest({
+      role: 'judge',
+      full_name: 'Judge Judy',
+      email: 'judge@example.com',
+      expertise: 'Pitch coaching',
+      motivation: 'I want to support founders with direct pitch feedback at live events.',
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true, message: 'Application submitted' });
+    expect(mockDb.insertCommunityRoleApplication).not.toHaveBeenCalled();
+    expect(mockedSendEmail).not.toHaveBeenCalled();
   });
 });
