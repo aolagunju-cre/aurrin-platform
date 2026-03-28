@@ -81,6 +81,7 @@ describe('public directory demo mode routes', () => {
 
     expect(payload.success).toBe(true);
     expect(payload.data).toEqual({
+      founder_id: null,
       founder_slug: 'maya-chen-terravolt',
       name: 'Maya Chen',
       company: 'TerraVolt Energy',
@@ -102,6 +103,7 @@ describe('public directory demo mode routes', () => {
         starts_at: '2026-02-21T18:00:00.000Z',
         ends_at: '2026-02-21T22:00:00.000Z',
       },
+      donations: null,
     });
     expect(mockedGetSupabaseClient).not.toHaveBeenCalled();
   });

@@ -77,6 +77,8 @@ export interface RevenueChurnAggregates {
   churnRate: number;
   revenueByMonth: MonthlyAggregate[];
   churnByMonth: MonthlyAggregate[];
+  founderSupportCount: number;
+  founderSupportTotalCents: number;
 }
 
 interface CacheEntry {
@@ -133,6 +135,7 @@ interface TransactionRow {
   id: string;
   amount_cents: number | null;
   status: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -322,7 +325,7 @@ export async function getKpiBaseAggregates(options: AnalyticsQueryOptions = {}):
         queryTable<AudienceResponseRow>('audience_responses', 'id', options),
         queryTable<MentorMatchStatusRow>('mentor_matches', 'id,status', options),
         queryTable<SubscriptionRow>('subscriptions', 'id,status,cancel_at,canceled_at,created_at', options),
-        queryTable<TransactionRow>('transactions', 'id,amount_cents,status,created_at', options),
+        queryTable<TransactionRow>('transactions', 'id,amount_cents,status,metadata,created_at', options),
       ]);
 
     const uniqueJudges = new Set(roleAssignments.filter((row) => row.role === 'judge').map((row) => row.user_id));
@@ -584,7 +587,7 @@ export async function getRevenueChurnAggregates(options: AnalyticsQueryOptions =
   return withAnalyticsCache(buildCacheKey('revenue-churn', options), options, async () => {
     const [subscriptions, transactions] = await Promise.all([
       queryTable<SubscriptionRow>('subscriptions', 'id,status,cancel_at,canceled_at,created_at', options),
-      queryTable<TransactionRow>('transactions', 'id,amount_cents,status,created_at', options),
+      queryTable<TransactionRow>('transactions', 'id,amount_cents,status,metadata,created_at', options),
     ]);
 
     const revenueByMonthMap = new Map<string, number>();
@@ -619,6 +622,12 @@ export async function getRevenueChurnAggregates(options: AnalyticsQueryOptions =
     const mrrCents = revenueByMonth.length === 0 ? 0 : revenueByMonth[revenueByMonth.length - 1].amountCents;
     const activeSubscriptions = subscriptions.filter((row) => row.status === 'active').length;
     const cancelledSubscriptions = subscriptions.filter((row) => row.status === 'cancelled').length;
+    const founderSupportTransactions = transactions.filter((row) => (
+      row.status === 'succeeded'
+      && row.metadata
+      && typeof row.metadata === 'object'
+      && row.metadata.kind === 'founder_support'
+    ));
 
     return {
       totalRevenueCents,
@@ -628,6 +637,11 @@ export async function getRevenueChurnAggregates(options: AnalyticsQueryOptions =
       churnRate: subscriptions.length === 0 ? 0 : cancelledSubscriptions / subscriptions.length,
       revenueByMonth,
       churnByMonth,
+      founderSupportCount: founderSupportTransactions.length,
+      founderSupportTotalCents: founderSupportTransactions.reduce(
+        (sum, row) => sum + toSafeNumber(row.amount_cents),
+        0
+      ),
     };
   });
 }

@@ -94,6 +94,8 @@ describe('admin analytics export route', () => {
       churnRate: 0.3,
       revenueByMonth: [{ month: '2026-01', amountCents: 120000 }],
       churnByMonth: [{ month: '2026-01', amountCents: 2 }],
+      founderSupportCount: 0,
+      founderSupportTotalCents: 0,
     });
   });
 

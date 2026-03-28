@@ -22,6 +22,7 @@ describe('public directory profile page', () => {
     (global as any).fetch = jest.fn();
     mockedGetPublicDirectoryProfile.mockResolvedValueOnce({
       data: {
+        founder_id: 'founder-1',
         founder_slug: 'orbit-labs',
         name: 'Sam Founder',
         company: 'Orbit Labs',
@@ -43,6 +44,7 @@ describe('public directory profile page', () => {
           starts_at: '2026-03-01T00:00:00.000Z',
           ends_at: '2026-03-02T00:00:00.000Z',
         },
+        donations: null,
       },
       error: null,
     });
@@ -62,6 +64,7 @@ describe('public directory profile page', () => {
     );
     expect(screen.getByText('Top Score')).toBeInTheDocument();
     expect(screen.getByText('Audience Favorite')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Support this Founder' })).toBeInTheDocument();
     expect(screen.getByText('Interested? Contact {Aurrin}')).toBeInTheDocument();
     expect(screen.queryByText(/score_breakdown/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/validation/i)).not.toBeInTheDocument();

@@ -83,6 +83,8 @@ describe('admin analytics metrics routes', () => {
       churnRate: 0.3,
       revenueByMonth: [{ month: '2026-01', amountCents: 120000 }],
       churnByMonth: [{ month: '2026-01', amountCents: 2 }],
+      founderSupportCount: 5,
+      founderSupportTotalCents: 15000,
     });
   });
 
@@ -194,6 +196,10 @@ describe('admin analytics metrics routes', () => {
         mrrTrend: [{ month: '2026-01', amountCents: 120000 }],
         churnRate: 0.3,
         churnRateByMonth: [{ month: '2026-01', amountCents: 2 }],
+        founderSupport: {
+          count: 5,
+          totalCents: 15000,
+        },
         subscriptionTotals: {
           active: 7,
           cancelled: 3,

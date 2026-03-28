@@ -2,6 +2,7 @@ import { getSupabaseClient } from '../db/client';
 import { DEMO_MODE, demoDirectoryProfiles, demoEvents } from '../demo/data';
 
 export interface PublicDirectoryProfile {
+  founder_id: string | null;
   founder_slug: string;
   name: string | null;
   company: string | null;
@@ -23,6 +24,10 @@ export interface PublicDirectoryProfile {
     starts_at: string;
     ends_at: string;
   };
+  donations: {
+    count: number;
+    total_cents: number;
+  } | null;
 }
 
 interface DirectoryPitchDetailRow {
@@ -101,6 +106,38 @@ function toBadges(validationSummary: Record<string, unknown> | null): string[] {
   return raw.filter((badge): badge is string => typeof badge === 'string' && badge.trim().length > 0);
 }
 
+function isFounderDonationStatsEnabled(): boolean {
+  return /^(1|true|yes|on)$/iu.test(process.env.NEXT_PUBLIC_ENABLE_FOUNDER_DONATION_STATS ?? '');
+}
+
+async function getDonationSummaryForFounderSlug(founderSlug: string): Promise<{ count: number; total_cents: number } | null> {
+  if (!isFounderDonationStatsEnabled() || DEMO_MODE) {
+    return null;
+  }
+
+  const client = getSupabaseClient();
+  const query = [
+    'event_type=eq.payment_intent.succeeded',
+    'status=eq.succeeded',
+    `metadata->>kind=eq.${encodeURIComponent('founder_support')}`,
+    `metadata->>founder_slug=eq.${encodeURIComponent(founderSlug)}`,
+    'select=amount_cents',
+    'limit=500',
+  ].join('&');
+
+  const result = await client.db.queryTable<{ amount_cents: number | null }>('transactions', query);
+  if (result.error) {
+    throw result.error;
+  }
+
+  const count = result.data.length;
+  const total_cents = result.data.reduce(
+    (sum, row) => sum + (typeof row.amount_cents === 'number' ? row.amount_cents : 0),
+    0
+  );
+  return { count, total_cents };
+}
+
 function toDemoProfile(founderSlug: string): PublicDirectoryProfile | null {
   const profile = demoDirectoryProfiles.find((entry) => entry.founder_slug === founderSlug);
   if (!profile) {
@@ -110,6 +147,7 @@ function toDemoProfile(founderSlug: string): PublicDirectoryProfile | null {
   const event = demoEvents.find((entry) => entry.id === profile.event.id);
 
   return {
+    founder_id: null,
     founder_slug: profile.founder_slug,
     name: profile.founder_name,
     company: profile.company,
@@ -138,6 +176,12 @@ function toDemoProfile(founderSlug: string): PublicDirectoryProfile | null {
       starts_at: event?.start_date ?? '2026-03-28T18:00:00.000Z',
       ends_at: event?.end_date ?? '2026-03-28T22:00:00.000Z',
     },
+    donations: isFounderDonationStatsEnabled()
+      ? {
+          count: Math.max(0, Math.floor((profile.score ?? 0) / 10)),
+          total_cents: Math.max(0, Math.floor((profile.score ?? 0) / 10)) * 2500,
+        }
+      : null,
   };
 }
 
@@ -192,8 +236,11 @@ export async function getPublicDirectoryProfile(founderSlug: string): Promise<{
     application = applicationResult.data[0] ?? null;
   }
 
+  const donations = await getDonationSummaryForFounderSlug(row.public_profile_slug);
+
   return {
     data: {
+      founder_id: row.founder.id,
       founder_slug: row.public_profile_slug,
       name: normalizeText(row.founder.user?.name ?? null),
       company: normalizeText(row.founder.company_name ?? null),
@@ -220,6 +267,7 @@ export async function getPublicDirectoryProfile(founderSlug: string): Promise<{
         starts_at: row.event.starts_at,
         ends_at: row.event.ends_at,
       },
+      donations,
     },
     error: null,
   };

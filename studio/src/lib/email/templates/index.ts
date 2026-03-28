@@ -1,4 +1,5 @@
 import { founderMatchCreatedTemplate } from './founder_match_created';
+import { founderSupportConfirmationTemplate } from './founder_support_confirmation';
 import { matchAcceptedTemplate } from './match_accepted';
 import { matchReminderTemplate } from './match_reminder';
 import { directoryPublishedTemplate } from './directory_published';
@@ -23,6 +24,7 @@ export const emailTemplateRegistry = {
   scores_published: scoresPublishedTemplate,
   mentor_match_created: mentorMatchCreatedTemplate,
   founder_match_created: founderMatchCreatedTemplate,
+  founder_support_confirmation: founderSupportConfirmationTemplate,
   match_accepted: matchAcceptedTemplate,
   match_reminder: matchReminderTemplate,
   mentor_matched: mentorMatchedTemplate,

@@ -9,6 +9,7 @@ describe('email template registry', () => {
       'email_verification',
       'founder_approved',
       'founder_match_created',
+      'founder_support_confirmation',
       'match_accepted',
       'match_reminder',
       'mentor_match_created',

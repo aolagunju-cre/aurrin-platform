@@ -19,6 +19,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           mrrTrend: [{ month: '2026-03', revenue: demoAnalytics.total_revenue_cents }],
           churnRate: 0.04,
           churnRateByMonth: [{ month: '2026-03', rate: 0.04 }],
+          founderSupport: {
+            count: 17,
+            totalCents: 42500,
+          },
           subscriptionTotals: {
             active: demoAnalytics.active_subscribers,
             cancelled: 2,
@@ -48,6 +52,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           mrrTrend: aggregates.revenueByMonth,
           churnRate: aggregates.churnRate,
           churnRateByMonth: aggregates.churnByMonth,
+          founderSupport: {
+            count: aggregates.founderSupportCount,
+            totalCents: aggregates.founderSupportTotalCents,
+          },
           subscriptionTotals: {
             active: aggregates.activeSubscriptions,
             cancelled: aggregates.cancelledSubscriptions,

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { DirectoryShareButton } from '../../../../components/public/DirectoryShareButton';
+import { FounderSupportCheckout } from '../../../../components/public/FounderSupportCheckout';
 import { getPublicDirectoryProfile } from '../../../../lib/directory/profile';
 
 interface PublicDirectoryProfilePageProps {
@@ -137,6 +138,25 @@ export default async function PublicDirectoryProfilePage({ params }: PublicDirec
       </section>
 
       <DirectoryShareButton profileUrl={profileUrl} />
+
+      <FounderSupportCheckout
+        founderSlug={profile.founder_slug}
+        founderName={profile.name ?? profile.company ?? 'this founder'}
+        founderId={profile.founder_id}
+      />
+
+      {profile.donations ? (
+        <section className="space-y-1">
+          <h2 className="text-xl font-semibold text-foreground">Founder Support</h2>
+          <p className="text-default-500">
+            {profile.donations.count} contributions ·{' '}
+            {new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+            }).format(profile.donations.total_cents / 100)}
+          </p>
+        </section>
+      ) : null}
 
       <p className="text-default-500">
         Interested? Contact {`{Aurrin}`}{' '}

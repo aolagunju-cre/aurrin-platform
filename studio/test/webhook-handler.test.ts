@@ -319,6 +319,52 @@ describe('handleStripeWebhookEvent', () => {
         amount_cents: 1200,
         currency: 'USD',
         status: 'succeeded',
+        metadata: {
+          user_id: userId,
+          subscription_id: subscriptionId,
+        },
+      })
+    );
+  });
+
+  it('queues founder support confirmation email for founder_support payment intents', async () => {
+    const event = {
+      id: 'evt_pi_founder_support',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_support',
+          amount: 2500,
+          amount_received: 2500,
+          currency: 'usd',
+          metadata: {
+            kind: 'founder_support',
+            founder_slug: 'maya-chen-terravolt',
+            founder_name: 'Maya Chen',
+            donor_email: 'donor@example.com',
+          },
+          receipt_email: 'donor@example.com',
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await handleStripeWebhookEvent(event);
+
+    expect(mockedEnqueueJob).toHaveBeenCalledWith(
+      'send_email',
+      expect.objectContaining({
+        to: 'donor@example.com',
+        template_name: 'founder_support_confirmation',
+        data: expect.objectContaining({
+          founder_slug: 'maya-chen-terravolt',
+          founder_name: 'Maya Chen',
+          amount_cents: 2500,
+          currency: 'USD',
+        }),
+      }),
+      expect.objectContaining({
+        aggregate_id: 'maya-chen-terravolt',
+        aggregate_type: 'founder_support',
       })
     );
   });

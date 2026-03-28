@@ -586,6 +586,7 @@ export interface TransactionRecord {
   amount_cents: number | null;
   currency: string | null;
   status: CommerceTransactionStatus;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -597,6 +598,7 @@ export interface TransactionInsert {
   amount_cents?: number | null;
   currency?: string | null;
   status: CommerceTransactionStatus;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface EntitlementRecord {
@@ -2505,6 +2507,7 @@ export function getSupabaseClient(): SupabaseClient {
             amount_cents: record.amount_cents ?? null,
             currency: record.currency ?? null,
             status: record.status,
+            metadata: record.metadata ?? {},
           }),
         });
         if (!response.ok) {

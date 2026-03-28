@@ -40,6 +40,18 @@ function currencyToUpper(value: string | null | undefined): string | null {
   return value ? value.toUpperCase() : null;
 }
 
+function readTrimmedString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function isLikelyEmail(value: string | null): value is string {
+  return Boolean(value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value));
+}
+
 function readPositiveInteger(value: string | undefined): number | null {
   if (!value) {
     return null;
@@ -280,6 +292,7 @@ async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<
     amount_cents: paymentIntent.amount_received || paymentIntent.amount,
     currency: currencyToUpper(paymentIntent.currency),
     status: 'succeeded' as CommerceTransactionStatus,
+    metadata: metadata as Record<string, unknown>,
   });
 
   if (insertedTx.error) {
@@ -336,6 +349,34 @@ async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<
       source: 'purchase',
       event_type: event.type,
     });
+  }
+
+  if (metadata.kind === 'founder_support') {
+    const founderSlug = readTrimmedString(metadata.founder_slug);
+    const founderName = readTrimmedString(metadata.founder_name);
+    const donorEmail = readTrimmedString(metadata.donor_email) ?? readTrimmedString(paymentIntent.receipt_email);
+    const amount = paymentIntent.amount_received || paymentIntent.amount;
+
+    if (isLikelyEmail(donorEmail)) {
+      await enqueueJob(
+        'send_email',
+        {
+          to: donorEmail,
+          template_name: 'founder_support_confirmation',
+          data: {
+            founder_slug: founderSlug,
+            founder_name: founderName,
+            amount_cents: amount,
+            amount: amount / 100,
+            currency: currencyToUpper(paymentIntent.currency) ?? 'USD',
+          },
+        },
+        {
+          aggregate_id: founderSlug ?? paymentIntent.id,
+          aggregate_type: 'founder_support',
+        }
+      );
+    }
   }
 }
 
