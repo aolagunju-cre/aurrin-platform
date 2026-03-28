@@ -57,9 +57,17 @@ echo "Seeding repo-memory branch..."
 if ! git ls-remote --heads origin memory/repo-assist | grep -q memory/repo-assist; then
   TEMP_DIR=$(mktemp -d)
   echo '{"initialized": true, "note": "Seeded by bootstrap.sh"}' > "$TEMP_DIR/state.json"
+  cat > "$TEMP_DIR/vercel.json" <<'EOF'
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": false
+  }
+}
+EOF
   cd "$TEMP_DIR"
   git init -q && git checkout -q --orphan memory/repo-assist
-  git add state.json && git commit -q -m "Seed repo memory"
+  git add state.json vercel.json && git commit -q -m "Seed repo memory"
   git remote add origin "$(gh repo view --json url -q .url).git"
   git push -q origin memory/repo-assist
   cd - > /dev/null
@@ -67,7 +75,8 @@ if ! git ls-remote --heads origin memory/repo-assist | grep -q memory/repo-assis
   echo "Repo-memory branch created."
 else
   echo "Repo-memory branch already exists, validating..."
-  # Validate: memory branch should only contain lightweight state files.
+  # Validate: memory branch should only contain lightweight state files and
+  # the Vercel auto-deploy guard.
   # If template files leaked onto it (e.g. setup.sh, CLAUDE.md), the
   # push_repo_memory step will fail validation on every agent run.
   REPO_NWO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
