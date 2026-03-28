@@ -20,8 +20,25 @@ jest.mock('../src/lib/auth/request-auth', () => {
   };
 });
 
+jest.mock('../src/lib/db/client', () => ({
+  getSupabaseClient: jest.fn(),
+}));
+
 const ORIGINAL_ENV = process.env;
 const ORIGINAL_FETCH = global.fetch;
+
+function configureRoleAssignmentsMock(assignments: Array<{ role: string; scope: string; scoped_id: string | null }>) {
+  const mockedModule = jest.requireMock('../src/lib/db/client') as { getSupabaseClient: jest.Mock };
+  mockedModule.getSupabaseClient.mockReturnValue({
+    db: {
+      getRoleAssignmentsByUserId: jest.fn().mockResolvedValue({
+        data: assignments,
+        error: null,
+      }),
+    },
+    storage: {},
+  });
+}
 
 function buildDemoRequest(nextPath = '/mentor'): NextRequest {
   const formData = new FormData();
@@ -49,6 +66,7 @@ describe('auth sign-in submit route', () => {
     process.env.DEMO_MODE = 'true';
     resetRuntimeEnvCacheForTests();
     global.fetch = jest.fn();
+    configureRoleAssignmentsMock([{ role: 'admin', scope: 'global', scoped_id: null }]);
   });
 
   afterAll(() => {
@@ -160,6 +178,77 @@ describe('auth sign-in submit route', () => {
 
     expect(response.status).toBe(303);
     expect(response.headers.get('location')).toBe('http://localhost/auth/sign-in?next=%2Fadmin&error=invalid_credentials');
+  });
+
+  it('routes credential sign-in users to the role-based default portal when next is root', async () => {
+    process.env.DEMO_MODE = 'false';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: 'valid-token' }),
+    });
+    configureRoleAssignmentsMock([{ role: 'founder', scope: 'global', scoped_id: null }]);
+
+    const { POST } = await import('../src/app/auth/sign-in/submit/route');
+
+    const formData = new FormData();
+    formData.set('mode', 'credentials');
+    formData.set('email', 'founder@example.com');
+    formData.set('password', 'valid-password');
+
+    const response = await POST(
+      new NextRequest(
+        new Request('http://localhost/auth/sign-in/submit', {
+          method: 'POST',
+          body: formData,
+        })
+      )
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/founder');
+  });
+
+  it('uses deterministic role precedence for multi-role users when next is root', async () => {
+    process.env.DEMO_MODE = 'false';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ access_token: 'valid-token' }),
+    });
+    configureRoleAssignmentsMock([
+      { role: 'subscriber', scope: 'global', scoped_id: null },
+      { role: 'judge', scope: 'event', scoped_id: 'event-1' },
+    ]);
+
+    const { POST } = await import('../src/app/auth/sign-in/submit/route');
+
+    const formData = new FormData();
+    formData.set('mode', 'credentials');
+    formData.set('email', 'judge@example.com');
+    formData.set('password', 'valid-password');
+
+    const response = await POST(
+      new NextRequest(
+        new Request('http://localhost/auth/sign-in/submit', {
+          method: 'POST',
+          body: formData,
+        })
+      )
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/judge/events');
   });
 
   it('redirects with explicit env-config error when Supabase auth keys are missing', async () => {

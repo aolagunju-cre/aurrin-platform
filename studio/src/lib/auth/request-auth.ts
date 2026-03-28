@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { JWTPayload } from './jwt';
 import { signJWT, verifyAppJWT, verifyJWT } from './jwt';
-import { isDemoModeEnabled } from '../config/env';
+import { getRuntimeEnv, getSupabaseConfigStatus, isDemoModeEnabled } from '../config/env';
 import { demoFounderProfile } from '../demo/data';
 import type { RoleAssignmentRecord } from '../db/client';
 
@@ -16,8 +16,18 @@ const DEMO_SESSION_AUDIENCE = 'aurrin-demo-session';
 const DEMO_SESSION_ISSUER = 'aurrin-platform';
 
 export type NormalizedRole = 'admin' | 'judge' | 'founder' | 'mentor' | 'subscriber' | 'audience';
+export type PortalRole = Exclude<NormalizedRole, 'audience'>;
 export type DemoPersona = NormalizedRole;
 export type SignUpRole = 'founder' | 'judge' | 'mentor' | 'subscriber';
+
+const PORTAL_ROLE_PRECEDENCE: PortalRole[] = ['admin', 'judge', 'founder', 'mentor', 'subscriber'];
+const PORTAL_PATH_BY_ROLE: Record<PortalRole, string> = {
+  admin: '/admin',
+  judge: '/judge/events',
+  founder: '/founder',
+  mentor: '/mentor',
+  subscriber: '/subscriber',
+};
 
 interface CookieRecord {
   value: string;
@@ -184,6 +194,35 @@ export function normalizeSignUpRole(role: string): SignUpRole | null {
   return normalized;
 }
 
+export function resolvePrimaryPortalRole(roles: string[]): PortalRole | null {
+  const normalizedRoles = new Set(
+    roles
+      .map((role) => normalizeRole(role))
+      .filter((role): role is PortalRole => Boolean(role && role !== 'audience'))
+  );
+
+  for (const role of PORTAL_ROLE_PRECEDENCE) {
+    if (normalizedRoles.has(role)) {
+      return role;
+    }
+  }
+
+  return null;
+}
+
+export function resolvePrimaryPortalPath(roles: string[]): string | null {
+  const role = resolvePrimaryPortalRole(roles);
+  if (!role) {
+    return null;
+  }
+
+  return PORTAL_PATH_BY_ROLE[role];
+}
+
+export function resolvePrimaryPortalPathFromAssignments(assignments: Array<Pick<RoleAssignmentRecord, 'role'>>): string | null {
+  return resolvePrimaryPortalPath(assignments.map((assignment) => assignment.role));
+}
+
 export function hasNormalizedRole(roles: string[], requiredRole: NormalizedRole): boolean {
   const normalizedRoles = roles
     .map((role) => normalizeRole(role))
@@ -208,6 +247,50 @@ export function createDemoRoleAssignments(identity: ResolvedAuthIdentity): RoleA
     updated_at: timestamp,
     created_by: identity.userId,
   }));
+}
+
+export async function getRoleAssignmentsForUser(userId: string): Promise<RoleAssignmentRecord[] | null> {
+  const runtimeEnv = getRuntimeEnv();
+  if (!runtimeEnv.supabaseUrl || !runtimeEnv.supabaseServiceRoleKey) {
+    return null;
+  }
+
+  const response = await fetch(
+    `${runtimeEnv.supabaseUrl}/rest/v1/role_assignments?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=100`,
+    {
+      method: 'GET',
+      headers: {
+        apikey: runtimeEnv.supabaseServiceRoleKey,
+        Authorization: `Bearer ${runtimeEnv.supabaseServiceRoleKey}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    }
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json() as Promise<RoleAssignmentRecord[]>;
+}
+
+async function hasActiveSupabaseSession(accessToken: string): Promise<boolean> {
+  const runtimeEnv = getRuntimeEnv();
+  if (!runtimeEnv.supabaseUrl || !runtimeEnv.supabaseAnonKey) {
+    return false;
+  }
+
+  const response = await fetch(`${runtimeEnv.supabaseUrl}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      apikey: runtimeEnv.supabaseAnonKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: 'no-store',
+  });
+
+  return response.ok;
 }
 
 export function toAuthPayload(identity: ResolvedAuthIdentity): JWTPayload {
@@ -337,6 +420,14 @@ export async function resolveAuthIdentityFromStores(
   const payload = await verifyJWT(accessToken);
   if (!payload?.sub || !payload.email) {
     return null;
+  }
+
+  const supabaseConfigStatus = getSupabaseConfigStatus();
+  if (!isDemoModeEnabled() && supabaseConfigStatus.configured) {
+    const hasActiveSession = await hasActiveSupabaseSession(accessToken);
+    if (!hasActiveSession) {
+      return null;
+    }
   }
 
   return {

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { buildSignInUrl, hasNormalizedRole, resolveAuthIdentityFromRequest, type NormalizedRole } from './lib/auth/request-auth';
+import {
+  buildSignInUrl,
+  getRoleAssignmentsForUser,
+  hasNormalizedRole,
+  resolveAuthIdentityFromRequest,
+  type NormalizedRole,
+} from './lib/auth/request-auth';
 
 const PUBLIC_PATHS = ['/public', '/api/public', '/auth'];
 const PROTECTED_PAGE_PATHS = ['/admin', '/judge', '/founder', '/mentor', '/subscriber'];
@@ -58,15 +64,21 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const requiredDemoRole = getRequiredDemoRole(pathname);
-  if (identity.demoSession && requiredDemoRole && !hasNormalizedRole(identity.demoSession.roles, requiredDemoRole)) {
-    if (isProtectedApi) {
-      return jsonAuthError(403, requestId, 'Forbidden');
-    }
+  const requiredRole = getRequiredDemoRole(pathname);
+  if (requiredRole) {
+    const granted = identity.demoSession
+      ? hasNormalizedRole(identity.demoSession.roles, requiredRole)
+      : hasNormalizedRole((await getRoleAssignmentsForUser(identity.userId))?.map((assignment) => assignment.role) ?? [], requiredRole);
 
-    const response = NextResponse.redirect(buildSignInUrl(request, 'forbidden'));
-    response.headers.set('x-request-id', requestId);
-    return response;
+    if (!granted) {
+      if (isProtectedApi) {
+        return jsonAuthError(403, requestId, 'Forbidden');
+      }
+
+      const response = NextResponse.redirect(buildSignInUrl(request, 'forbidden'));
+      response.headers.set('x-request-id', requestId);
+      return response;
+    }
   }
 
   const requestHeaders = new Headers(request.headers);

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   createDemoSessionToken,
   isDemoPersona,
+  resolvePrimaryPortalPathFromAssignments,
   sanitizeNextPath,
   setAccessTokenCookie,
   setDemoSessionCookie,
 } from '@/src/lib/auth/request-auth';
 import { getRuntimeEnv, getSupabaseConfigStatus, isDemoModeEnabled } from '@/src/lib/config/env';
 import { verifyJWT } from '@/src/lib/auth/jwt';
+import { getSupabaseClient } from '@/src/lib/db/client';
 
 const POST_REDIRECT_STATUS = 303;
 
@@ -39,6 +41,19 @@ async function signInWithSupabaseCredentials(email: string, password: string): P
 
   const payload = await response.json() as { access_token?: string };
   return payload.access_token?.trim() || null;
+}
+
+async function resolvePostLoginDestination(nextPath: string, userId: string): Promise<string | null> {
+  if (nextPath !== '/') {
+    return nextPath;
+  }
+
+  const roleAssignmentsResult = await getSupabaseClient().db.getRoleAssignmentsByUserId(userId);
+  if (roleAssignmentsResult.error) {
+    return null;
+  }
+
+  return resolvePrimaryPortalPathFromAssignments(roleAssignmentsResult.data);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -86,7 +101,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return redirectWithError(request, nextPath, 'session_failure');
   }
 
-  const response = NextResponse.redirect(new URL(nextPath, request.url), POST_REDIRECT_STATUS);
+  const destinationPath = await resolvePostLoginDestination(nextPath, payload.sub);
+  if (!destinationPath) {
+    return redirectWithError(request, nextPath, 'forbidden');
+  }
+
+  const response = NextResponse.redirect(new URL(destinationPath, request.url), POST_REDIRECT_STATUS);
   setAccessTokenCookie(response, accessToken);
   return response;
 }
