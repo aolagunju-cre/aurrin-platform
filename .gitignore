@@ -55,3 +55,10 @@ generated-prd.md
 .sisyphus/
 .superpowers/
 .worktrees/
+.mcp.json
+
+# Build cache
+studio/tsconfig.tsbuildinfo
+
+# Supabase local
+studio/supabase/.temp/
