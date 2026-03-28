@@ -36,14 +36,16 @@
           "company": "Omneo Inc.",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Non-wireless internal vehicle security system to stop theft before a car moves. Hardware-first approach that protects vehicles in ways thieves cannot bypass through signal hacking."
+          "pitchTitle": "Non-wireless internal vehicle security system to stop theft before a car moves. Hardware-first approach that protects vehicles in ways thieves cannot bypass through signal hacking.",
+          "fundraisingGoal": 150000
         },
         {
           "name": "Evezi Esiehor",
           "company": "Mindtrail",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Bridges the gap between rising mental health needs and limited preventative support for young adults through a hybrid digital platform and curated in-person experiences building emotional resilience and community connection."
+          "pitchTitle": "Bridges the gap between rising mental health needs and limited preventative support for young adults through a hybrid digital platform and curated in-person experiences building emotional resilience and community connection.",
+          "fundraisingGoal": 75000
         },
         {
           "name": "Amirhossein Foroughi & Haden Harrison",
@@ -51,6 +53,7 @@
           "photo": "",
           "linkedIn": "",
           "pitchTitle": "AI-powered virtual fencing and smart herd management for ranchers. GPS collars and real-time alerts reduce labour, replace costly fencing, and improve animal health and land productivity.",
+          "fundraisingGoal": 200000,
           "investment": {
             "received": true,
             "amount": 500,
@@ -62,21 +65,24 @@
           "company": "Nacreous",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Specialized unmanned aerial vehicle for Arctic operations with the Canadian Coast Guard. Complements helicopter missions, lowers operating costs, and reduces human risk in extreme environments."
+          "pitchTitle": "Specialized unmanned aerial vehicle for Arctic operations with the Canadian Coast Guard. Complements helicopter missions, lowers operating costs, and reduces human risk in extreme environments.",
+          "fundraisingGoal": 500000
         },
         {
           "name": "John Idowu",
           "company": "Nuvoro",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Canadian-built scheduling platform for service businesses. Combines bookings, payments, calendar sync, and automation in one dashboard to help professionals grow."
+          "pitchTitle": "Canadian-built scheduling platform for service businesses. Combines bookings, payments, calendar sync, and automation in one dashboard to help professionals grow.",
+          "fundraisingGoal": 100000
         },
         {
-          "name": "Diogo José Notario Guaitolini",
+          "name": "Diogo Jos\u00e9 Notario Guaitolini",
           "company": "Inspekto AI",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Transforms inspection photos and field notes into structured, standards-aligned reports automatically. Engineers shift from writing reports to validating them, saving time and improving consistency and auditability."
+          "pitchTitle": "Transforms inspection photos and field notes into structured, standards-aligned reports automatically. Engineers shift from writing reports to validating them, saving time and improving consistency and auditability.",
+          "fundraisingGoal": 250000
         }
       ],
       "media": {
@@ -103,21 +109,24 @@
           "company": "Sotro",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Autonomous supply chain agent for vendor communication"
+          "pitchTitle": "Autonomous supply chain agent for vendor communication",
+          "fundraisingGoal": 200000
         },
         {
           "name": "Walid Elaghil",
           "company": "Clickora",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Organizing amateur soccer with professional-level tools"
+          "pitchTitle": "Organizing amateur soccer with professional-level tools",
+          "fundraisingGoal": 50000
         },
         {
           "name": "Gagan Singla",
           "company": "Furble",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Digital ecosystem for pet parents and veterinarians"
+          "pitchTitle": "Digital ecosystem for pet parents and veterinarians",
+          "fundraisingGoal": 100000
         },
         {
           "name": "Giovanna Acosta",
@@ -125,6 +134,7 @@
           "photo": "",
           "linkedIn": "",
           "pitchTitle": "Hemoglobin-based oxygen carriers for blood shortage crisis",
+          "fundraisingGoal": 500000,
           "investment": {
             "received": true,
             "amount": 500,
@@ -136,14 +146,16 @@
           "company": "LifeLink",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Unified patient records across Canadian healthcare"
+          "pitchTitle": "Unified patient records across Canadian healthcare",
+          "fundraisingGoal": 300000
         },
         {
           "name": "Ibukun Olajide (Temi)",
           "company": "No-Q",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Mobile pre-ordering solution for high-traffic retail environments like food courts, sport events, festivals, and shopping malls—helping customers skip lines and vendors serve more people."
+          "pitchTitle": "Mobile pre-ordering solution for high-traffic retail environments like food courts, sport events, festivals, and shopping malls\u2014helping customers skip lines and vendors serve more people.",
+          "fundraisingGoal": 150000
         }
       ],
       "media": {
@@ -189,21 +201,24 @@
           "company": "CircleUp",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Career advice platform for young professionals"
+          "pitchTitle": "Career advice platform for young professionals",
+          "fundraisingGoal": 75000
         },
         {
           "name": "Timi Olateru",
           "company": "Canoopy",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Pay with multiple cards in a single transaction"
+          "pitchTitle": "Pay with multiple cards in a single transaction",
+          "fundraisingGoal": 250000
         },
         {
           "name": "Olivia Jiayan Cao",
           "company": "Livlaw.org",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "AI-powered legal document automation"
+          "pitchTitle": "AI-powered legal document automation",
+          "fundraisingGoal": 150000
         },
         {
           "name": "Caden Kjelgren & Raiyana Shams",
@@ -211,6 +226,7 @@
           "photo": "",
           "linkedIn": "",
           "pitchTitle": "Accessible hip abductor device for children with cerebral palsy",
+          "fundraisingGoal": 100000,
           "investment": {
             "received": true,
             "amount": 500,
@@ -222,28 +238,32 @@
           "company": "SnackRadar",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Platform to find free food at university campuses"
+          "pitchTitle": "Platform to find free food at university campuses",
+          "fundraisingGoal": 25000
         },
         {
           "name": "Amira Oyawoye",
           "company": "Hoppie",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Event discovery platform to build friendships"
+          "pitchTitle": "Event discovery platform to build friendships",
+          "fundraisingGoal": 50000
         },
         {
           "name": "Milad Zoghi",
           "company": "Zanis Tech Inc",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Smart thermometer and health tracking app"
+          "pitchTitle": "Smart thermometer and health tracking app",
+          "fundraisingGoal": 200000
         },
         {
           "name": "Erik MacInnis",
           "company": "Lately",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "App to help people with ADHD arrive on time"
+          "pitchTitle": "App to help people with ADHD arrive on time",
+          "fundraisingGoal": 50000
         }
       ],
       "media": {
@@ -289,56 +309,64 @@
           "company": "Bloom Academy",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Automating admin workflows for schools"
+          "pitchTitle": "Automating admin workflows for schools",
+          "fundraisingGoal": 100000
         },
         {
           "name": "Josie Beckley",
           "company": "GingerGrove Beverages",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Healthy, non-carbonated ginger beverages"
+          "pitchTitle": "Healthy, non-carbonated ginger beverages",
+          "fundraisingGoal": 75000
         },
         {
           "name": "Victoria Tsang",
           "company": "Evolving Prowess",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Size-adaptive activewear for women"
+          "pitchTitle": "Size-adaptive activewear for women",
+          "fundraisingGoal": 150000
         },
         {
           "name": "Evezi Esiehor",
           "company": "MindTrail",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Mental wellness platform for university students"
+          "pitchTitle": "Mental wellness platform for university students",
+          "fundraisingGoal": 75000
         },
         {
           "name": "Luz Castellanos",
           "company": "PURYS ENERGY",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Solid-state hydrogen storage technology"
+          "pitchTitle": "Solid-state hydrogen storage technology",
+          "fundraisingGoal": 500000
         },
         {
           "name": "Rami Maalouf",
           "company": "Audora",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "AI-powered communication skills training"
+          "pitchTitle": "AI-powered communication skills training",
+          "fundraisingGoal": 100000
         },
         {
           "name": "Kowther Hassan",
           "company": "Beseem Technologies",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Affordable medical simulation tools"
+          "pitchTitle": "Affordable medical simulation tools",
+          "fundraisingGoal": 200000
         },
         {
           "name": "Harsimar Sahota",
           "company": "Samtex Solutions",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": ""
+          "pitchTitle": "",
+          "fundraisingGoal": 100000
         },
         {
           "name": "Muhammad Ansari & Reyansh Badhwar",
@@ -346,6 +374,7 @@
           "photo": "",
           "linkedIn": "",
           "pitchTitle": "",
+          "fundraisingGoal": 50000,
           "investment": {
             "received": true,
             "amount": 500,
@@ -357,7 +386,8 @@
           "company": "Cyberstride",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": ""
+          "pitchTitle": "",
+          "fundraisingGoal": 100000
         }
       ],
       "media": {
@@ -391,7 +421,7 @@
           "linkedIn": ""
         },
         {
-          "name": "Sam Duperré",
+          "name": "Sam Duper\u00e9",
           "title": "Founder, VespaYEG",
           "photo": "",
           "linkedIn": ""
@@ -403,7 +433,8 @@
           "company": "SafetyLog Co.",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "AI-enabled workplace safety reporting"
+          "pitchTitle": "AI-enabled workplace safety reporting",
+          "fundraisingGoal": 150000
         },
         {
           "name": "Crystal Kisakye & Emmanuel Fasesan",
@@ -411,6 +442,7 @@
           "photo": "",
           "linkedIn": "",
           "pitchTitle": "Preventing the spread of wildfires",
+          "fundraisingGoal": 300000,
           "investment": {
             "received": true,
             "amount": 1000,
@@ -422,42 +454,48 @@
           "company": "Acquaint Softech Inc/PropIntel",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "AI-powered real estate underwriting"
+          "pitchTitle": "AI-powered real estate underwriting",
+          "fundraisingGoal": 250000
         },
         {
           "name": "David Enoma",
           "company": "LucyDNA Inc",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Direct-to-consumer genetic testing for chronic conditions"
+          "pitchTitle": "Direct-to-consumer genetic testing for chronic conditions",
+          "fundraisingGoal": 500000
         },
         {
           "name": "Haji Ali Darvish",
           "company": "Suncity Estates",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Land development screening tool"
+          "pitchTitle": "Land development screening tool",
+          "fundraisingGoal": 200000
         },
         {
           "name": "James Gu",
           "company": "Vapourless",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Tactile behavioral aid for quitting vaping"
+          "pitchTitle": "Tactile behavioral aid for quitting vaping",
+          "fundraisingGoal": 50000
         },
         {
           "name": "Victoria Tsang",
           "company": "Evolving Prowess",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Size-adaptive activewear for women"
+          "pitchTitle": "Size-adaptive activewear for women",
+          "fundraisingGoal": 150000
         },
         {
           "name": "Yeabsira Zekarias Woldeberhan",
           "company": "Wealth Path",
           "photo": "",
           "linkedIn": "",
-          "pitchTitle": "Financial literacy gamification for youth"
+          "pitchTitle": "Financial literacy gamification for youth",
+          "fundraisingGoal": 75000
         }
       ],
       "media": {

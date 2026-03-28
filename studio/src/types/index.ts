@@ -17,6 +17,7 @@ export interface Founder {
   photo: string;
   linkedIn: string;
   pitchTitle: string;
+  fundraisingGoal?: number;
   investment?: {
     received: boolean;
     amount?: number;

@@ -137,6 +137,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     {founder.pitchTitle && (
                       <p className="text-xs text-default-500 mt-1 line-clamp-2">{founder.pitchTitle}</p>
                     )}
+                    {founder.fundraisingGoal && (
+                      <p className="text-xs text-violet-500 font-medium mt-1">Goal: {formatCurrency(founder.fundraisingGoal)}</p>
+                    )}
                   </div>
                 </div>
                 {founder.investment?.received && (
