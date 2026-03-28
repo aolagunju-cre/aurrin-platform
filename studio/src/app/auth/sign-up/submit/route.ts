@@ -22,6 +22,11 @@ interface SupabaseSignUpResponse {
   };
 }
 
+interface SupabaseSignUpResult {
+  ok: boolean;
+  payload: SupabaseSignUpResponse | null;
+}
+
 function roleLandingPath(role: SignUpRole): string {
   if (role === 'founder') {
     return '/founder';
@@ -42,10 +47,22 @@ function redirectWithError(request: NextRequest, nextPath: string, error: string
   return NextResponse.redirect(url, POST_REDIRECT_STATUS);
 }
 
-async function signUpWithSupabase(email: string, password: string, name: string): Promise<SupabaseSignUpResponse | null> {
+function redirectWithSuccess(request: NextRequest, nextPath: string, success: string): NextResponse {
+  const url = new URL('/auth/sign-up', request.url);
+  url.searchParams.set('next', sanitizeNextPath(nextPath));
+  url.searchParams.set('success', success);
+  return NextResponse.redirect(url, POST_REDIRECT_STATUS);
+}
+
+async function signUpWithSupabase(
+  email: string,
+  password: string,
+  name: string,
+  role: SignUpRole
+): Promise<SupabaseSignUpResult> {
   const runtimeEnv = getRuntimeEnv();
   if (!runtimeEnv.supabaseUrl || !runtimeEnv.supabaseAnonKey) {
-    return null;
+    return { ok: false, payload: null };
   }
 
   const response = await fetch(`${runtimeEnv.supabaseUrl}/auth/v1/signup`, {
@@ -57,15 +74,18 @@ async function signUpWithSupabase(email: string, password: string, name: string)
     body: JSON.stringify({
       email,
       password,
-      data: { name },
+      data: {
+        name,
+        role,
+      },
     }),
   });
 
-  if (!response.ok) {
-    return null;
-  }
-
-  return response.json() as Promise<SupabaseSignUpResponse>;
+  const payload = await response.json().catch(() => null) as SupabaseSignUpResponse | null;
+  return {
+    ok: response.ok,
+    payload,
+  };
 }
 
 async function signInWithSupabaseCredentials(email: string, password: string): Promise<string | null> {
@@ -130,13 +150,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return redirectWithError(request, nextPath, 'supabase_not_configured');
   }
 
-  const signUpPayload = await signUpWithSupabase(email, password, name);
-  if (!signUpPayload?.user?.id || !signUpPayload.user.email) {
-    return redirectWithError(request, nextPath, 'registration_failed');
+  const signUpResult = await signUpWithSupabase(email, password, name, role);
+  let accessToken = signUpResult.ok ? signUpResult.payload?.access_token?.trim() || null : null;
+  let verifiedAccessTokenPayload = accessToken ? await verifyJWT(accessToken) : null;
+  let authUserId = signUpResult.ok ? signUpResult.payload?.user?.id?.trim() || verifiedAccessTokenPayload?.sub || null : null;
+  let authEmail = signUpResult.ok
+    ? signUpResult.payload?.user?.email?.trim().toLowerCase() || verifiedAccessTokenPayload?.email?.trim().toLowerCase() || null
+    : null;
+
+  if (!authUserId || !authEmail || !accessToken) {
+    const existingAccessToken = await signInWithSupabaseCredentials(email, password);
+    if (existingAccessToken) {
+      const payload = await verifyJWT(existingAccessToken);
+      if (payload?.sub && payload.email) {
+        accessToken = existingAccessToken;
+        verifiedAccessTokenPayload = payload;
+        authUserId = payload.sub;
+        authEmail = payload.email.trim().toLowerCase();
+      }
+    }
   }
 
-  const authUserId = signUpPayload.user.id;
-  const authEmail = signUpPayload.user.email.trim().toLowerCase();
+  if (!authUserId || !authEmail) {
+    return redirectWithError(request, nextPath, 'registration_failed');
+  }
   const client = getSupabaseClient();
 
   const existingUserResult = await client.db.getUserByEmail(authEmail);
@@ -195,12 +232,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const accessToken = signUpPayload.access_token?.trim() || await signInWithSupabaseCredentials(email, password);
   if (!accessToken) {
-    return redirectWithError(request, nextPath, 'session_failure');
+    return redirectWithSuccess(request, nextPath, 'confirm_email');
   }
 
-  const payload = await verifyJWT(accessToken);
+  const payload = verifiedAccessTokenPayload ?? await verifyJWT(accessToken);
   if (!payload?.sub || !payload.email) {
     return redirectWithError(request, nextPath, 'session_failure');
   }

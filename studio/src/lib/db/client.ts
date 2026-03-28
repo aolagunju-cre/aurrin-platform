@@ -4,6 +4,7 @@
  * allowing easy mocking in tests without the Supabase SDK.
  */
 
+import { randomUUID } from 'crypto';
 import type { OutboxJob, OutboxJobInsert, OutboxJobState } from '../jobs/types';
 import type {
   RubricDefinition,
@@ -441,6 +442,8 @@ export interface UserInsert {
   id?: string;
   email: string;
   name?: string | null;
+  unsubscribed?: boolean;
+  unsubscribe_token?: string | null;
 }
 
 export interface UserUpdate {
@@ -1473,6 +1476,8 @@ export function getSupabaseClient(): SupabaseClient {
             id: record.id ?? undefined,
             email: record.email,
             name: record.name ?? null,
+            unsubscribed: record.unsubscribed ?? false,
+            unsubscribe_token: record.unsubscribe_token ?? randomUUID(),
           }),
         });
         if (!response.ok) {

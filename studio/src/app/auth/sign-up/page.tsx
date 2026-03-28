@@ -5,6 +5,7 @@ import { getSupabaseConfigStatus, isDemoModeEnabled } from '@/src/lib/config/env
 interface SignUpPageProps {
   searchParams: Promise<{
     error?: string;
+    success?: string;
     next?: string;
   }>;
 }
@@ -31,6 +32,14 @@ function messageForError(error: string | undefined): string | null {
   return null;
 }
 
+function messageForSuccess(success: string | undefined): string | null {
+  if (success === 'confirm_email') {
+    return 'Account created. Check your email to confirm your signup, then sign in.';
+  }
+
+  return null;
+}
+
 const SIGN_UP_ROLE_DESTINATIONS: Record<(typeof SIGN_UP_ROLE_OPTIONS)[number]['value'], string> = {
   founder: '/founder',
   judge: '/judge/events',
@@ -50,6 +59,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const nextPath = sanitizeNextPath(params.next);
   const demoMode = isDemoModeEnabled();
   const errorMessage = messageForError(params.error);
+  const successMessage = messageForSuccess(params.success);
   const supabaseConfigStatus = getSupabaseConfigStatus();
 
   return (
@@ -66,6 +76,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         {errorMessage ? (
           <div className="mt-6 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
             {errorMessage}
+          </div>
+        ) : null}
+
+        {successMessage ? (
+          <div className="mt-6 rounded-2xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success-700">
+            {successMessage}
           </div>
         ) : null}
 
@@ -127,6 +143,9 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
                   />
                   <span className="block text-sm font-semibold text-foreground">{role.label}</span>
                   <span className="mt-1 block text-xs text-default-500">{SIGN_UP_ROLE_DESCRIPTIONS[role.value]}</span>
+                  <span className="mt-2 block text-xs text-default-400">
+                    Route: {SIGN_UP_ROLE_DESTINATIONS[role.value]}
+                  </span>
                 </label>
               ))}
             </div>

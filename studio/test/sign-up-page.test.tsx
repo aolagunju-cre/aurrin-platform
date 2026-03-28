@@ -40,10 +40,10 @@ describe('auth sign-up page', () => {
     expect(screen.getByDisplayValue('mentor')).toBeInTheDocument();
     expect(screen.getByDisplayValue('subscriber')).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: /Admin/i })).not.toBeInTheDocument();
-    expect(screen.getByText('Route: /founder')).toBeInTheDocument();
-    expect(screen.getByText('Route: /judge/events')).toBeInTheDocument();
-    expect(screen.getByText('Route: /mentor')).toBeInTheDocument();
-    expect(screen.getByText('Route: /subscriber')).toBeInTheDocument();
+    expect(screen.getByText('Build your profile, manage events, and track reports.')).toBeInTheDocument();
+    expect(screen.getByText('Review assigned events and submit rubric scores.')).toBeInTheDocument();
+    expect(screen.getByText('Manage mentor matches and founder introductions.')).toBeInTheDocument();
+    expect(screen.getByText('Access premium content and purchase history.')).toBeInTheDocument();
   });
 
   it('shows Supabase configuration guidance when credential sign-up is selected but env is incomplete', async () => {
@@ -61,5 +61,21 @@ describe('auth sign-up page', () => {
     expect(screen.getByText(/Missing Supabase auth config:/)).toBeInTheDocument();
     expect(screen.getByText(/SUPABASE_SERVICE_ROLE_KEY/)).toBeInTheDocument();
     expect(screen.getByText(/SUPABASE_JWT_SECRET/)).toBeInTheDocument();
+  });
+
+  it('shows confirmation guidance after account creation requires email verification', async () => {
+    process.env.DEMO_MODE = 'false';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    const page = await SignUpPage({ searchParams: Promise.resolve({ success: 'confirm_email' }) });
+    render(page as React.ReactElement);
+
+    expect(
+      screen.getByText('Account created. Check your email to confirm your signup, then sign in.')
+    ).toBeInTheDocument();
   });
 });

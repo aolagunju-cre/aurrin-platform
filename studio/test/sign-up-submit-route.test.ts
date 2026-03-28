@@ -177,6 +177,168 @@ describe('auth sign-up submit route', () => {
     expect(response.headers.get('location')).toBe('http://localhost/founder');
   });
 
+  it('shows confirmation guidance when sign-up succeeds without an immediately usable session', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    const mockDb = {
+      getUserByEmail: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insertUser: jest.fn().mockResolvedValue({
+        data: {
+          id: 'user-123',
+          email: 'new-founder@example.com',
+          name: 'New Founder',
+          avatar_url: null,
+          unsubscribed: false,
+          unsubscribe_token: '11111111-1111-4111-8111-111111111111',
+          created_at: '2026-03-28T00:00:00.000Z',
+          updated_at: '2026-03-28T00:00:00.000Z',
+        },
+        error: null,
+      }),
+      updateUser: jest.fn(),
+      getRoleAssignmentsByUserId: jest.fn().mockResolvedValue({ data: [], error: null }),
+      insertRoleAssignment: jest.fn().mockResolvedValue({
+        data: {
+          id: 'ra-1',
+          user_id: 'user-123',
+          role: 'founder',
+          scope: 'global',
+          scoped_id: null,
+          created_at: '2026-03-28T00:00:00.000Z',
+          updated_at: '2026-03-28T00:00:00.000Z',
+          created_by: 'user-123',
+        },
+        error: null,
+      }),
+    };
+
+    mockedGetSupabaseClient.mockReturnValue({
+      storage: {
+        upload: jest.fn(),
+        remove: jest.fn(),
+        createSignedUrl: jest.fn(),
+      },
+      db: mockDb as never,
+    });
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: {
+            id: 'user-123',
+            email: 'new-founder@example.com',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'email_not_confirmed' }),
+      });
+
+    const { POST } = await import('../src/app/auth/sign-up/submit/route');
+
+    const response = await POST(buildRequest({
+      mode: 'credentials',
+      name: 'New Founder',
+      email: 'new-founder@example.com',
+      password: 'VeryStrongPass123!',
+      role: 'Founder',
+      next: '/founder',
+    }));
+
+    expect(mockDb.insertUser).toHaveBeenCalled();
+    expect(mockDb.insertRoleAssignment).toHaveBeenCalled();
+    expect(mockedSetAccessTokenCookie).not.toHaveBeenCalled();
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/sign-up?next=%2Ffounder&success=confirm_email'
+    );
+  });
+
+  it('recovers existing auth accounts by signing in and finishing provisioning', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_JWT_SECRET = 'jwt-secret';
+    resetRuntimeEnvCacheForTests();
+
+    const mockDb = {
+      getUserByEmail: jest.fn().mockResolvedValue({ data: null, error: null }),
+      insertUser: jest.fn().mockResolvedValue({
+        data: {
+          id: 'user-123',
+          email: 'new-founder@example.com',
+          name: 'New Founder',
+          avatar_url: null,
+          unsubscribed: false,
+          unsubscribe_token: '11111111-1111-4111-8111-111111111111',
+          created_at: '2026-03-28T00:00:00.000Z',
+          updated_at: '2026-03-28T00:00:00.000Z',
+        },
+        error: null,
+      }),
+      updateUser: jest.fn(),
+      getRoleAssignmentsByUserId: jest.fn().mockResolvedValue({ data: [], error: null }),
+      insertRoleAssignment: jest.fn().mockResolvedValue({
+        data: {
+          id: 'ra-1',
+          user_id: 'user-123',
+          role: 'founder',
+          scope: 'global',
+          scoped_id: null,
+          created_at: '2026-03-28T00:00:00.000Z',
+          updated_at: '2026-03-28T00:00:00.000Z',
+          created_by: 'user-123',
+        },
+        error: null,
+      }),
+    };
+
+    mockedGetSupabaseClient.mockReturnValue({
+      storage: {
+        upload: jest.fn(),
+        remove: jest.fn(),
+        createSignedUrl: jest.fn(),
+      },
+      db: mockDb as never,
+    });
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error_code: 'user_already_exists' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'access-token' }),
+      });
+
+    const { POST } = await import('../src/app/auth/sign-up/submit/route');
+
+    const response = await POST(buildRequest({
+      mode: 'credentials',
+      name: 'New Founder',
+      email: 'new-founder@example.com',
+      password: 'VeryStrongPass123!',
+      role: 'Founder',
+    }));
+
+    expect(mockDb.insertUser).toHaveBeenCalledWith({
+      id: 'user-123',
+      email: 'new-founder@example.com',
+      name: 'New Founder',
+    });
+    expect(mockDb.insertRoleAssignment).toHaveBeenCalled();
+    expect(mockedSetAccessTokenCookie).toHaveBeenCalledWith(expect.any(Object), 'access-token');
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe('http://localhost/founder');
+  });
+
   it('reuses existing users and role assignments without duplicating persistence writes', async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
