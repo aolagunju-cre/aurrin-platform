@@ -14,6 +14,8 @@ ESCALATE_THRESHOLD=7200
 MAX_REPAIR_ATTEMPTS=2
 MVP_MERGE_THRESHOLD_SECONDS="${MVP_MERGE_THRESHOLD_SECONDS:-1200}"
 MVP_FAST_MERGE_TARGET_PR="${MVP_FAST_MERGE_TARGET_PR:-}"
+MVP_FAST_MERGE_ACTIVE_WAIT_SECONDS="${MVP_FAST_MERGE_ACTIVE_WAIT_SECONDS:-840}"
+MVP_FAST_MERGE_ACTIVE_POLL_SECONDS="${MVP_FAST_MERGE_ACTIVE_POLL_SECONDS:-15}"
 NOW=$(date -u +%s)
 NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 ACTIONS_TAKEN=0
@@ -486,8 +488,23 @@ if [ "$PIPELINE_MVP_MODE" = "true" ]; then
     BRANCH_WORKFLOW=$(workflow_for_branch "$PR_BRANCH")
     BRANCH_ACTIVE=$(workflow_active_runs "$BRANCH_WORKFLOW")
     if [ "$BRANCH_ACTIVE" -gt 0 ]; then
-      echo "PR #${PR_NUM}: ${BRANCH_WORKFLOW} already active (${BRANCH_ACTIVE} run(s)). Skipping MVP merge."
-      continue
+      if [ -n "$MVP_FAST_MERGE_TARGET_PR" ] && [ "$PR_NUM" = "$MVP_FAST_MERGE_TARGET_PR" ] && [ "$MVP_MERGE_THRESHOLD_SECONDS" = "0" ]; then
+        WAITED=0
+        echo "PR #${PR_NUM}: ${BRANCH_WORKFLOW} active (${BRANCH_ACTIVE} run(s)); waiting for fast-track merge window."
+        while [ "$BRANCH_ACTIVE" -gt 0 ] && [ "$WAITED" -lt "$MVP_FAST_MERGE_ACTIVE_WAIT_SECONDS" ]; do
+          sleep "$MVP_FAST_MERGE_ACTIVE_POLL_SECONDS"
+          WAITED=$((WAITED + MVP_FAST_MERGE_ACTIVE_POLL_SECONDS))
+          BRANCH_ACTIVE=$(workflow_active_runs "$BRANCH_WORKFLOW")
+        done
+        if [ "$BRANCH_ACTIVE" -gt 0 ]; then
+          echo "PR #${PR_NUM}: ${BRANCH_WORKFLOW} still active (${BRANCH_ACTIVE} run(s)) after ${WAITED}s. Skipping MVP merge."
+          continue
+        fi
+        echo "PR #${PR_NUM}: ${BRANCH_WORKFLOW} settled after ${WAITED}s. Continuing fast-track MVP merge."
+      else
+        echo "PR #${PR_NUM}: ${BRANCH_WORKFLOW} already active (${BRANCH_ACTIVE} run(s)). Skipping MVP merge."
+        continue
+      fi
     fi
 
     PRIMARY_MERGE_TOKEN="${PIPELINE_APP_TOKEN:-}"

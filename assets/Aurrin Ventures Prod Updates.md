@@ -1,0 +1,26 @@
+The Aurrin Ventures Platform is a Calgary-focused crowdfunding and founder ecosystem designed to help early-stage founders raise microgrants while also powering Aurrin Ventures pitch events. The platform should act as a central hub where users can discover founders, support them financially, and participate in events as founders, judges, mentors, or attendees.
+
+The homepage should feature a strong hero section with a large Aurrin Ventures logo and clear calls to action such as “Support Founders” and “Apply to Pitch.” Below this, there should be a featured campaigns section displaying founder campaigns in a clean grid layout. Each campaign card should include the founder’s name, company name, profile image, company logo, a short one to two line description, a funding progress bar, the amount raised versus the goal, and the number of donors. The overall layout should feel similar to platforms like GoFundMe or Kickstarter.
+
+Each founder should have a dedicated campaign page. This page should include the founder’s name, company, profile image, company logo, and an embedded pitch video. It should clearly display the funding goal, the amount raised, and a progress bar, along with a prominent “Back This Founder” call to action. The page should include a pledge system with predefined contribution tiers tied to specific needs such as supplies, prototype costs, or travel, along with an option for custom donation amounts. A donor section should display supporter names or “Anonymous,” along with the total number of donors. There should also be a story section outlining the problem, solution, and use of funds. Gamification elements should be included, such as visual indicators at 50 percent and 100 percent of the funding goal, and a “Fully Funded” badge when the goal is reached.
+
+The platform should support authentication through both Google sign-in and email and password. After signing up, users should go through an onboarding flow where they select their role as a Founder, Judge, Mentor, or Attendee. This role selection should determine the type of dashboard and permissions they receive.
+
+The Founder dashboard should allow users to create and edit their profile, including their bio, company details, profile image, company logo, and pitch video. Founders should be able to create and manage their fundraising campaign by setting a funding goal, writing a description, and defining pledge tiers. They should also be able to input their e-transfer email to receive funds and track metrics such as total funds raised and number of donors. The dashboard should also allow founders to apply to pitch events.
+
+The Judge dashboard should allow users to view the events they are assigned to, see the founders they are responsible for evaluating, access a scoring rubric with defined criteria, and submit scores for each founder. The Mentor dashboard should allow users to browse founders and identify opportunities to support them. The Attendee dashboard should allow users to view upcoming events, register or RSVP, and explore participating founders.
+
+The platform should include a Research Hub that is accessible through a paid subscription of $100 per month. This section should include maps of the Calgary startup ecosystem, curated founder resources, research and insights, and a list of relevant events for founders.
+
+There should be a dedicated Events page that showcases both upcoming and past events. The upcoming events section should display the event name, date and time, location or virtual format, a short description, and clear calls to action such as “Register or Attend,” “Apply to Pitch,” and “Apply to Judge.” The past events section should display the event name, date, and a summary or highlights, along with participating founders and optional content such as winning founders or links to pitch videos.
+
+There should be an Apply page where users can apply as a Founder to pitch, as a Judge, or as a Mentor. Each application flow should be simple and structured with relevant form inputs.
+
+The platform should include a Founder Directory page that displays all founders in a grid or list format. Each founder profile should include a photo, company logo, short description, and a link to their campaign, along with the ability to view their pitch video. This page should act as a discovery layer for investors, mentors, and attendees.
+
+There should be a Pricing page that clearly outlines a $100 per month subscription, explaining that it provides access to the research hub, maps, and founder insights. There should also be an About page that mirrors the content and structure of the Aurrin Ventures website, including the company story, mission, and founding team.
+
+The design of the platform should match the style of aurrinventures.ca, with a clean, modern, and slightly dark aesthetic. The header should include the logo and navigation links for Directory, Events, Apply, and About, with the Sign Up button positioned prominently on the far left. The footer should include a “Follow Us” section with links to LinkedIn, Instagram, and Linktree.
+
+Overall, the platform should feel like a hybrid between a crowdfunding platform, a founder directory, and an event management system, built specifically for the Calgary startup ecosystem with a focus on simplicity, clarity, and community engagement.
+

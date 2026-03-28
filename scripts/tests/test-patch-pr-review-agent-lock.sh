@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd)
 SCRIPT="$ROOT_DIR/scripts/patch-pr-review-agent-lock.sh"
+REAL_WORKFLOW="$ROOT_DIR/.github/workflows/pr-review-agent.lock.yml"
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -120,6 +121,18 @@ fi
 
 if ! ruby -e 'text = File.read(ARGV[0]); start = text.index("  safe_outputs:\n"); finish = text.index("\n  conclusion:\n", start || 0) || text.length; block = start ? text[start...finish] : nil; exit(block&.include?("      actions: write\n") ? 0 : 1)' "$WORKFLOW"; then
   echo "FAIL: safe_outputs permissions did not gain actions: write" >&2
+  exit 1
+fi
+
+grep -F 'github-token: ${{ secrets.GITHUB_TOKEN || secrets.GH_AW_GITHUB_TOKEN }}' "$REAL_WORKFLOW" >/dev/null
+
+if grep -Fq 'github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}' "$REAL_WORKFLOW"; then
+  echo "FAIL: checked-in pr-review-agent.lock.yml still uses stale github-token precedence" >&2
+  exit 1
+fi
+
+if ! ruby -e 'text = File.read(ARGV[0]); start = text.index("  safe_outputs:\n"); finish = text.index("\n  conclusion:\n", start || 0) || text.length; block = start ? text[start...finish] : nil; exit(block&.include?("      actions: write\n") ? 0 : 1)' "$REAL_WORKFLOW"; then
+  echo "FAIL: checked-in pr-review-agent.lock.yml is missing safe_outputs actions: write" >&2
   exit 1
 fi
 

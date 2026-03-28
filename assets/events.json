@@ -1,0 +1,471 @@
+{
+  "events": [
+    {
+      "id": "pitch-night-february-2026",
+      "title": "Pitch Night - February 2026",
+      "date": "2026-02-25",
+      "time": "5:30 PM - 7:30 PM",
+      "location": "Calgary, AB",
+      "eventbriteUrl": "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
+      "description": "February 2026 Pitch Night featured founders across vehicle security, mental health, agtech, UAVs, scheduling, and inspection tech. Agrivanna took home the microgrant.",
+      "coverImage": "/images/events/pitch-night-february-2026/cover.jpg",
+      "status": "past",
+      "judges": [
+        {
+          "name": "Norman Poon",
+          "title": "Co-Founder, BitWide",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Kartavi Shah",
+          "title": "Founder & Managing Director, NextGen Founders Lab",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Musap Abdelhag",
+          "title": "Founder & CEO, SIYS | Struggle Is Your Success",
+          "photo": "",
+          "linkedIn": ""
+        }
+      ],
+      "founders": [
+        {
+          "name": "Jeremy Hunter",
+          "company": "Omneo Inc.",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Non-wireless internal vehicle security system to stop theft before a car moves. Hardware-first approach that protects vehicles in ways thieves cannot bypass through signal hacking."
+        },
+        {
+          "name": "Evezi Esiehor",
+          "company": "Mindtrail",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Bridges the gap between rising mental health needs and limited preventative support for young adults through a hybrid digital platform and curated in-person experiences building emotional resilience and community connection."
+        },
+        {
+          "name": "Amirhossein Foroughi & Haden Harrison",
+          "company": "Agrivanna",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "AI-powered virtual fencing and smart herd management for ranchers. GPS collars and real-time alerts reduce labour, replace costly fencing, and improve animal health and land productivity.",
+          "investment": {
+            "received": true,
+            "amount": 500,
+            "notes": "February 2026 Winner"
+          }
+        },
+        {
+          "name": "Liam Mah & Haziq Sabri",
+          "company": "Nacreous",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Specialized unmanned aerial vehicle for Arctic operations with the Canadian Coast Guard. Complements helicopter missions, lowers operating costs, and reduces human risk in extreme environments."
+        },
+        {
+          "name": "John Idowu",
+          "company": "Nuvoro",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Canadian-built scheduling platform for service businesses. Combines bookings, payments, calendar sync, and automation in one dashboard to help professionals grow."
+        },
+        {
+          "name": "Diogo José Notario Guaitolini",
+          "company": "Inspekto AI",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Transforms inspection photos and field notes into structured, standards-aligned reports automatically. Engineers shift from writing reports to validating them, saving time and improving consistency and auditability."
+        }
+      ],
+      "media": {
+        "photos": [],
+        "videos": [],
+        "photoAlbumUrl": ""
+      },
+      "notes": ""
+    },
+    {
+      "id": "pitch-night-january-2026",
+      "title": "Pitch Night - January 2026",
+      "date": "2026-01-28",
+      "time": "5:30 PM - 7:30 PM",
+      "location": "Calgary, AB",
+      "eventbriteUrl": "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
+      "description": "Join us for our January 2026 Pitch Night where early-stage founders present their ideas to a panel of experienced judges. Get feedback, make connections, and take the next step in your entrepreneurial journey.",
+      "coverImage": "/images/events/pitch-night-january-2026/cover.jpg",
+      "status": "past",
+      "judges": [],
+      "founders": [
+        {
+          "name": "Danyil Fedorov",
+          "company": "Sotro",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Autonomous supply chain agent for vendor communication"
+        },
+        {
+          "name": "Walid Elaghil",
+          "company": "Clickora",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Organizing amateur soccer with professional-level tools"
+        },
+        {
+          "name": "Gagan Singla",
+          "company": "Furble",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Digital ecosystem for pet parents and veterinarians"
+        },
+        {
+          "name": "Giovanna Acosta",
+          "company": "Synfera",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Hemoglobin-based oxygen carriers for blood shortage crisis",
+          "investment": {
+            "received": true,
+            "amount": 500,
+            "notes": "January 2026 Winner"
+          }
+        },
+        {
+          "name": "Essam Abdelhamid",
+          "company": "LifeLink",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Unified patient records across Canadian healthcare"
+        },
+        {
+          "name": "Ibukun Olajide (Temi)",
+          "company": "No-Q",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Mobile pre-ordering solution for high-traffic retail environments like food courts, sport events, festivals, and shopping malls—helping customers skip lines and vendors serve more people."
+        }
+      ],
+      "media": {
+        "photos": [],
+        "videos": [],
+        "photoAlbumUrl": ""
+      },
+      "notes": ""
+    },
+    {
+      "id": "pitch-night-november-2025",
+      "title": "Pitch Night - November 2025",
+      "date": "2025-11-26",
+      "time": "5:30 PM - 7:30 PM",
+      "location": "Calgary, AB",
+      "eventbriteUrl": "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
+      "description": "November 2025 Pitch Night brought together founders and judges for an evening of pitches, feedback, and community building.",
+      "coverImage": "/images/events/pitch-night-november-2025/cover.jpg",
+      "status": "past",
+      "judges": [
+        {
+          "name": "Shiva Souri",
+          "title": "Founder, Learnovate Solution",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Avnish Mehta",
+          "title": "Founder, Stand and Command",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Akshay Gulati",
+          "title": "Founder, Tech Connect Alberta",
+          "photo": "",
+          "linkedIn": ""
+        }
+      ],
+      "founders": [
+        {
+          "name": "Colin Cochran",
+          "company": "CircleUp",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Career advice platform for young professionals"
+        },
+        {
+          "name": "Timi Olateru",
+          "company": "Canoopy",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Pay with multiple cards in a single transaction"
+        },
+        {
+          "name": "Olivia Jiayan Cao",
+          "company": "Livlaw.org",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "AI-powered legal document automation"
+        },
+        {
+          "name": "Caden Kjelgren & Raiyana Shams",
+          "company": "Project90 Hip Abductor",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Accessible hip abductor device for children with cerebral palsy",
+          "investment": {
+            "received": true,
+            "amount": 500,
+            "notes": "November 2025 Winner"
+          }
+        },
+        {
+          "name": "Ankit Mukherjee",
+          "company": "SnackRadar",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Platform to find free food at university campuses"
+        },
+        {
+          "name": "Amira Oyawoye",
+          "company": "Hoppie",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Event discovery platform to build friendships"
+        },
+        {
+          "name": "Milad Zoghi",
+          "company": "Zanis Tech Inc",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Smart thermometer and health tracking app"
+        },
+        {
+          "name": "Erik MacInnis",
+          "company": "Lately",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "App to help people with ADHD arrive on time"
+        }
+      ],
+      "media": {
+        "photos": [],
+        "videos": [],
+        "photoAlbumUrl": ""
+      },
+      "notes": ""
+    },
+    {
+      "id": "pitch-night-october-2025",
+      "title": "Pitch Night - October 2025",
+      "date": "2025-10-29",
+      "time": "5:30 PM - 7:30 PM",
+      "location": "Calgary, AB",
+      "eventbriteUrl": "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
+      "description": "October 2025 Pitch Night featured founders presenting innovative solutions across health, education, and consumer products.",
+      "coverImage": "/images/events/pitch-night-october-2025/cover.jpg",
+      "status": "past",
+      "judges": [
+        {
+          "name": "Reem Hamdon",
+          "title": "Venture Manager, Creative Destruction Lab",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Stan Peake",
+          "title": "Entrepreneurship Lead, Bow Valley College",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Dennis Agbegha",
+          "title": "Director of Banking Prairies, RBCx",
+          "photo": "",
+          "linkedIn": ""
+        }
+      ],
+      "founders": [
+        {
+          "name": "Mohamed Habib Amara",
+          "company": "Bloom Academy",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Automating admin workflows for schools"
+        },
+        {
+          "name": "Josie Beckley",
+          "company": "GingerGrove Beverages",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Healthy, non-carbonated ginger beverages"
+        },
+        {
+          "name": "Victoria Tsang",
+          "company": "Evolving Prowess",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Size-adaptive activewear for women"
+        },
+        {
+          "name": "Evezi Esiehor",
+          "company": "MindTrail",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Mental wellness platform for university students"
+        },
+        {
+          "name": "Luz Castellanos",
+          "company": "PURYS ENERGY",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Solid-state hydrogen storage technology"
+        },
+        {
+          "name": "Rami Maalouf",
+          "company": "Audora",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "AI-powered communication skills training"
+        },
+        {
+          "name": "Kowther Hassan",
+          "company": "Beseem Technologies",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Affordable medical simulation tools"
+        },
+        {
+          "name": "Harsimar Sahota",
+          "company": "Samtex Solutions",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": ""
+        },
+        {
+          "name": "Muhammad Ansari & Reyansh Badhwar",
+          "company": "Connected",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "",
+          "investment": {
+            "received": true,
+            "amount": 500,
+            "notes": "October 2025 Winner"
+          }
+        },
+        {
+          "name": "Liam Sarjeant",
+          "company": "Cyberstride",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": ""
+        }
+      ],
+      "media": {
+        "photos": [],
+        "videos": [],
+        "photoAlbumUrl": ""
+      },
+      "notes": ""
+    },
+    {
+      "id": "pitch-night-september-2025",
+      "title": "Pitch Night - September 2025",
+      "date": "2025-09-24",
+      "time": "5:30 PM - 7:30 PM",
+      "location": "Calgary, AB",
+      "eventbriteUrl": "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
+      "description": "September 2025 Pitch Night kicked off the fall season with founders presenting across health, safety, real estate, and consumer tech.",
+      "coverImage": "/images/events/pitch-night-september-2025/cover.jpg",
+      "status": "past",
+      "judges": [
+        {
+          "name": "Debbie Butt",
+          "title": "Founder, IN THE KNOW YYC",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Deryck Greer",
+          "title": "Chief Information Officer, Sovaicor",
+          "photo": "",
+          "linkedIn": ""
+        },
+        {
+          "name": "Sam Duperré",
+          "title": "Founder, VespaYEG",
+          "photo": "",
+          "linkedIn": ""
+        }
+      ],
+      "founders": [
+        {
+          "name": "Amir Abrari",
+          "company": "SafetyLog Co.",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "AI-enabled workplace safety reporting"
+        },
+        {
+          "name": "Crystal Kisakye & Emmanuel Fasesan",
+          "company": "Paragon",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Preventing the spread of wildfires",
+          "investment": {
+            "received": true,
+            "amount": 1000,
+            "notes": "September 2025 Winner"
+          }
+        },
+        {
+          "name": "Sanjay Prajapati",
+          "company": "Acquaint Softech Inc/PropIntel",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "AI-powered real estate underwriting"
+        },
+        {
+          "name": "David Enoma",
+          "company": "LucyDNA Inc",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Direct-to-consumer genetic testing for chronic conditions"
+        },
+        {
+          "name": "Haji Ali Darvish",
+          "company": "Suncity Estates",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Land development screening tool"
+        },
+        {
+          "name": "James Gu",
+          "company": "Vapourless",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Tactile behavioral aid for quitting vaping"
+        },
+        {
+          "name": "Victoria Tsang",
+          "company": "Evolving Prowess",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Size-adaptive activewear for women"
+        },
+        {
+          "name": "Yeabsira Zekarias Woldeberhan",
+          "company": "Wealth Path",
+          "photo": "",
+          "linkedIn": "",
+          "pitchTitle": "Financial literacy gamification for youth"
+        }
+      ],
+      "media": {
+        "photos": [],
+        "videos": [],
+        "photoAlbumUrl": ""
+      },
+      "notes": ""
+    }
+  ]
+}

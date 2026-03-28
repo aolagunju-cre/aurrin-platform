@@ -43,7 +43,11 @@ grep -F '=== Reconciling blocked parent pipeline issues ===' "$SCRIPT" >/dev/nul
 grep -F 'PIPELINE_MVP_MODE="${PIPELINE_MVP_MODE:-false}"' "$SCRIPT" >/dev/null
 grep -F 'MVP_MERGE_THRESHOLD_SECONDS="${MVP_MERGE_THRESHOLD_SECONDS:-1200}"' "$SCRIPT" >/dev/null
 grep -F 'MVP_FAST_MERGE_TARGET_PR="${MVP_FAST_MERGE_TARGET_PR:-}"' "$SCRIPT" >/dev/null
+grep -F 'MVP_FAST_MERGE_ACTIVE_WAIT_SECONDS="${MVP_FAST_MERGE_ACTIVE_WAIT_SECONDS:-840}"' "$SCRIPT" >/dev/null
+grep -F 'MVP_FAST_MERGE_ACTIVE_POLL_SECONDS="${MVP_FAST_MERGE_ACTIVE_POLL_SECONDS:-15}"' "$SCRIPT" >/dev/null
 grep -F 'skipping because fast-track merge is targeting PR #' "$SCRIPT" >/dev/null
+grep -F 'waiting for fast-track merge window.' "$SCRIPT" >/dev/null
+grep -F 'Continuing fast-track MVP merge.' "$SCRIPT" >/dev/null
 grep -F 'bash "$SCRIPT_DIR/classify-pipeline-pr.sh"' "$SCRIPT" >/dev/null
 grep -F 'PRIMARY_MERGE_TOKEN="${PIPELINE_APP_TOKEN:-}"' "$SCRIPT" >/dev/null
 grep -F 'SECONDARY_MERGE_TOKEN="${GH_TOKEN:-}"' "$SCRIPT" >/dev/null
