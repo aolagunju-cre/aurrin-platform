@@ -3,11 +3,13 @@ export type SiteConfig = typeof siteConfig;
 export const siteConfig = {
   name: "Aurrin Ventures",
   description: "Founder discovery, scoring, and mentorship platform",
+  contactEmail: "admin@aurrinventures.ca",
   navItems: [
     { label: "Events", href: "/public/events" },
     { label: "Portfolio", href: "/public/portfolio" },
     { label: "Directory", href: "/public/directory" },
     { label: "Apply", href: "/public/apply" },
+    { label: "About", href: "/public/about" },
   ],
   portalItems: [
     { label: "Founder", href: "/founder", description: "Dashboard, profile, events & reports" },
@@ -21,6 +23,7 @@ export const siteConfig = {
     { label: "Portfolio", href: "/public/portfolio" },
     { label: "Directory", href: "/public/directory" },
     { label: "Apply", href: "/public/apply" },
+    { label: "About", href: "/public/about" },
     { label: "Founder Portal", href: "/founder" },
     { label: "Judge Portal", href: "/judge/events" },
     { label: "Mentor Portal", href: "/mentor" },
@@ -29,6 +32,8 @@ export const siteConfig = {
   ],
   links: {
     linkedin: "https://www.linkedin.com/company/aurrinventures/?viewAsMember=true",
+    instagram: "https://www.instagram.com/aurrinventures/",
+    linktree: "https://linktr.ee/aurrinventures",
     sponsor: "https://donate.stripe.com/00w4gzfVc6LS3XKfmf0RG00",
     events: "https://www.eventbrite.ca/o/aurrin-ventures-103419779111",
     pitchSignup: "https://forms.gle/HNRtWCv1eMG1SexY8",
