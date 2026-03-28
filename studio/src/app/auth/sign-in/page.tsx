@@ -128,12 +128,25 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       </section>
 
       <section className="rounded-3xl border border-default-200 bg-background p-8 shadow-sm">
-        <h2 className="text-2xl font-semibold text-foreground">{demoMode ? 'Demo mode enabled' : 'Need a sandbox session?'}</h2>
+        <h2 className="text-2xl font-semibold text-foreground">New to Aurrin?</h2>
         <p className="mt-2 text-sm text-default-500">
-          {demoMode
-            ? 'Seeded personas are currently active. Sign in by selecting one of the profiles.'
-            : 'Demo mode is disabled. Set DEMO_MODE=true to use seeded persona access.'}
+          Create an account to apply as a founder, judge pitches, mentor teams, or access premium content.
         </p>
+        <Link
+          className="mt-4 inline-flex rounded-full bg-violet-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-violet-700"
+          href="/auth/sign-up"
+        >
+          Create Account
+        </Link>
+
+        {demoMode ? (
+          <div className="mt-8 rounded-2xl border border-default-200 bg-default-50/50 p-4">
+            <p className="text-sm font-medium text-foreground">Demo mode enabled</p>
+            <p className="mt-1 text-xs text-default-500">
+              Seeded personas are available. Sign in using one of the profiles on the left.
+            </p>
+          </div>
+        ) : null}
 
         <p className="mt-6 text-xs text-default-400">
           Need to leave the current session? Visit <Link className="text-violet-500 hover:text-violet-400" href="/auth/sign-out">/auth/sign-out</Link>.
