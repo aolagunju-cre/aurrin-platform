@@ -127,9 +127,6 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
                   />
                   <span className="block text-sm font-semibold text-foreground">{role.label}</span>
                   <span className="mt-1 block text-xs text-default-500">{SIGN_UP_ROLE_DESCRIPTIONS[role.value]}</span>
-                  <span className="mt-2 block text-xs font-mono text-default-400">
-                    Route: {SIGN_UP_ROLE_DESTINATIONS[role.value]}
-                  </span>
                 </label>
               ))}
             </div>
