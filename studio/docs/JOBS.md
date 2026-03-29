@@ -133,7 +133,7 @@ await enqueueJob('webhook', payload, { max_retries: 5 });
 
 ## Cron Invocation
 
-The worker runs via Vercel Cron every 5 minutes (configured in `vercel.json`):
+The worker runs via Vercel Cron every 5 minutes (configured in `studio/vercel.json`):
 
 ```json
 {
