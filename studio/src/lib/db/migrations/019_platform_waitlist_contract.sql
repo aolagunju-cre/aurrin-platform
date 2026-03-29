@@ -32,9 +32,9 @@ EXECUTE FUNCTION update_timestamp();
 ALTER TABLE platform_waitlist_signups ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY platform_waitlist_signups_admin_select ON platform_waitlist_signups
-  FOR SELECT USING (has_role(auth.current_user_id(), 'admin'::user_role));
+  FOR SELECT USING (has_role(auth.uid(), 'admin'::user_role));
 
 CREATE POLICY platform_waitlist_signups_admin_update ON platform_waitlist_signups
   FOR UPDATE
-  USING (has_role(auth.current_user_id(), 'admin'::user_role))
-  WITH CHECK (has_role(auth.current_user_id(), 'admin'::user_role));
+  USING (has_role(auth.uid(), 'admin'::user_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::user_role));
