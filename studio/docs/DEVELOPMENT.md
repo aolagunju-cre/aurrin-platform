@@ -32,7 +32,10 @@ cp .env.example .env.local
 Required core values include:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_JWT_SECRET`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+Optional:
+- `SUPABASE_JWT_SECRET` for local JWT verification. If omitted, the app uses Supabase token introspection.
 
 ## How-to: Optional local Supabase setup
 

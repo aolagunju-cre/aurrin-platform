@@ -29,7 +29,7 @@ cp .env.example .env.local
 # NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 # NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 # SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
-# SUPABASE_JWT_SECRET=your-jwt-secret
+# SUPABASE_JWT_SECRET=optional-jwt-secret
 ```
 
 ### 3. Apply Migrations

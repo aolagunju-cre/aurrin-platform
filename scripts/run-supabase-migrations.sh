@@ -4,20 +4,24 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/.." && pwd)"
 MIGRATIONS_DIR="$ROOT_DIR/studio/src/lib/db/migrations"
 
-REQUIRED_KEYS=(
-  "NEXT_PUBLIC_SUPABASE_URL"
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  "SUPABASE_SERVICE_ROLE_KEY"
-  "SUPABASE_JWT_SECRET"
-)
+SUPABASE_URL_VALUE="${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL:-}}"
+SUPABASE_ANON_KEY_VALUE="${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY:-}}"
+SUPABASE_SERVICE_ROLE_KEY_VALUE="${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_KEY:-}}"
+SUPABASE_JWT_SECRET_VALUE="${SUPABASE_JWT_SECRET:-}"
 
 missing_keys=()
-for key in "${REQUIRED_KEYS[@]}"; do
-  value="${!key:-}"
-  if [[ -z "$value" || "$value" == "your-secret-key" ]]; then
-    missing_keys+=("$key")
-  fi
-done
+
+if [[ -z "$SUPABASE_URL_VALUE" ]]; then
+  missing_keys+=("NEXT_PUBLIC_SUPABASE_URL (or legacy SUPABASE_URL)")
+fi
+
+if [[ -z "$SUPABASE_ANON_KEY_VALUE" ]]; then
+  missing_keys+=("NEXT_PUBLIC_SUPABASE_ANON_KEY (or legacy SUPABASE_ANON_KEY)")
+fi
+
+if [[ -z "$SUPABASE_SERVICE_ROLE_KEY_VALUE" || "$SUPABASE_SERVICE_ROLE_KEY_VALUE" == "your-secret-key" ]]; then
+  missing_keys+=("SUPABASE_SERVICE_ROLE_KEY (or legacy SUPABASE_SERVICE_KEY)")
+fi
 
 if [[ ${#missing_keys[@]} -gt 0 ]]; then
   {
@@ -28,6 +32,14 @@ if [[ ${#missing_keys[@]} -gt 0 ]]; then
   } >&2
   exit 1
 fi
+
+if [[ -z "$SUPABASE_JWT_SECRET_VALUE" || "$SUPABASE_JWT_SECRET_VALUE" == "your-secret-key" ]]; then
+  echo "WARN: SUPABASE_JWT_SECRET is not configured; migrations will continue using Supabase token introspection." >&2
+fi
+
+export NEXT_PUBLIC_SUPABASE_URL="$SUPABASE_URL_VALUE"
+export NEXT_PUBLIC_SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_VALUE"
+export SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY_VALUE"
 
 if [[ ! -d "$MIGRATIONS_DIR" ]]; then
   echo "ERROR: Migration directory not found: $MIGRATIONS_DIR" >&2
@@ -70,7 +82,7 @@ declare -a migration_chain=()
 while IFS= read -r filename; do
   migration_chain+=("$filename")
 done < <(
-  find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' ! -name 'rollback_*' -printf '%f\n' \
+  find "$MIGRATIONS_DIR" -maxdepth 1 -type f -name '*.sql' ! -name 'rollback_*' -exec basename {} \; \
     | LC_ALL=C sort
 )
 
@@ -85,4 +97,20 @@ for migration_file in "${migration_chain[@]}"; do
 done
 
 echo "Applying migrations from: $MIGRATIONS_DIR"
-(cd "$ROOT_DIR/studio" && npx supabase db push)
+TEMP_SUPABASE_WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/aurrin-platform-supabase-XXXXXX")"
+cleanup() {
+  rm -rf "$TEMP_SUPABASE_WORKDIR"
+}
+trap cleanup EXIT
+
+mkdir -p "$TEMP_SUPABASE_WORKDIR/supabase/migrations"
+
+if [[ -d "$ROOT_DIR/studio/supabase" ]]; then
+  cp -R "$ROOT_DIR/studio/supabase/." "$TEMP_SUPABASE_WORKDIR/supabase/"
+fi
+
+for migration_file in "${migration_chain[@]}"; do
+  cp "$MIGRATIONS_DIR/$migration_file" "$TEMP_SUPABASE_WORKDIR/supabase/migrations/$migration_file"
+done
+
+(cd "$ROOT_DIR/studio" && npx supabase db push --linked --include-all --workdir "$TEMP_SUPABASE_WORKDIR" --yes)

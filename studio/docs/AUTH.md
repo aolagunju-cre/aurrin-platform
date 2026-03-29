@@ -52,7 +52,8 @@ Copy `.env.example` to `.env.local` and fill in:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_JWT_SECRET=your-jwt-secret
+# Optional: only needed for local JWT verification
+SUPABASE_JWT_SECRET=
 SUPABASE_AUTH_REDIRECT_URL=http://localhost:3000/auth/callback
 ```
 
@@ -287,7 +288,7 @@ curl -X GET http://localhost:3000/api/protected/user \
 
 - Check JWT token is in `Authorization: Bearer <token>` header
 - Verify token hasn't expired
-- Check `SUPABASE_JWT_SECRET` is correct
+- If local JWT verification is enabled, check `SUPABASE_JWT_SECRET` is correct
 
 ### RLS Policy Blocks Access
 

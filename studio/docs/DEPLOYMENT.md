@@ -24,20 +24,21 @@ Use separate environment variable values for dev, staging, and prod.
 | `NEXT_PUBLIC_SUPABASE_URL` | env-specific Supabase URL | env-specific Supabase URL | env-specific Supabase URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key | anon key | anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | service key | service key | service key |
-| `SUPABASE_JWT_SECRET` | jwt secret | jwt secret | jwt secret |
+| `SUPABASE_JWT_SECRET` | optional | optional | optional |
 | `RESEND_API_KEY` | optional for local test | required if email enabled | required |
 | `STRIPE_SECRET_KEY` | test key | test key | live key |
 | `CRON_SECRET` | optional | required | required |
 | `LOG_LEVEL` | debug/info | info | info/warn |
 | `SENTRY_DSN` | optional | optional | recommended |
 
-Supabase auth baseline requires all four keys to be set together in non-demo deployments:
+Supabase auth baseline requires these keys to be set together in non-demo deployments:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_JWT_SECRET`
 
-If one or more are missing, runtime falls back to demo mode unless `DEMO_MODE=false` is explicitly set.
+`SUPABASE_JWT_SECRET` is optional. When omitted, runtime falls back to Supabase token introspection instead of local JWT verification.
+
+If one or more required keys are missing, runtime falls back to demo mode unless `DEMO_MODE=false` is explicitly set.
 
 ## 4. Install, Build, and Test
 
