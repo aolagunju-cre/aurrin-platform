@@ -42,6 +42,10 @@ const campaignsRuntimeContractSql = fs.readFileSync(
   path.resolve(process.cwd(), 'src/lib/db/migrations/018_campaigns_runtime_contract.sql'),
   'utf8'
 );
+const platformWaitlistContractSql = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/lib/db/migrations/019_platform_waitlist_contract.sql'),
+  'utf8'
+);
 
 describe('Database Schema Validation', () => {
   // These tests verify schema structure without requiring Supabase connection
@@ -487,6 +491,12 @@ describe('Database Schema Validation', () => {
       expect(campaignsRuntimeContractSql).toContain('DROP POLICY IF EXISTS donations_public_read ON campaign_donations;');
       expect(campaignsRuntimeContractSql).toContain('CREATE OR REPLACE FUNCTION increment_campaign_raised');
     });
+
+    test('019 platform waitlist contract migration exists', () => {
+      expect(platformWaitlistContractSql).toContain('CREATE TABLE platform_waitlist_signups');
+      expect(platformWaitlistContractSql).toContain('ALTER TABLE platform_waitlist_signups ENABLE ROW LEVEL SECURITY;');
+      expect(platformWaitlistContractSql).toContain('CREATE TRIGGER platform_waitlist_signups_update_timestamp');
+    });
   });
 
   describe('Event Lifecycle Contract', () => {
@@ -565,6 +575,25 @@ describe('Database Schema Validation', () => {
       expect(campaignsRuntimeContractSql).toContain('donor_count = donor_count + 1');
       expect(campaignsRuntimeContractSql).toContain("status IN ('active', 'funded')");
       expect(campaignsRuntimeContractSql).toContain("THEN 'funded'::campaign_status");
+    });
+  });
+
+  describe('Platform Waitlist Contract', () => {
+    test('platform waitlist signups capture contact fields with normalized email uniqueness', () => {
+      expect(platformWaitlistContractSql).toContain('first_name TEXT NOT NULL');
+      expect(platformWaitlistContractSql).toContain('last_name TEXT NOT NULL');
+      expect(platformWaitlistContractSql).toContain('email TEXT NOT NULL UNIQUE');
+      expect(platformWaitlistContractSql).toContain('phone TEXT NOT NULL');
+      expect(platformWaitlistContractSql).toContain("source TEXT NOT NULL DEFAULT 'public-waitlist'");
+      expect(platformWaitlistContractSql).toContain("metadata JSONB NOT NULL DEFAULT '{}'::jsonb");
+    });
+
+    test('platform waitlist signups include indexes, trigger, and admin-only RLS access', () => {
+      expect(platformWaitlistContractSql).toContain('CREATE INDEX idx_platform_waitlist_signups_created_at');
+      expect(platformWaitlistContractSql).toContain('CREATE INDEX idx_platform_waitlist_signups_source');
+      expect(platformWaitlistContractSql).toContain('CREATE TRIGGER platform_waitlist_signups_update_timestamp');
+      expect(platformWaitlistContractSql).toContain('CREATE POLICY platform_waitlist_signups_admin_select');
+      expect(platformWaitlistContractSql).toContain('CREATE POLICY platform_waitlist_signups_admin_update');
     });
   });
 });
