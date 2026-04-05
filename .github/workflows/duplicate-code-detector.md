@@ -10,15 +10,9 @@ permissions:
   pull-requests: read
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-engine:
-  id: codex
-  model: openai/gpt-5-codex
-  env:
-    OPENAI_BASE_URL: https://openrouter.ai/api/v1
 network:
   allowed:
     - defaults
-    - openrouter.ai
     - "fonts.googleapis.com"
     - "fonts.gstatic.com"
 safe-outputs:

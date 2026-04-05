@@ -18,12 +18,6 @@ imports:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
-engine:
-  id: codex
-  model: openai/gpt-5-codex
-  env:
-    OPENAI_BASE_URL: https://openrouter.ai/api/v1
-
 safe-outputs:
   create-pull-request:
     title-prefix: "[code-simplifier] "
@@ -33,7 +27,6 @@ safe-outputs:
 network:
   allowed:
     - defaults
-    - openrouter.ai
     - dotnet
     - "fonts.googleapis.com"
     - "fonts.gstatic.com"
