@@ -669,6 +669,35 @@ export interface ContentRecord {
   updated_at: string;
 }
 
+export interface SponsorshipTierRecord {
+  id: string;
+  founder_id: string;
+  label: string;
+  amount_cents: number;
+  perk_description: string;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SponsorshipTierInsert {
+  founder_id: string;
+  label: string;
+  amount_cents: number;
+  perk_description: string;
+  sort_order?: number;
+  active?: boolean;
+}
+
+export interface SponsorshipTierUpdate {
+  label?: string;
+  amount_cents?: number;
+  perk_description?: string;
+  sort_order?: number;
+  active?: boolean;
+}
+
 export interface SupabaseStorageClient {
   upload(bucket: string, path: string, file: Buffer | Blob, options?: { contentType?: string }): Promise<StorageUploadResult>;
   remove(bucket: string, paths: string[]): Promise<{ error: Error | null }>;
@@ -797,6 +826,11 @@ export interface SupabaseDBClient {
   listEntitlementsByUserId(userId: string): Promise<{ data: EntitlementRecord[]; error: Error | null }>;
   insertEntitlement(record: EntitlementInsert): Promise<{ data: EntitlementRecord | null; error: Error | null }>;
   getContentById(contentId: string): Promise<{ data: ContentRecord | null; error: Error | null }>;
+  listSponsorshipTiersByFounderId(founderId: string): Promise<{ data: SponsorshipTierRecord[]; error: Error | null }>;
+  getSponsorshipTierById(id: string): Promise<{ data: SponsorshipTierRecord | null; error: Error | null }>;
+  insertSponsorshipTier(record: SponsorshipTierInsert): Promise<{ data: SponsorshipTierRecord | null; error: Error | null }>;
+  updateSponsorshipTier(id: string, updates: SponsorshipTierUpdate): Promise<{ data: SponsorshipTierRecord | null; error: Error | null }>;
+  deleteSponsorshipTier(id: string): Promise<{ error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -911,6 +945,11 @@ export function getSupabaseClient(): SupabaseClient {
         listEntitlementsByUserId: async () => ({ data: [], error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         insertEntitlement: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         getContentById: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        listSponsorshipTiersByFounderId: async () => ({ data: [], error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        getSponsorshipTierById: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        insertSponsorshipTier: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        updateSponsorshipTier: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        deleteSponsorshipTier: async () => ({ error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
       },
     };
     return stub;
@@ -2665,6 +2704,104 @@ export function getSupabaseClient(): SupabaseClient {
         return { data: rows[0] ?? null, error: null };
       } catch (err) {
         return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listSponsorshipTiersByFounderId(founderId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/sponsorship_tiers?founder_id=eq.${encodeURIComponent(founderId)}&select=*&order=sort_order.asc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Sponsorship tiers query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorshipTierRecord[];
+        return { data: rows, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getSponsorshipTierById(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/sponsorship_tiers?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Sponsorship tier query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorshipTierRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertSponsorshipTier(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/sponsorship_tiers`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            founder_id: record.founder_id,
+            label: record.label,
+            amount_cents: record.amount_cents,
+            perk_description: record.perk_description,
+            sort_order: record.sort_order ?? 0,
+            active: record.active ?? true,
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Sponsorship tier insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorshipTierRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async updateSponsorshipTier(id, updates) {
+      try {
+        const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+        if (updates.label !== undefined) payload.label = updates.label;
+        if (updates.amount_cents !== undefined) payload.amount_cents = updates.amount_cents;
+        if (updates.perk_description !== undefined) payload.perk_description = updates.perk_description;
+        if (updates.sort_order !== undefined) payload.sort_order = updates.sort_order;
+        if (updates.active !== undefined) payload.active = updates.active;
+
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/sponsorship_tiers?id=eq.${encodeURIComponent(id)}`,
+          {
+            method: 'PATCH',
+            headers: { ...headers, Prefer: 'return=representation' },
+            body: JSON.stringify(payload),
+          }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Sponsorship tier update failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as SponsorshipTierRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async deleteSponsorshipTier(id) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/sponsorship_tiers?id=eq.${encodeURIComponent(id)}`,
+          { method: 'DELETE', headers }
+        );
+        if (!response.ok) {
+          return { error: new Error(`Sponsorship tier delete failed: ${response.statusText}`) };
+        }
+        return { error: null };
+      } catch (err) {
+        return { error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
   };
