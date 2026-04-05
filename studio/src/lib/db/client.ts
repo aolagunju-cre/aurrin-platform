@@ -698,6 +698,32 @@ export interface SponsorshipTierUpdate {
   active?: boolean;
 }
 
+export interface DonationRecord {
+  id: string;
+  founder_id: string;
+  donor_email: string | null;
+  donor_user_id: string | null;
+  tier_id: string | null;
+  amount_cents: number;
+  stripe_payment_intent_id: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface DonationInsert {
+  founder_id: string;
+  donor_email?: string | null;
+  donor_user_id?: string | null;
+  tier_id?: string | null;
+  amount_cents: number;
+  stripe_payment_intent_id?: string | null;
+  status?: string;
+}
+
+export interface DonationWithTierRecord extends DonationRecord {
+  tier_label: string | null;
+}
+
 export interface SupabaseStorageClient {
   upload(bucket: string, path: string, file: Buffer | Blob, options?: { contentType?: string }): Promise<StorageUploadResult>;
   remove(bucket: string, paths: string[]): Promise<{ error: Error | null }>;
@@ -831,6 +857,9 @@ export interface SupabaseDBClient {
   insertSponsorshipTier(record: SponsorshipTierInsert): Promise<{ data: SponsorshipTierRecord | null; error: Error | null }>;
   updateSponsorshipTier(id: string, updates: SponsorshipTierUpdate): Promise<{ data: SponsorshipTierRecord | null; error: Error | null }>;
   deleteSponsorshipTier(id: string): Promise<{ error: Error | null }>;
+  insertDonation(record: DonationInsert): Promise<{ data: DonationRecord | null; error: Error | null }>;
+  getDonationByStripePaymentIntentId(paymentIntentId: string): Promise<{ data: DonationRecord | null; error: Error | null }>;
+  listDonationsByFounderId(founderId: string): Promise<{ data: DonationWithTierRecord[]; error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -950,6 +979,9 @@ export function getSupabaseClient(): SupabaseClient {
         insertSponsorshipTier: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         updateSponsorshipTier: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         deleteSponsorshipTier: async () => ({ error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        insertDonation: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        getDonationByStripePaymentIntentId: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        listDonationsByFounderId: async () => ({ data: [], error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
       },
     };
     return stub;
@@ -2802,6 +2834,68 @@ export function getSupabaseClient(): SupabaseClient {
         return { error: null };
       } catch (err) {
         return { error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async insertDonation(record) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/donations`, {
+          method: 'POST',
+          headers: { ...headers, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            founder_id: record.founder_id,
+            donor_email: record.donor_email ?? null,
+            donor_user_id: record.donor_user_id ?? null,
+            tier_id: record.tier_id ?? null,
+            amount_cents: record.amount_cents,
+            stripe_payment_intent_id: record.stripe_payment_intent_id ?? null,
+            status: record.status ?? 'completed',
+          }),
+        });
+        if (!response.ok) {
+          return { data: null, error: new Error(`Donation insert failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as DonationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async getDonationByStripePaymentIntentId(paymentIntentId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/donations?stripe_payment_intent_id=eq.${encodeURIComponent(paymentIntentId)}&select=*&limit=1`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: null, error: new Error(`Donation query failed: ${response.statusText}`) };
+        }
+        const rows = await response.json() as DonationRecord[];
+        return { data: rows[0] ?? null, error: null };
+      } catch (err) {
+        return { data: null, error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listDonationsByFounderId(founderId) {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/donations?founder_id=eq.${encodeURIComponent(founderId)}&select=*,tier:sponsorship_tiers(label)&order=created_at.desc`,
+          { headers }
+        );
+        if (!response.ok) {
+          return { data: [], error: new Error(`Donations query failed: ${response.statusText}`) };
+        }
+        type RawRow = DonationRecord & { tier: { label: string } | null };
+        const rows = await response.json() as RawRow[];
+        const mapped: DonationWithTierRecord[] = rows.map((row) => ({
+          ...row,
+          tier_label: row.tier?.label ?? null,
+        }));
+        return { data: mapped, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
       }
     },
   };

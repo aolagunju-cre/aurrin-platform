@@ -36,6 +36,8 @@ describe('handleStripeWebhookEvent', () => {
     upsertSubscription: jest.fn(),
     insertTransaction: jest.fn(),
     insertEntitlement: jest.fn(),
+    getDonationByStripePaymentIntentId: jest.fn(),
+    insertDonation: jest.fn(),
   };
 
   beforeEach(() => {
@@ -79,6 +81,8 @@ describe('handleStripeWebhookEvent', () => {
       data: { id: 'ent_1' },
       error: null,
     });
+    db.getDonationByStripePaymentIntentId.mockResolvedValue({ data: null, error: null });
+    db.insertDonation.mockResolvedValue({ data: { id: 'donation_1' }, error: null });
     mockedEnqueueJob.mockResolvedValue({
       id: 'job_1',
       job_type: 'webhook',
@@ -365,6 +369,124 @@ describe('handleStripeWebhookEvent', () => {
       expect.objectContaining({
         aggregate_id: 'maya-chen-terravolt',
         aggregate_type: 'founder_support',
+      })
+    );
+  });
+
+  it('inserts a donations row on founder_support payment_intent.succeeded with valid founder_id', async () => {
+    const founderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const tierId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const event = {
+      id: 'evt_pi_donation_insert',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_donation_1',
+          amount: 1000,
+          amount_received: 1000,
+          currency: 'usd',
+          metadata: {
+            kind: 'founder_support',
+            founder_slug: 'maya-chen-terravolt',
+            founder_name: 'Maya Chen',
+            founder_id: founderId,
+            donor_email: 'donor@example.com',
+            tier_id: tierId,
+            tier_label: 'Bronze Supporter',
+            donor_user_id: '',
+          },
+          receipt_email: 'donor@example.com',
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    const result = await handleStripeWebhookEvent(event);
+
+    expect(result).toEqual({ duplicate: false, deadLettered: false });
+    expect(db.getDonationByStripePaymentIntentId).toHaveBeenCalledWith('pi_donation_1');
+    expect(db.insertDonation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        founder_id: founderId,
+        donor_email: 'donor@example.com',
+        donor_user_id: null,
+        tier_id: tierId,
+        amount_cents: 1000,
+        stripe_payment_intent_id: 'pi_donation_1',
+        status: 'completed',
+      })
+    );
+  });
+
+  it('does not insert a duplicate donations row (idempotency)', async () => {
+    const founderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    db.getDonationByStripePaymentIntentId.mockResolvedValueOnce({
+      data: { id: 'existing-donation', stripe_payment_intent_id: 'pi_donation_dup' },
+      error: null,
+    });
+
+    const event = {
+      id: 'evt_pi_donation_dup',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_donation_dup',
+          amount: 1000,
+          amount_received: 1000,
+          currency: 'usd',
+          metadata: {
+            kind: 'founder_support',
+            founder_slug: 'maya-chen-terravolt',
+            founder_name: 'Maya Chen',
+            founder_id: founderId,
+            donor_email: 'donor@example.com',
+            tier_id: '',
+            tier_label: '',
+            donor_user_id: '',
+          },
+          receipt_email: 'donor@example.com',
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await handleStripeWebhookEvent(event);
+
+    expect(db.getDonationByStripePaymentIntentId).toHaveBeenCalledWith('pi_donation_dup');
+    expect(db.insertDonation).not.toHaveBeenCalled();
+  });
+
+  it('inserts a donations row with donor_user_id when signed-in donor', async () => {
+    const founderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const donorUserId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const event = {
+      id: 'evt_pi_signed_in_donor',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_signed_in',
+          amount: 2500,
+          amount_received: 2500,
+          currency: 'usd',
+          metadata: {
+            kind: 'founder_support',
+            founder_slug: 'maya-chen-terravolt',
+            founder_name: 'Maya Chen',
+            founder_id: founderId,
+            donor_email: 'signed-in@example.com',
+            tier_id: '',
+            tier_label: '',
+            donor_user_id: donorUserId,
+          },
+          receipt_email: 'signed-in@example.com',
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await handleStripeWebhookEvent(event);
+
+    expect(db.insertDonation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        donor_user_id: donorUserId,
+        status: 'completed',
       })
     );
   });

@@ -10,6 +10,9 @@ interface FounderSupportCheckoutPayload {
   amount_cents: number;
   success_url: string;
   cancel_url: string;
+  tier_id?: string | null;
+  tier_label?: string | null;
+  donor_user_id?: string | null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -45,6 +48,18 @@ function validatePayload(body: unknown): FounderSupportCheckoutPayload | null {
   const amountCents = typeof body.amount_cents === 'number' ? Math.round(body.amount_cents) : NaN;
   const successUrl = typeof body.success_url === 'string' ? body.success_url.trim() : '';
   const cancelUrl = typeof body.cancel_url === 'string' ? body.cancel_url.trim() : '';
+  const tierId =
+    typeof body.tier_id === 'string' && body.tier_id.trim().length > 0
+      ? body.tier_id.trim()
+      : null;
+  const tierLabel =
+    typeof body.tier_label === 'string' && body.tier_label.trim().length > 0
+      ? body.tier_label.trim()
+      : null;
+  const donorUserId =
+    typeof body.donor_user_id === 'string' && body.donor_user_id.trim().length > 0
+      ? body.donor_user_id.trim()
+      : null;
 
   if (!founderSlug || !founderName || !donorEmail || !Number.isInteger(amountCents) || !successUrl || !cancelUrl) {
     return null;
@@ -66,6 +81,9 @@ function validatePayload(body: unknown): FounderSupportCheckoutPayload | null {
     amount_cents: amountCents,
     success_url: successUrl,
     cancel_url: cancelUrl,
+    tier_id: tierId,
+    tier_label: tierLabel,
+    donor_user_id: donorUserId,
   };
 }
 
@@ -136,6 +154,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         founder_name: payload.founder_name,
         founder_id: payload.founder_id ?? '',
         donor_email: payload.donor_email,
+        tier_id: payload.tier_id ?? '',
+        tier_label: payload.tier_label ?? '',
+        donor_user_id: payload.donor_user_id ?? '',
       },
       payment_intent_data: {
         metadata: {
@@ -144,6 +165,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           founder_name: payload.founder_name,
           founder_id: payload.founder_id ?? '',
           donor_email: payload.donor_email,
+          tier_id: payload.tier_id ?? '',
+          tier_label: payload.tier_label ?? '',
+          donor_user_id: payload.donor_user_id ?? '',
         },
         receipt_email: payload.donor_email,
       },

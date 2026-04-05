@@ -95,4 +95,42 @@ describe('founder support checkout route', () => {
       })
     );
   });
+
+  it('passes tier_id and tier_label as PaymentIntent metadata when provided', async () => {
+    const createSession = jest.fn().mockResolvedValue({
+      id: 'cs_test_tier',
+      url: 'https://checkout.stripe.com/c/pay/cs_test_tier',
+    });
+
+    jest.doMock('../src/lib/demo/data', () => ({ DEMO_MODE: false }));
+    jest.doMock('../src/lib/payments/stripe-client', () => ({
+      getStripeClient: () => ({ checkout: { sessions: { create: createSession } } }),
+    }));
+
+    const { POST } = await import('../src/app/api/commerce/founder-support/checkout/route');
+
+    const response = await POST(buildRequest({
+      founder_slug: 'maya-chen-terravolt',
+      founder_name: 'Maya Chen',
+      founder_id: '11111111-1111-4111-8111-111111111111',
+      donor_email: 'donor@example.com',
+      amount_cents: 1000,
+      tier_id: 'tier-uuid-1234',
+      tier_label: 'Bronze Supporter',
+      success_url: 'http://localhost/founders/maya-chen-terravolt?support=success',
+      cancel_url: 'http://localhost/founders/maya-chen-terravolt?support=cancel',
+    }));
+
+    expect(response.status).toBe(200);
+    expect(createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_intent_data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            tier_id: 'tier-uuid-1234',
+            tier_label: 'Bronze Supporter',
+          }),
+        }),
+      })
+    );
+  });
 });

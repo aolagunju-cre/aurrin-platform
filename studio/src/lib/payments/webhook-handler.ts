@@ -356,6 +356,31 @@ async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<
     const founderName = readTrimmedString(metadata.founder_name);
     const donorEmail = readTrimmedString(metadata.donor_email) ?? readTrimmedString(paymentIntent.receipt_email);
     const amount = paymentIntent.amount_received || paymentIntent.amount;
+    const founderId = readTrimmedString(metadata.founder_id);
+    const tierId = readTrimmedString(metadata.tier_id);
+    const donorUserId = readTrimmedString(metadata.donor_user_id);
+
+    // Insert donation row (idempotent — check first)
+    if (isUuid(founderId)) {
+      const existing = await db.getDonationByStripePaymentIntentId(paymentIntent.id);
+      if (existing.error) {
+        throw existing.error;
+      }
+      if (!existing.data) {
+        const donationInsert = await db.insertDonation({
+          founder_id: founderId,
+          donor_email: isLikelyEmail(donorEmail) ? donorEmail : null,
+          donor_user_id: isUuid(donorUserId) ? donorUserId : null,
+          tier_id: isUuid(tierId) ? tierId : null,
+          amount_cents: amount,
+          stripe_payment_intent_id: paymentIntent.id,
+          status: 'completed',
+        });
+        if (donationInsert.error) {
+          throw donationInsert.error;
+        }
+      }
+    }
 
     if (isLikelyEmail(donorEmail)) {
       await enqueueJob(

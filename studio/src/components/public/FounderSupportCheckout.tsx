@@ -36,7 +36,7 @@ export function FounderSupportCheckout({
   founderSlug,
   founderName,
   founderId = null,
-  tierId: _tierId = null,
+  tierId = null,
   initialAmountCents = null,
 }: FounderSupportCheckoutProps): React.ReactElement {
   const [selectedAmount, setSelectedAmount] = useState<number>(
@@ -99,6 +99,7 @@ export function FounderSupportCheckout({
           founder_id: founderId,
           donor_email: email,
           amount_cents: effectiveAmount,
+          tier_id: tierId,
           success_url: `${origin}/public/directory/${encodeURIComponent(founderSlug)}?support=success`,
           cancel_url: `${origin}/public/directory/${encodeURIComponent(founderSlug)}?support=cancel`,
         }),
