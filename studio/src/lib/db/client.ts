@@ -45,6 +45,7 @@ export interface FounderApplicationRecord {
   linkedin: string | null;
   phone: string | null;
   etransfer_email: string | null;
+  funding_goal_cents: number | null;
   status: 'pending' | 'accepted' | 'assigned' | 'declined';
   assigned_event_id: string | null;
   application_data: Record<string, unknown> | null;
@@ -88,6 +89,7 @@ export interface FounderApplicationUpdate {
   linkedin?: string | null;
   phone?: string | null;
   etransfer_email?: string | null;
+  funding_goal_cents?: number | null;
   status?: 'pending' | 'accepted' | 'assigned' | 'declined';
   assigned_event_id?: string | null;
   reviewed_at?: string | null;

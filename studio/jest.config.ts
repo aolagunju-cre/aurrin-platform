@@ -33,6 +33,7 @@ const config: Config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
     "\\.module\\.css$": "<rootDir>/test/__mocks__/styleMock.ts",
+    "^qrcode$": "<rootDir>/test/__mocks__/qrcode.ts",
   },
   transformIgnorePatterns: [
     "node_modules/(?!(jose)/)"
