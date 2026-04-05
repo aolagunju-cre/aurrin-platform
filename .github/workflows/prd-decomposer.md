@@ -95,6 +95,20 @@ If the instructions above contain a URL or file path, fetch/read that content as
    - If the PRD says `400` for `ADVISORY` decisions, do **not** omit that behavior
    - If the PRD requires an exact heading or button label, keep that exact text in scope
 
+3a. **Schema and shared-contract completeness cross-check.** Self-containment (rule 10) is correct for *implementation artifacts*, but the database schema, shared TypeScript types, shared enums, and shared API contracts are **global resources** that cannot be validated one issue at a time. Before finalizing the batch, perform an explicit cross-reference pass:
+
+   - **Walk every feature, test, and docs issue** and extract every mention of:
+     - Database tables, columns, indexes, constraints, and enum values
+     - Shared TypeScript interfaces, types, and their fields (e.g., `DonationRecord.donor_name`)
+     - Shared API request/response payload fields (e.g., `billing_details.name`, `customer_details.email`)
+     - Environment variables, feature flags, or config keys that must exist before the feature works
+   - **For each extracted reference**, verify it is explicitly covered by the acceptance criteria of the schema/migration/infrastructure issue in the same batch. "Covered" means the schema issue's acceptance criteria literally names the column/field/enum value — not that the implementing agent is expected to infer it.
+   - **If a reference is missing**, either:
+     1. Extend the schema issue's acceptance criteria to include it (preferred), or
+     2. Add a new small schema-amendment issue that the feature issue depends on.
+   - **Never rely on the implementing agent** to add a missing column ad-hoc in a feature PR. That produces cross-PR drift: the schema PR ships, the feature PR ships against the missing schema, and the gap only surfaces in review — by which point both PRs are merged. This exact failure mode produced the `donations.donor_name` gap across issues #252/#257/#258 and required a follow-up cleanup (migration 022). Do not repeat it.
+   - **This cross-check must run before the `create-issue` calls are emitted**, not after. Issues cannot be amended once created through the safe-outputs mechanism.
+
 4. **Identify task dependencies.** Some tasks must be done before others (e.g., scaffold before features, features before tests).
 
 5. **Create self-contained issues (each completable independently).** Each issue should be:
@@ -251,3 +265,9 @@ Before creating each issue, verify:
 - [ ] Technical notes reference actual project patterns
 - [ ] Issue is small enough for a single PR
 - [ ] temporary_id is `aw_` + 3-8 alphanumeric chars only (e.g., `aw_task1`)
+
+Before finalizing the batch (rule 3a — run once across ALL issues, not per-issue):
+- [ ] Every database column, index, and enum value named in any feature/test/docs issue's acceptance criteria or technical notes appears explicitly in the schema/migration issue's acceptance criteria
+- [ ] Every shared TypeScript interface field referenced by a feature issue is explicitly listed in the issue that defines or modifies that interface
+- [ ] Every Stripe/third-party API field referenced by a webhook or integration issue (e.g., `billing_details.name`, `customer_details.email`, `latest_charge`) is tied to a specific column or payload field in the schema issue that will persist it
+- [ ] No feature issue silently depends on a column, type field, or enum value that is not explicitly provisioned by a sibling schema issue
