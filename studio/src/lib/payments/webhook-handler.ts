@@ -9,6 +9,7 @@ import {
   SUBSCRIPTION_CREATED_MESSAGE,
   SUBSCRIPTION_UPDATED_MESSAGE,
 } from './reconciliation';
+import { getStripeClient } from './stripe-client';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -367,9 +368,34 @@ async function processPaymentIntentSucceededEvent(event: Stripe.Event): Promise<
         throw existing.error;
       }
       if (!existing.data) {
+        // Resolve donor display name from Stripe's captured billing details.
+        // PaymentIntent webhooks deliver `latest_charge` as a bare ID, so we
+        // re-retrieve the PI with expansion. A Stripe-side failure must not
+        // block the donation insert — fall back to null and render "Anonymous".
+        let donorName: string | null = null;
+        try {
+          const stripe = getStripeClient();
+          const expanded = await stripe.paymentIntents.retrieve(paymentIntent.id, {
+            expand: ['latest_charge'],
+          });
+          const latestCharge = expanded.latest_charge;
+          if (latestCharge && typeof latestCharge === 'object') {
+            const billingName = (latestCharge as Stripe.Charge).billing_details?.name;
+            donorName = readTrimmedString(billingName);
+          }
+        } catch (error) {
+          logger.warn('Failed to resolve donor_name from Stripe latest_charge', {
+            action: 'founder_support_donor_name_lookup_failed',
+            stripe_payment_intent_id: paymentIntent.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          donorName = null;
+        }
+
         const donationInsert = await db.insertDonation({
           founder_id: founderId,
           donor_email: isLikelyEmail(donorEmail) ? donorEmail : null,
+          donor_name: donorName,
           donor_user_id: isUuid(donorUserId) ? donorUserId : null,
           tier_id: isUuid(tierId) ? tierId : null,
           amount_cents: amount,

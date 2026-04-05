@@ -43,6 +43,7 @@ const SAMPLE_DONATION: DonationWithTierRecord = {
   id: 'donation-1',
   founder_id: 'user-founder-1',
   donor_email: 'alice@example.com',
+  donor_name: 'Alice Walker',
   donor_user_id: null,
   tier_id: 'tier-1',
   tier_label: 'Bronze Supporter',

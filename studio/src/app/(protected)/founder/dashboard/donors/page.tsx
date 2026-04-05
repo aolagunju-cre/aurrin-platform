@@ -6,6 +6,7 @@ import Link from 'next/link';
 interface Donation {
   id: string;
   donor_email: string | null;
+  donor_name: string | null;
   donor_user_id: string | null;
   tier_id: string | null;
   tier_label: string | null;
@@ -81,6 +82,7 @@ export default function DonorsPage(): React.ReactElement {
             <thead>
               <tr className="border-b border-default-200 bg-default-50 text-left text-default-600">
                 <th className="px-4 py-3 font-medium">Donor</th>
+                <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Amount</th>
                 <th className="px-4 py-3 font-medium">Tier</th>
                 <th className="px-4 py-3 font-medium">Date</th>
@@ -90,7 +92,10 @@ export default function DonorsPage(): React.ReactElement {
               {donations.map((donation) => (
                 <tr key={donation.id} className="border-b border-default-100 last:border-0">
                   <td className="px-4 py-3 text-foreground">
-                    {donation.donor_email ?? 'Anonymous'}
+                    {donation.donor_name ?? 'Anonymous'}
+                  </td>
+                  <td className="px-4 py-3 text-default-500">
+                    {donation.donor_email ?? '—'}
                   </td>
                   <td className="px-4 py-3 font-medium text-foreground">
                     {formatCurrency(donation.amount_cents)}

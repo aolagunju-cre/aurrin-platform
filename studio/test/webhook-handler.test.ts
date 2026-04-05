@@ -4,6 +4,7 @@ import type Stripe from 'stripe';
 import { getSupabaseClient } from '../src/lib/db/client';
 import { enqueueJob } from '../src/lib/jobs/enqueue';
 import { auditLog } from '../src/lib/audit/log';
+import { getStripeClient } from '../src/lib/payments/stripe-client';
 import { handleStripeWebhookEvent } from '../src/lib/payments/webhook-handler';
 
 jest.mock('../src/lib/db/client', () => ({
@@ -18,9 +19,20 @@ jest.mock('../src/lib/audit/log', () => ({
   auditLog: jest.fn(),
 }));
 
+jest.mock('../src/lib/payments/stripe-client', () => ({
+  getStripeClient: jest.fn(),
+}));
+
 const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof getSupabaseClient>;
 const mockedEnqueueJob = enqueueJob as jest.MockedFunction<typeof enqueueJob>;
 const mockedAuditLog = auditLog as jest.MockedFunction<typeof auditLog>;
+const mockedGetStripeClient = getStripeClient as jest.MockedFunction<typeof getStripeClient>;
+
+const stripeMock = {
+  paymentIntents: {
+    retrieve: jest.fn(),
+  },
+};
 
 const userId = '11111111-1111-4111-8111-111111111111';
 const productId = '22222222-2222-4222-8222-222222222222';
@@ -83,6 +95,11 @@ describe('handleStripeWebhookEvent', () => {
     });
     db.getDonationByStripePaymentIntentId.mockResolvedValue({ data: null, error: null });
     db.insertDonation.mockResolvedValue({ data: { id: 'donation_1' }, error: null });
+    stripeMock.paymentIntents.retrieve.mockReset();
+    stripeMock.paymentIntents.retrieve.mockResolvedValue({
+      latest_charge: { billing_details: { name: null } },
+    } as unknown as Stripe.PaymentIntent);
+    mockedGetStripeClient.mockReturnValue(stripeMock as unknown as ReturnType<typeof getStripeClient>);
     mockedEnqueueJob.mockResolvedValue({
       id: 'job_1',
       job_type: 'webhook',
@@ -486,6 +503,98 @@ describe('handleStripeWebhookEvent', () => {
     expect(db.insertDonation).toHaveBeenCalledWith(
       expect.objectContaining({
         donor_user_id: donorUserId,
+        status: 'completed',
+      })
+    );
+  });
+
+  it('captures donor_name from latest_charge.billing_details.name on donation insert', async () => {
+    const founderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    stripeMock.paymentIntents.retrieve.mockResolvedValueOnce({
+      latest_charge: {
+        billing_details: {
+          name: 'Ada Lovelace',
+        },
+      },
+    } as unknown as Stripe.PaymentIntent);
+
+    const event = {
+      id: 'evt_pi_donor_name',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_donor_name_1',
+          amount: 5000,
+          amount_received: 5000,
+          currency: 'usd',
+          metadata: {
+            kind: 'founder_support',
+            founder_slug: 'maya-chen-terravolt',
+            founder_name: 'Maya Chen',
+            founder_id: founderId,
+            donor_email: 'ada@example.com',
+            tier_id: '',
+            tier_label: '',
+            donor_user_id: '',
+          },
+          receipt_email: 'ada@example.com',
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await handleStripeWebhookEvent(event);
+
+    expect(stripeMock.paymentIntents.retrieve).toHaveBeenCalledWith(
+      'pi_donor_name_1',
+      expect.objectContaining({ expand: expect.arrayContaining(['latest_charge']) })
+    );
+    expect(db.insertDonation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        founder_id: founderId,
+        donor_name: 'Ada Lovelace',
+        donor_email: 'ada@example.com',
+        stripe_payment_intent_id: 'pi_donor_name_1',
+        status: 'completed',
+      })
+    );
+  });
+
+  it('falls back to donor_name=null when Stripe paymentIntents.retrieve rejects', async () => {
+    const founderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    stripeMock.paymentIntents.retrieve.mockRejectedValueOnce(new Error('stripe unreachable'));
+
+    const event = {
+      id: 'evt_pi_donor_name_fallback',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_donor_name_fallback',
+          amount: 1500,
+          amount_received: 1500,
+          currency: 'usd',
+          metadata: {
+            kind: 'founder_support',
+            founder_slug: 'maya-chen-terravolt',
+            founder_name: 'Maya Chen',
+            founder_id: founderId,
+            donor_email: 'fallback@example.com',
+            tier_id: '',
+            tier_label: '',
+            donor_user_id: '',
+          },
+          receipt_email: 'fallback@example.com',
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    const result = await handleStripeWebhookEvent(event);
+
+    expect(result).toEqual({ duplicate: false, deadLettered: false });
+    expect(db.insertDonation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        founder_id: founderId,
+        donor_name: null,
+        stripe_payment_intent_id: 'pi_donor_name_fallback',
         status: 'completed',
       })
     );

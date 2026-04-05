@@ -702,6 +702,7 @@ export interface DonationRecord {
   id: string;
   founder_id: string;
   donor_email: string | null;
+  donor_name: string | null;
   donor_user_id: string | null;
   tier_id: string | null;
   amount_cents: number;
@@ -713,6 +714,7 @@ export interface DonationRecord {
 export interface DonationInsert {
   founder_id: string;
   donor_email?: string | null;
+  donor_name?: string | null;
   donor_user_id?: string | null;
   tier_id?: string | null;
   amount_cents: number;

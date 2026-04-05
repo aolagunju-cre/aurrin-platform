@@ -86,9 +86,7 @@ export default function AdminDonationsPage(): React.ReactElement {
               </thead>
               <tbody>
                 {donations.map((donation) => {
-                  const donorName = donation.donor_user_id
-                    ? `User ${donation.donor_user_id.slice(0, 8)}`
-                    : 'Anonymous';
+                  const donorName = donation.donor_name ?? 'Anonymous';
                   return (
                     <tr key={donation.id} className="hover:bg-default-100/50 transition-colors">
                       <td className="px-4 py-3 border-b border-default-100 text-foreground">
