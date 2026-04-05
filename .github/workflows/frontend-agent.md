@@ -26,6 +26,10 @@ engine:
   env:
     OPENAI_BASE_URL: https://openrouter.ai/api/v1
 
+checkout:
+  fetch: ["*"]
+  fetch-depth: 0
+
 permissions: read-all
 
 network:

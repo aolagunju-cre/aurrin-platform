@@ -46,6 +46,10 @@ engine:
   id: codex
   model: openai/gpt-5-codex
 
+checkout:
+  fetch: ["*"]
+  fetch-depth: 0
+
 permissions: read-all
 
 network:
