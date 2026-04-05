@@ -7,16 +7,20 @@ import {
   type NormalizedRole,
 } from './lib/auth/request-auth';
 
-const PUBLIC_PATHS = ['/public', '/api/public', '/auth'];
-const PROTECTED_PAGE_PATHS = ['/admin', '/judge', '/founder', '/mentor', '/subscriber'];
-const PROTECTED_API_PATHS = ['/api/admin', '/api/judge', '/api/founder', '/api/mentor', '/api/subscriber', '/api/protected'];
+// Trailing slashes are required so path prefixes match as directory prefixes
+// only. Without them, `/founder` matches both `/founder/dashboard` (protected)
+// and `/founders/[slug]` (public donor-facing profile), which broke the PR #263
+// public founder profile page in production.
+const PUBLIC_PATHS = ['/public/', '/api/public/', '/auth/'];
+const PROTECTED_PAGE_PATHS = ['/admin/', '/judge/', '/founder/', '/mentor/', '/subscriber/'];
+const PROTECTED_API_PATHS = ['/api/admin/', '/api/judge/', '/api/founder/', '/api/mentor/', '/api/subscriber/', '/api/protected/'];
 
 const DEMO_ROLE_RULES: Array<{ prefixes: string[]; role: NormalizedRole }> = [
-  { prefixes: ['/admin', '/api/admin'], role: 'admin' },
-  { prefixes: ['/judge', '/api/judge'], role: 'judge' },
-  { prefixes: ['/founder', '/api/founder'], role: 'founder' },
-  { prefixes: ['/mentor', '/api/mentor'], role: 'mentor' },
-  { prefixes: ['/subscriber', '/api/subscriber'], role: 'subscriber' },
+  { prefixes: ['/admin/', '/api/admin/'], role: 'admin' },
+  { prefixes: ['/judge/', '/api/judge/'], role: 'judge' },
+  { prefixes: ['/founder/', '/api/founder/'], role: 'founder' },
+  { prefixes: ['/mentor/', '/api/mentor/'], role: 'mentor' },
+  { prefixes: ['/subscriber/', '/api/subscriber/'], role: 'subscriber' },
 ];
 
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {

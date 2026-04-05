@@ -81,9 +81,36 @@ describe('middleware role enforcement parity', () => {
       },
     ]);
 
-    const response = await middleware(new NextRequest(new Request('http://localhost/admin', { method: 'GET' })));
+    const response = await middleware(new NextRequest(new Request('http://localhost/admin/donations', { method: 'GET' })));
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-request-id')).toBeTruthy();
+  });
+
+  it('does not gate /founders/[slug] public founder profile pages', async () => {
+    // Regression guard: the protected prefix `/founder` used to match `/founders/...`
+    // via startsWith, redirecting the public founder profile route to sign-in.
+    mockedResolveAuthIdentityFromRequest.mockResolvedValue(null);
+
+    const response = await middleware(
+      new NextRequest(new Request('http://localhost/founders/maya-chen-terravolt', { method: 'GET' }))
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('x-request-id')).toBeTruthy();
+  });
+
+  it('still gates /founder/dashboard for unauthenticated users', async () => {
+    // Companion to the above — verifies the fix does not accidentally open the
+    // authenticated founder dashboard.
+    mockedResolveAuthIdentityFromRequest.mockResolvedValue(null);
+
+    const response = await middleware(
+      new NextRequest(new Request('http://localhost/founder/dashboard', { method: 'GET' }))
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toContain('/auth/sign-in');
   });
 });
