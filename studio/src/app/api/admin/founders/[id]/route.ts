@@ -54,6 +54,8 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
         website: applicationResult.data.website,
         twitter: applicationResult.data.twitter,
         linkedin: applicationResult.data.linkedin,
+        phone: applicationResult.data.phone ?? null,
+        etransfer_email: applicationResult.data.etransfer_email ?? null,
         status: toUiStatus(applicationResult.data.status),
         status_value: applicationResult.data.status,
         assigned_event_id: applicationResult.data.assigned_event_id,

@@ -18,6 +18,7 @@ interface FounderValidationErrors {
   industry?: string;
   stage?: string;
   deck_file?: string;
+  etransfer_email?: string;
 }
 
 interface CommunityRoleValidationErrors {
@@ -78,6 +79,8 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
   const website = textField(formData, 'website');
   const twitter = textField(formData, 'twitter');
   const linkedin = textField(formData, 'linkedin');
+  const phone = textField(formData, 'phone');
+  const etransferEmail = textField(formData, 'etransfer_email');
   const deckFile = formData.get('deck_file');
 
   const errors: FounderValidationErrors = {};
@@ -97,7 +100,7 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
   if (!stage) errors.stage = 'Stage is required';
 
   if (!(deckFile instanceof File)) {
-    errors.deck_file = 'Pitch deck file is required';
+    // deck_file is optional — no required error when absent
   } else {
     if (deckFile.type !== 'application/pdf') {
       errors.deck_file = 'Pitch deck must be a PDF';
@@ -105,6 +108,10 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
     if (deckFile.size > 50 * 1024 * 1024) {
       errors.deck_file = 'Pitch deck must be 50MB or smaller';
     }
+  }
+
+  if (etransferEmail && !isValidEmail(etransferEmail)) {
+    errors.etransfer_email = 'Enter a valid e-transfer email address';
   }
 
   if (Object.keys(errors).length > 0) {
@@ -129,7 +136,9 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
     }
 
     const applicantRef = `public-${Buffer.from(email).toString('base64url').slice(0, 24)}`;
-    const uploadResult = await uploadFile(deckFile as File, 'pitch-decks', applicantRef);
+    const uploadResult = deckFile instanceof File
+      ? await uploadFile(deckFile, 'pitch-decks', applicantRef)
+      : { file_id: null, path: null };
 
     const saveResult = existingResult.data
       ? await client.db.updateFounderApplication(existingResult.data.id, {
@@ -139,11 +148,13 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
           pitch_summary: pitchSummary,
           industry,
           stage,
-          deck_file_id: uploadResult.file_id,
-          deck_path: uploadResult.path,
+          ...(uploadResult.file_id != null && { deck_file_id: uploadResult.file_id }),
+          ...(uploadResult.path != null && { deck_path: uploadResult.path }),
           website: website || null,
           twitter: twitter || null,
           linkedin: linkedin || null,
+          phone: phone || null,
+          etransfer_email: etransferEmail || null,
           status: 'pending',
           assigned_event_id: null,
           reviewed_at: null,
@@ -152,8 +163,8 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
             pitch_summary: pitchSummary,
             industry,
             stage,
-            deck_file_id: uploadResult.file_id,
-            deck_path: uploadResult.path,
+            ...(uploadResult.file_id != null && { deck_file_id: uploadResult.file_id }),
+            ...(uploadResult.path != null && { deck_path: uploadResult.path }),
             website: website || null,
             twitter: twitter || null,
             linkedin: linkedin || null,
@@ -172,13 +183,15 @@ async function handleFounderApplication(request: NextRequest): Promise<NextRespo
           website: website || null,
           twitter: twitter || null,
           linkedin: linkedin || null,
+          phone: phone || null,
+          etransfer_email: etransferEmail || null,
           status: 'pending',
           application_data: {
             pitch_summary: pitchSummary,
             industry,
             stage,
-            deck_file_id: uploadResult.file_id,
-            deck_path: uploadResult.path,
+            ...(uploadResult.file_id != null && { deck_file_id: uploadResult.file_id }),
+            ...(uploadResult.path != null && { deck_path: uploadResult.path }),
             website: website || null,
             twitter: twitter || null,
             linkedin: linkedin || null,

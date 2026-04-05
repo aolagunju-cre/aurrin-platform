@@ -34,7 +34,7 @@ const mockedGetSupabaseClient = getSupabaseClient as jest.MockedFunction<typeof 
 const mockedUploadFile = uploadFile as jest.MockedFunction<typeof uploadFile>;
 const mockedSendEmail = sendEmail as jest.MockedFunction<typeof sendEmail>;
 
-function buildRequest(overrides: Record<string, string> = {}, file?: File): NextRequest {
+function buildRequest(overrides: Record<string, string> = {}, file?: File | null): NextRequest {
   const formData = new FormData();
   const required = {
     full_name: 'Jane Doe',
@@ -47,7 +47,12 @@ function buildRequest(overrides: Record<string, string> = {}, file?: File): Next
   };
 
   Object.entries(required).forEach(([key, value]) => formData.append(key, value));
-  formData.append('deck_file', file ?? new File(['pdf'], 'deck.pdf', { type: 'application/pdf' }));
+  // deck_file is optional — only append when explicitly provided (undefined = use default, null = no file)
+  if (file === undefined) {
+    formData.append('deck_file', new File(['pdf'], 'deck.pdf', { type: 'application/pdf' }));
+  } else if (file !== null) {
+    formData.append('deck_file', file);
+  }
 
   return new NextRequest(new Request('http://localhost/api/public/apply', { method: 'POST', body: formData }));
 }
@@ -314,6 +319,38 @@ describe('POST /api/public/apply', () => {
         application_id: 'app-1',
       }),
     );
+  });
+
+  it('creates application without a deck file and skips upload', async () => {
+    const response = await POST(buildRequest({}, null));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ success: true, message: 'Application submitted' });
+    expect(mockedUploadFile).not.toHaveBeenCalled();
+    expect(mockDb.insertFounderApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ deck_file_id: null, deck_path: null })
+    );
+  });
+
+  it('persists phone and etransfer_email when provided', async () => {
+    const response = await POST(buildRequest({ phone: '416-555-0100', etransfer_email: 'pay@example.com' }, null));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(mockDb.insertFounderApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: '416-555-0100', etransfer_email: 'pay@example.com' })
+    );
+  });
+
+  it('rejects invalid etransfer_email format', async () => {
+    const response = await POST(buildRequest({ etransfer_email: 'not-an-email' }, null));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.errors.etransfer_email).toBe('Enter a valid e-transfer email address');
+    expect(mockedUploadFile).not.toHaveBeenCalled();
   });
 
   it('rejects non-pdf deck uploads', async () => {

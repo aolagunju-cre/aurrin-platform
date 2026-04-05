@@ -43,6 +43,8 @@ export interface FounderApplicationRecord {
   website: string | null;
   twitter: string | null;
   linkedin: string | null;
+  phone: string | null;
+  etransfer_email: string | null;
   status: 'pending' | 'accepted' | 'assigned' | 'declined';
   assigned_event_id: string | null;
   application_data: Record<string, unknown> | null;
@@ -65,6 +67,8 @@ export interface FounderApplicationInsert {
   website?: string | null;
   twitter?: string | null;
   linkedin?: string | null;
+  phone?: string | null;
+  etransfer_email?: string | null;
   assigned_event_id?: string | null;
   status?: 'pending' | 'accepted' | 'assigned' | 'declined';
   application_data?: Record<string, unknown>;
@@ -82,6 +86,8 @@ export interface FounderApplicationUpdate {
   website?: string | null;
   twitter?: string | null;
   linkedin?: string | null;
+  phone?: string | null;
+  etransfer_email?: string | null;
   status?: 'pending' | 'accepted' | 'assigned' | 'declined';
   assigned_event_id?: string | null;
   reviewed_at?: string | null;

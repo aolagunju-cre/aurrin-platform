@@ -20,6 +20,8 @@ export interface FounderDetailData {
   website: string | null;
   twitter: string | null;
   linkedin: string | null;
+  phone: string | null;
+  etransfer_email: string | null;
   status: 'Pending' | 'Accepted' | 'Assigned' | 'Declined';
   status_value: 'pending' | 'accepted' | 'assigned' | 'declined';
   assigned_event_id: string | null;
@@ -116,6 +118,12 @@ export function FounderDetailModal({
         </p>
         <p className="text-sm text-default-500">
           <span className="font-medium text-foreground">Website:</span> {founder.website ?? 'N/A'}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">Phone:</span> {founder.phone ?? 'N/A'}
+        </p>
+        <p className="text-sm text-default-500">
+          <span className="font-medium text-foreground">E-Transfer Email:</span> {founder.etransfer_email ?? 'N/A'}
         </p>
         <p className="text-sm text-default-500">
           <span className="font-medium text-foreground">Status:</span>{' '}

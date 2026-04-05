@@ -14,6 +14,8 @@ type FormValues = {
   website: string;
   twitter: string;
   linkedin: string;
+  phone: string;
+  etransfer_email: string;
 };
 
 type FormErrors = Partial<Record<keyof FormValues | 'deck_file', string>>;
@@ -30,6 +32,8 @@ const initialValues: FormValues = {
   website: '',
   twitter: '',
   linkedin: '',
+  phone: '',
+  etransfer_email: '',
 };
 
 function validateField(name: keyof FormValues, value: string): string | undefined {
@@ -46,6 +50,13 @@ function validateField(name: keyof FormValues, value: string): string | undefine
     }
   }
 
+  if (name === 'etransfer_email' && trimmed) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      return 'Enter a valid email address';
+    }
+  }
+
   if (name === 'pitch_summary' && trimmed) {
     if (trimmed.length < 100 || trimmed.length > 1000) {
       return 'Pitch summary must be 100 to 1000 characters';
@@ -56,7 +67,7 @@ function validateField(name: keyof FormValues, value: string): string | undefine
 }
 
 function validateFile(file: File | null): string | undefined {
-  if (!file) return 'Pitch deck is required';
+  if (!file) return undefined;
   if (file.type !== 'application/pdf') return 'Pitch deck must be a PDF';
   if (file.size > 50 * 1024 * 1024) return 'Pitch deck must be 50MB or smaller';
   return undefined;
@@ -99,7 +110,7 @@ export function ApplicationForm() {
       (Object.entries(values) as Array<[keyof FormValues, string]>).forEach(([key, value]) => {
         if (value.trim()) formData.append(key, value.trim());
       });
-      formData.append('deck_file', deckFile as File);
+      if (deckFile) formData.append('deck_file', deckFile);
 
       const response = await fetch('/api/public/apply', {
         method: 'POST',
@@ -249,7 +260,7 @@ export function ApplicationForm() {
 
       <div className="grid gap-1.5">
         <label htmlFor="deck_file" className="text-sm text-foreground">
-          Pitch deck (PDF, max 50MB) <span className="text-danger">*</span>
+          Pitch deck (PDF, max 50MB, optional)
         </label>
         <input
           id="deck_file"
@@ -292,6 +303,35 @@ export function ApplicationForm() {
         label="LinkedIn (optional)"
         value={values.linkedin}
         onChange={(e) => setValues((prev) => ({ ...prev, linkedin: e.target.value }))}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
+      />
+
+      <Input
+        id="phone"
+        name="phone"
+        type="tel"
+        label="Phone Number (optional)"
+        value={values.phone}
+        onChange={(e) => setValues((prev) => ({ ...prev, phone: e.target.value }))}
+        variant="bordered"
+        classNames={{
+          inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
+        }}
+      />
+
+      <Input
+        id="etransfer_email"
+        name="etransfer_email"
+        type="email"
+        label="Preferred E-Transfer Email (optional)"
+        value={values.etransfer_email}
+        onChange={(e) => setValues((prev) => ({ ...prev, etransfer_email: e.target.value }))}
+        onBlur={() => onBlur('etransfer_email')}
+        isInvalid={!!errors.etransfer_email}
+        errorMessage={errors.etransfer_email}
         variant="bordered"
         classNames={{
           inputWrapper: 'border-default-200 dark:border-gray-700 hover:border-violet-500/50',
