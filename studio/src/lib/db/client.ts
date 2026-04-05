@@ -724,6 +724,10 @@ export interface DonationWithTierRecord extends DonationRecord {
   tier_label: string | null;
 }
 
+export interface AdminDonationRecord extends DonationWithTierRecord {
+  founder_company_name: string | null;
+}
+
 export interface SupabaseStorageClient {
   upload(bucket: string, path: string, file: Buffer | Blob, options?: { contentType?: string }): Promise<StorageUploadResult>;
   remove(bucket: string, paths: string[]): Promise<{ error: Error | null }>;
@@ -860,6 +864,7 @@ export interface SupabaseDBClient {
   insertDonation(record: DonationInsert): Promise<{ data: DonationRecord | null; error: Error | null }>;
   getDonationByStripePaymentIntentId(paymentIntentId: string): Promise<{ data: DonationRecord | null; error: Error | null }>;
   listDonationsByFounderId(founderId: string): Promise<{ data: DonationWithTierRecord[]; error: Error | null }>;
+  listAllDonations(): Promise<{ data: AdminDonationRecord[]; error: Error | null }>;
 }
 
 export interface SupabaseClient {
@@ -982,6 +987,7 @@ export function getSupabaseClient(): SupabaseClient {
         insertDonation: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         getDonationByStripePaymentIntentId: async () => ({ data: null, error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
         listDonationsByFounderId: async () => ({ data: [], error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
+        listAllDonations: async () => ({ data: [], error: new Error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (legacy aliases: SUPABASE_URL and SUPABASE_SERVICE_KEY)') }),
       },
     };
     return stub;
@@ -2892,6 +2898,44 @@ export function getSupabaseClient(): SupabaseClient {
         const mapped: DonationWithTierRecord[] = rows.map((row) => ({
           ...row,
           tier_label: row.tier?.label ?? null,
+        }));
+        return { data: mapped, error: null };
+      } catch (err) {
+        return { data: [], error: err instanceof Error ? err : new Error(String(err)) };
+      }
+    },
+
+    async listAllDonations() {
+      try {
+        const [donationsRes, foundersRes] = await Promise.all([
+          fetch(
+            `${supabaseUrl}/rest/v1/donations?select=*,tier:sponsorship_tiers(label)&order=created_at.desc`,
+            { headers }
+          ),
+          fetch(
+            `${supabaseUrl}/rest/v1/founders?select=user_id,company_name`,
+            { headers }
+          ),
+        ]);
+        if (!donationsRes.ok) {
+          return { data: [], error: new Error(`Donations query failed: ${donationsRes.statusText}`) };
+        }
+        if (!foundersRes.ok) {
+          return { data: [], error: new Error(`Founders query failed: ${foundersRes.statusText}`) };
+        }
+        type RawDonationRow = DonationRecord & { tier: { label: string } | null };
+        type RawFounderRow = { user_id: string; company_name: string | null };
+        const [donationRows, founderRows] = await Promise.all([
+          donationsRes.json() as Promise<RawDonationRow[]>,
+          foundersRes.json() as Promise<RawFounderRow[]>,
+        ]);
+        const companyByUserId = new Map<string, string | null>(
+          founderRows.map((f) => [f.user_id, f.company_name])
+        );
+        const mapped: AdminDonationRecord[] = donationRows.map((row) => ({
+          ...row,
+          tier_label: row.tier?.label ?? null,
+          founder_company_name: companyByUserId.get(row.founder_id) ?? null,
         }));
         return { data: mapped, error: null };
       } catch (err) {
