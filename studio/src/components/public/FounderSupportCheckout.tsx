@@ -7,6 +7,10 @@ interface FounderSupportCheckoutProps {
   founderSlug: string;
   founderName: string;
   founderId?: string | null;
+  /** Pre-selected sponsorship tier id — wired up for tier selection in #257. */
+  tierId?: string | null;
+  /** Pre-filled donation amount in cents from tier selection. */
+  initialAmountCents?: number | null;
 }
 
 const PRESET_AMOUNTS = [500, 1000, 2500];
@@ -32,9 +36,17 @@ export function FounderSupportCheckout({
   founderSlug,
   founderName,
   founderId = null,
+  tierId: _tierId = null,
+  initialAmountCents = null,
 }: FounderSupportCheckoutProps): React.ReactElement {
-  const [selectedAmount, setSelectedAmount] = useState<number>(PRESET_AMOUNTS[1]);
-  const [customAmountInput, setCustomAmountInput] = useState<string>('');
+  const [selectedAmount, setSelectedAmount] = useState<number>(
+    initialAmountCents ?? PRESET_AMOUNTS[1]
+  );
+  const [customAmountInput, setCustomAmountInput] = useState<string>(
+    initialAmountCents && !PRESET_AMOUNTS.includes(initialAmountCents)
+      ? String(initialAmountCents / 100)
+      : ''
+  );
   const [donorEmail, setDonorEmail] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
